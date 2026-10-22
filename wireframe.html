@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>QR受付システム｜操作ワイヤーフレーム</title>
+<style>
+:root{color-scheme:light;font-family:system-ui,-apple-system,"Yu Gothic","Meiryo",sans-serif;color:#243348;background:#f3f6f9}
+*{box-sizing:border-box}body{margin:0}button,input,select{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #e9a43d;outline-offset:2px}
+header{background:#193c55;color:white;padding:16px max(20px,calc((100vw - 1140px)/2));display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+header h1{margin:0;font-size:1.22rem;letter-spacing:.03em}.muted-head{color:#c4d8e7;font-size:.77rem;margin-top:5px}
+.demo{display:inline-block;border:1px solid #eab571;color:#fff1d7;border-radius:20px;font-size:.76rem;padding:4px 9px;margin-left:10px}
+.shell{max-width:1180px;margin:0 auto;padding:20px 18px 56px}
+.switcher{display:flex;gap:6px;background:#e5ebf0;border-radius:12px;padding:6px;margin-bottom:18px}
+.switcher button{border:0;background:transparent;padding:13px 22px;border-radius:8px;color:#43566a;font-weight:700;flex:1}
+.switcher button.active{background:#fff;color:#153b54;box-shadow:0 1px 4px #b7c3cd}
+.banner{background:#fff7e6;border-left:4px solid #d59a39;padding:10px 14px;color:#6a4917;font-size:.85rem;border-radius:6px;margin-bottom:18px}
+.layout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:16px;align-items:start}
+aside,.panel,.page{background:#fff;border:1px solid #d6e0e8;border-radius:12px}
+aside{padding:14px;position:sticky;top:12px}
+aside h2{font-size:.86rem;color:#52687a;margin:0 0 10px}aside button{display:block;width:100%;border:0;background:white;text-align:left;border-radius:8px;padding:12px;margin:3px 0;color:#314a60}aside button.selected{background:#e7f3f5;color:#155b6d;font-weight:700}
+.page{padding:22px;min-height:470px}.page>h2{margin:0 0 8px;font-size:1.4rem}.sub{font-size:.88rem;color:#617282;margin:0 0 22px}
+.panel{padding:18px;margin:0 0 17px}.panel h3{font-size:1.02rem;margin:0 0 13px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{border-radius:8px;border:1px solid #bfd0dc;background:#fff;padding:10px 14px;font-size:.91rem;color:#244257}
+.btn.primary{background:#0e6975;color:white;border-color:#0e6975;font-weight:700}
+.btn.outline{border-color:#0e6975;color:#0e6975}.btn.danger{color:#a43131;border-color:#e0b7b7}
+.btn:disabled{opacity:.45;cursor:default}.btn.small{padding:6px 10px;font-size:.83rem}
+.field{display:flex;flex-direction:column;gap:6px;font-size:.85rem;font-weight:600;min-width:0}
+.field input,.field select,.search{border:1px solid #c7d4df;border-radius:7px;padding:10px 11px;min-width:0;background:white;width:100%;color:#273c50}
+.cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.cols.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.small-note{font-size:.82rem;color:#637588;line-height:1.6}.list{display:flex;flex-wrap:wrap;gap:8px}.tag{border:1px solid #c7d7df;border-radius:8px;background:#f5f8fa;padding:8px 11px;font-size:.9rem}
+.tag.active{background:#e0f3ed;border-color:#a5d2c4}.tag button{border:0;background:none;margin-left:10px;color:#9b3f3f;cursor:pointer}
+.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:.86rem;min-width:490px}
+th{background:#eef3f6;text-align:left;color:#4c6073;font-size:.78rem}th,td{padding:11px 8px;border-bottom:1px solid #e1e7ec}
+.stat{border:1px solid #dbe5ed;border-radius:9px;background:#f8fafb;padding:15px;min-width:0}
+.stat strong{font-size:1.55rem;display:block;color:#173f53}.stat small{color:#617387}
+.notice{padding:12px 14px;border-radius:8px;background:#e9f7ed;border:1px solid #b9dfc4;color:#1f633c;margin:12px 0}
+.notice.warn{background:#fff2e7;border-color:#f1caa5;color:#934b1a}.notice.error{background:#fcebec;border-color:#e6b7bd;color:#972932}
+.day-page{max-width:930px;margin:0 auto}.day-header{background:#fff;border:1px solid #d5e0e6;border-radius:12px;padding:18px;margin-bottom:15px}
+.day-session{border-radius:10px;background:#e9f4f5;border:1px solid #9fc8ce;padding:14px}
+.day-session select{font-size:1.18rem;font-weight:700;padding:12px;width:100%;border-radius:8px;border:1px solid #83b8c1;background:white}
+.camera{min-height:300px;background:#e9eff4;border:2px dashed #b3c6d5;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;text-align:center;color:#39576c}
+.camera .symbol{font-size:3.3rem}.camera p{margin:0;font-size:.86rem;max-width:370px}
+.quick{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.quick button{min-height:90px;border:1px solid #bdd6db;border-radius:11px;background:#f4fbfc;color:#145d6a;font-weight:700;text-align:left;padding:16px}
+.quick button span{font-size:1.45rem;margin-right:8px}.quick small{display:block;font-weight:400;color:#557681;margin-top:5px}
+.last{min-height:76px}
+.overlay{position:fixed;inset:0;background:#14283ba3;z-index:8;display:flex;justify-content:flex-end}
+.overlay[hidden],section[hidden],div[hidden],aside[hidden]{display:none!important}
+.drawer{background:white;height:100%;width:min(640px,100%);overflow-y:auto;padding:25px 23px 55px;box-shadow:-7px 0 35px #132b3a55}
+.drawer h2{font-size:1.24rem;margin:0}.drawer-head{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #dfebed;padding-bottom:14px;margin-bottom:18px}
+.person-card{border:1px solid #d5e1e7;border-radius:9px;padding:13px;margin:9px 0}
+.person-card.selected{border-color:#15828a;background:#f1f9f9}
+.planned{display:grid;grid-template-columns:1fr auto;gap:7px;align-items:center;margin:10px 0}
+.checkline{display:flex;align-items:center;gap:9px;font-size:.9rem;font-weight:400}
+.checkline input{width:auto;accent-color:#117987}.hr{border-top:1px solid #dce6ed;margin:17px 0}
+.pill{font-size:.75rem;padding:3px 8px;border-radius:20px;background:#e5f3ea;color:#2c6d41;white-space:nowrap}.pill.off{background:#f1f2f4;color:#69737b}
+@media(max-width:770px){.layout{grid-template-columns:1fr}aside{position:static;display:flex;overflow:auto;gap:5px;padding:6px}aside h2{display:none}aside button{white-space:nowrap;min-width:max-content;width:auto}.page{padding:17px}.cols,.cols.three{grid-template-columns:1fr}.day-page{max-width:none}}
+@media(max-width:500px){header{padding:15px}.switcher button{padding:12px 5px}.quick{grid-template-columns:1fr}.camera{min-height:230px}}
+</style>
+</head>
+<body>
+<header>
+<div><h1>▦ QR受付システム <span class="demo">操作ワイヤーフレーム</span></h1><div class="muted-head">イベント：令和8年度 業務改善研修 ／ 2026年11月12日（サンプル）</div></div>
+<div style="font-size:.84rem;color:#d9e7ef">オフライン・1受付1PC 想定</div>
+</header>
+<main class="shell">
+<div class="banner"><strong>画面設計の確認用です。</strong> サンプルデータのみを使用し、カメラ読取・CSV取込・QR発行・localStorage保存は行いません。ページを再読み込みすると操作結果はリセットされます。</div>
+<div class="switcher" role="navigation" aria-label="モード切替">
+<button type="button" class="active" data-mode="prep">⚙ 事前準備モード</button>
+<button type="button" data-mode="day">▣ 当日受付モード</button>
+</div>
+<div id="prep" class="layout">
+<aside aria-label="事前準備メニュー">
+<h2>事前準備</h2>
+<button class="selected" data-prep="event" type="button">① イベント設定</button>
+<button data-prep="participants" type="button">② 参加者管理</button>
+<button data-prep="issue" type="button">③ QRコード発行</button>
+<button data-prep="results" type="button">④ 集計・データ出力</button>
+</aside>
+<div>
+<section class="page" id="panel-event">
+<h2>イベント設定</h2>
+<p class="sub">イベント情報、受付区分、任意項目を設定します。</p>
+<div class="panel">
+<h3>基本情報</h3>
+<div class="cols">
+<label class="field">イベント名<input id="eventName" value="令和8年度 業務改善研修"></label>
+<label class="field">開催日<input type="date" id="eventDate" value="2026-11-12"></label>
+</div>
+</div>
+<div class="panel">
+<h3>受付区分</h3>
+<div id="sessionsList" class="list"></div>
+<div class="actions" style="margin-top:14px"><input id="newSession" class="search" style="width:min(280px,100%)" placeholder="例：第3部"><button class="btn outline" type="button" id="addSession">＋ 区分を追加</button></div>
+<p class="small-note">各区分に固定IDを付与します。受付記録がある区分は削除できない設計です。新規イベントの初期設定は「全体」1区分です。</p>
+</div>
+<div class="panel">
+<h3>任意項目（最大2つ）</h3>
+<div class="cols"><label class="field">任意項目1<input id="customOne" value="PC利用有無"></label><label class="field">任意項目2<input id="customTwo" value="持参機器"></label></div>
+<div class="actions" style="margin-top:15px"><button class="btn primary" id="saveEvent" type="button">画面に反映</button></div>
+</div>
+</section>
+<section class="page" id="panel-participants" hidden>
+<h2>参加者管理</h2>
+<p class="sub">CSV一括登録を基本に、個別登録や参加予定の修正も行います。</p>
+<div class="actions" style="margin-bottom:18px">
+<button class="btn primary" data-message="CSV取込画面では列の対応・重複確認・取り込み結果を確認する想定です（未実装）。">CSVから一括登録</button>
+<button class="btn outline" data-open="new">＋ 個別に追加</button>
+</div>
+<div class="panel">
+<div class="row"><h3>参加者一覧 <span id="peopleCount"></span></h3><button class="btn small" data-open="search">参加者検索・修正</button></div>
+<input id="prepSearch" class="search" placeholder="氏名・所属・職員番号・参加者IDで絞り込み">
+<div class="table-wrap"><table><thead><tr><th>参加者ID</th><th>氏名</th><th>所属</th><th>受付区分／参加予定</th><th></th></tr></thead><tbody id="peopleRows"></tbody></table></div>
+</div>
+</section>
+<section class="page" id="panel-issue" hidden>
+<h2>QRコード発行</h2>
+<p class="sub">イベントごとに参加者へQRを発行。午前・午後は同じQRを使います。</p>
+<div class="cols">
+<div class="panel"><h3>✉ メール配布用</h3><p class="small-note">参加者ごとのQR画像をPNGで生成し、宛先対応表と合わせてZIPで出力します。</p><button class="btn outline" data-message="ここから参加者別のQR画像・メール宛先一覧を出力する予定です。ワイヤーフレームでは生成しません。">一括発行の確認</button></div>
+<div class="panel"><h3>▦ 紙配布用</h3><p class="small-note">A4縦の用紙に名刺サイズ（91×55mm）を10面付けし、切り取り線を付けます。</p><button class="btn outline" data-message="A4縦・2列×5段の印刷プレビューに進む予定です。ワイヤーフレームでは印刷しません。">印刷イメージを見る</button></div>
+</div>
+<div class="panel"><h3>個別発行・再発行</h3><p class="small-note">発行済みQRの識別子は変えずに再出力します。既存のQR発行検証版は別ページ（issue.html）にあります。</p><a href="./issue.html" class="btn" style="display:inline-block;text-decoration:none">既存のQR発行検証画面を開く ↗</a></div>
+</section>
+<section class="page" id="panel-results" hidden>
+<h2>集計・データ出力</h2>
+<p class="sub">各区分の受付状況と、バックアップ／Excel分析用出力を確認します。</p>
+<div class="cols three" id="prepStats"></div>
+<div class="panel"><h3>出力メニュー</h3><div class="actions">
+<button class="btn outline" data-message="JSONにはイベント設定・参加者・受付区分・QRトークン・受付履歴を含めます。正式版で保存／復元を実装します。">JSONバックアップ</button>
+<button class="btn outline" data-message="CSVはイベント×参加者×受付区分で1行の形式です。未受付者・参加対象外も含めます。">Excel分析用CSV</button>
+</div><p class="small-note">正式版では保存成功・最終バックアップ日時を明示し、復元時に既存データとの重複を確認します。</p></div>
+</section>
+</div>
+</div>
+<section id="day" class="day-page" hidden>
+<div class="day-header"><div class="row"><div><strong id="dayEventName">令和8年度 業務改善研修</strong><div class="small-note">当日受付モード・受付PC用</div></div><button class="btn small" data-mode="prep" type="button">事前準備へ戻る</button></div></div>
+<div class="day-session"><div class="row" style="margin-bottom:10px"><strong>現在の受付区分</strong><span class="pill">区分ごとに別の受付記録</span></div><select id="daySession" aria-label="現在の受付区分"></select><div class="small-note">受付前に区分を確認してください。QRは同じものを利用できます。</div></div>
+<div class="cols three" id="dayStats" style="margin:15px 0"></div>
+<div class="panel"><h3>QRコード受付</h3><div class="camera"><div class="symbol">▣</div><strong>カメラ読み取りエリア</strong><p>ここに既存のQR読み取り機能を組み込みます。現在は操作フローの確認用です。</p><button class="btn outline" id="demoScan">サンプルQRを読み取った想定で試す</button></div><div id="lastMessage" class="notice" role="status" aria-live="polite">受付結果がここに大きく表示されます。</div></div>
+<div class="panel"><h3>当日の参加者変更</h3><div class="quick">
+<button type="button" data-open="new"><span>＋</span>飛び入り参加<small>名前を登録し、そのまま受付</small></button>
+<button type="button" data-open="search"><span>⌕</span>参加者を検索<small>QR忘れ・区分変更・情報修正・受付取消</small></button>
+</div></div>
+</section>
+</main>
+<div class="overlay" id="overlay" hidden>
+<div class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+<div class="drawer-head"><h2 id="drawerTitle">参加者変更</h2><button id="closeDrawer" type="button" class="btn small" aria-label="閉じる">✕ 閉じる</button></div>
+<div id="drawerNew" hidden>
+<p class="small-note">現在選択している受付区分で参加受付する場合は「登録して受付」を押します。QRコードは後から発行できます。</p>
+<div class="cols"><label class="field">氏名（必須）<input id="newName" placeholder="例：沖縄 花子"></label><label class="field">職員番号（任意）<input id="newStaff" placeholder="職員番号がない場合は空欄"></label>
+<label class="field">所属（任意）<input id="newDept" placeholder="例：外部参加者"></label><label class="field">メール（任意）<input id="newEmail" type="email" placeholder="example@example.jp"></label>
+<label class="field" id="customOneField"><span id="newCustomOneLabel"></span><input id="newCustomOne"></label><label class="field" id="customTwoField"><span id="newCustomTwoLabel"></span><input id="newCustomTwo"></label></div>
+<div class="hr"></div><strong>参加予定の受付区分</strong><div class="small-note">現在選択中の受付区分だけを初期選択します。</div><div id="newPlanned"></div>
+<div class="actions" style="margin-top:20px"><button class="btn primary" id="addAndCheck">登録して受付</button><button class="btn outline" id="addOnly">登録のみ</button></div>
+<p id="newHint" class="small-note" role="status"></p>
+</div>
+<div id="drawerSearch" hidden>
+<input id="daySearch" class="search" placeholder="氏名・職員番号・所属・参加者IDで検索" aria-label="参加者を検索">
+<div id="searchMatches"></div>
+<div id="selectedPerson" hidden>
+<div class="hr"></div>
+<h3 style="margin:4px 0 12px">選択した参加者</h3>
+<div class="cols"><label class="field">氏名<input id="editName"></label><label class="field">所属<input id="editDept"></label></div>
+<div class="actions" style="margin:12px 0"><button class="btn small" id="savePerson">氏名・所属を修正</button></div>
+<p id="selectedId" class="small-note"></p>
+<h3 style="margin:18px 0 10px">受付区分ごとの参加予定・実績</h3>
+<div id="personSessions"></div>
+<p id="searchHint" role="status" class="small-note"></p>
+</div>
+</div>
+</div>
+</div>
+<script>
+(function(){
+"use strict";
+const $=id=>document.getElementById(id);
+const state={
+ mode:"prep",tab:"event",eventName:"令和8年度 業務改善研修",date:"2026-11-12",
+ sessions:[{id:"am",name:"午前"},{id:"pm",name:"午後"}],current:"am",nextSession:3,nextParticipant:4,selected:null,
+ custom:["PC利用有無","持参機器"],
+ people:[
+  {id:"0001",name:"山田 太郎",staff:"00123",dept:"総務課",email:"",custom:["有","ノートPC"],planned:{am:true,pm:true},checked:{am:"2026-11-12T00:05:23.000Z",pm:null},removed:false},
+  {id:"0002",name:"佐藤 花子",staff:"00124",dept:"企画課",email:"",custom:["無",""],planned:{am:true,pm:false},checked:{am:"2026-11-12T00:10:00.000Z",pm:null},removed:false},
+  {id:"0003",name:"田中 一郎",staff:"",dept:"外部参加者",email:"",custom:["有","ノートPC"],planned:{am:false,pm:true},checked:{am:null,pm:null},removed:false}
+ ]
+};
+function el(tag,cls,text){const d=document.createElement(tag);if(cls)d.className=cls;if(text!==undefined)d.textContent=text;return d;}
+function fmt(s){if(!s)return "未受付";return new Date(s).toLocaleString("ja-JP",{timeZone:"Asia/Tokyo",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false});}
+function activePeople(){return state.people.filter(p=>!p.removed);}
+function currentSession(){return state.sessions.find(s=>s.id===state.current)||state.sessions[0];}
+function message(t,type){const d=$("lastMessage");d.textContent=t;d.className="notice"+(type?" "+type:"");}
+function showMode(mode){state.mode=mode;$("prep").hidden=mode!=="prep";$("day").hidden=mode!=="day";document.querySelectorAll("[data-mode]").forEach(b=>b.classList.toggle("active",b.dataset.mode===mode));updateAll();}
+function showPrep(tab){state.tab=tab;document.querySelectorAll("[data-prep]").forEach(b=>b.classList.toggle("selected",b.dataset.prep===tab));["event","participants","issue","results"].forEach(x=>$("panel-"+x).hidden=x!==tab);updateAll();}
+function updateSessions(){
+ const list=$("sessionsList");list.replaceChildren();
+ state.sessions.forEach(s=>{
+ const tag=el("div","tag",s.name+"  ");
+ const del=el("button",null,"✕");del.title="区分を削除";del.type="button";
+ del.addEventListener("click",()=>{if(state.sessions.length===1)return alert("受付区分は最低1つ必要です。");if(state.people.some(p=>p.checked[s.id]))return alert("受付履歴のある区分は削除できません。");if(!confirm(s.name+" を削除しますか？"))return;state.sessions=state.sessions.filter(x=>x.id!==s.id);state.people.forEach(p=>{delete p.planned[s.id];delete p.checked[s.id]});if(state.current===s.id)state.current=state.sessions[0].id;updateAll();});
+ tag.appendChild(del);list.appendChild(tag);
+ });
+ const sel=$("daySession");sel.replaceChildren();state.sessions.forEach(s=>{const opt=new Option(s.name,s.id);sel.add(opt)});sel.value=state.current;
+}
+function renderStats(id){const root=$(id);root.replaceChildren();const p=activePeople(), s=currentSession(),total=p.filter(x=>x.planned[s.id]).length,done=p.filter(x=>x.planned[s.id]&&x.checked[s.id]).length;
+ [[p.length,"登録者数"],[total,"参加対象"],[done+" / "+total,"受付済み"]].forEach(([num,label])=>{const d=el("div","stat");d.append(el("strong",null,String(num)),el("small",null,label));root.appendChild(d);});
+}
+function renderPeople(){
+ const search=$("prepSearch").value.trim().toLowerCase();$("peopleCount").textContent="("+activePeople().length+"名)";
+ const body=$("peopleRows");body.replaceChildren();
+ const people=activePeople().filter(p=>[p.id,p.name,p.staff,p.dept].join(" ").toLowerCase().includes(search));
+ if(!people.length){const td=el("td",null,"該当者はいません");td.colSpan=5;const tr=el("tr");tr.append(td);body.append(tr);}
+ people.forEach(p=>{
+  const tr=el("tr");[p.id,p.name,p.dept,state.sessions.map(s=>s.name+":"+(p.planned[s.id]?"対象":"対象外")).join(" / ")].forEach(t=>tr.append(el("td",null,t)));
+  const td=el("td");const edit=el("button","btn small","編集");edit.addEventListener("click",()=>openSearch(p));td.append(edit);tr.append(td);body.append(tr);
+ });
+}
+function updateAll(){updateSessions();renderStats("dayStats");renderStats("prepStats");renderPeople();$("dayEventName").textContent=state.eventName;}
+function checkIn(p,source){
+ if(p.removed){message("受付不可：参加対象から除外されています。","error");return false;}
+ const s=currentSession();
+ if(!p.planned[s.id]){message("参加予定がありません："+p.name+" ／ "+s.name+"。参加者検索から区分を変更してください。","warn");return false;}
+ if(p.checked[s.id]){message("受付済み："+p.name+" ／ "+s.name+"（初回 "+fmt(p.checked[s.id])+"）","warn");return false;}
+ p.checked[s.id]=new Date().toISOString();
+ message("✓ 受付完了："+p.name+" ／ "+s.name+" ／ "+fmt(p.checked[s.id])+"（"+source+"）");
+ updateAll();return true;
+}
+function openDrawer(kind){$("overlay").hidden=false;$("drawerNew").hidden=kind!=="new";$("drawerSearch").hidden=kind!=="search";$("drawerTitle").textContent=kind==="new"?"飛び入り参加者を追加":"参加者を検索・変更";
+ if(kind==="new"){["newName","newStaff","newDept","newEmail","newCustomOne","newCustomTwo"].forEach(id=>$(id).value="");$("newHint").textContent="";$("newCustomOneLabel").textContent=state.custom[0]||"任意項目1";$("newCustomTwoLabel").textContent=state.custom[1]||"任意項目2";
+ const list=$("newPlanned");list.replaceChildren();state.sessions.forEach(s=>{const label=el("label","checkline");label.style.margin="10px 0";const input=el("input");input.type="checkbox";input.value=s.id;input.checked=s.id===state.current;label.append(input,el("span",null,s.name));list.appendChild(label);});$("newName").focus();
+ }else{state.selected=null;$("selectedPerson").hidden=true;$("daySearch").value="";renderSearch();$("daySearch").focus();}
+}
+function closeDrawer(){$("overlay").hidden=true;state.selected=null;}
+function addParticipant(andCheck){
+ const name=$("newName").value.trim(),staff=$("newStaff").value.trim();
+ if(!name){$("newHint").textContent="氏名は必須です。";$("newName").focus();return;}
+ if(staff&&activePeople().some(p=>p.staff===staff)){if(!confirm("同じ職員番号の参加者が既に存在します。追加を続けますか？"))return;}
+ const planned={};const checked={};$("newPlanned").querySelectorAll("input").forEach(input=>{planned[input.value]=input.checked;checked[input.value]=null;});
+ if(andCheck&&!planned[state.current]){planned[state.current]=true;}
+ const p={id:String(state.nextParticipant++).padStart(4,"0"),name,staff,dept:$("newDept").value.trim(),email:$("newEmail").value.trim(),custom:[$("newCustomOne").value.trim(),$("newCustomTwo").value.trim()],planned,checked,removed:false};
+ state.people.push(p);closeDrawer();updateAll();
+ if(andCheck){checkIn(p,"手動");showMode("day");}else{alert(name+" さんを登録しました。QRの発行は必要な場合だけ行います。");}
+}
+function renderSearch(){
+ const q=$("daySearch").value.trim().toLowerCase(),root=$("searchMatches");root.replaceChildren();
+ const people=activePeople().filter(p=>[p.name,p.staff,p.dept,p.id].join(" ").toLowerCase().includes(q));
+ people.forEach(p=>{const div=el("div","person-card"+(state.selected===p.id?" selected":""));const title=el("div",null,p.name+"　／　"+p.dept);const sub=el("div","small-note","参加者ID "+p.id+(p.staff?" ・職員番号 "+p.staff:""));const b=el("button","btn small outline","選択");b.style.marginTop="8px";b.addEventListener("click",()=>selectPerson(p.id));div.append(title,sub,b);root.append(div);});
+ if(!people.length)root.append(el("div","small-note","該当者がいません。飛び入り参加者として新規登録できます。"));
+}
+function selectPerson(id){state.selected=id;const p=state.people.find(x=>x.id===id);if(!p)return;
+ $("selectedPerson").hidden=false;$("editName").value=p.name;$("editDept").value=p.dept;$("selectedId").textContent="参加者ID "+p.id+"（変更不可）　"+(p.staff?"職員番号 "+p.staff:"職員番号なし");$("searchHint").textContent="";
+ renderSearch();renderPersonSessions(p);
+}
+function renderPersonSessions(p){
+ const root=$("personSessions");root.replaceChildren();
+ state.sessions.forEach(s=>{
+  const div=el("div","person-card");const row=el("div","row");const left=el("strong",null,s.name);const status=el("span","pill"+(!p.planned[s.id]?" off":""),p.planned[s.id]?(p.checked[s.id]?"受付済み":"参加対象・未受付"):"参加対象外");row.append(left,status);div.append(row);
+  const note=el("div","small-note",p.checked[s.id]?"初回受付："+fmt(p.checked[s.id]):"受付記録なし");note.style.margin="7px 0";div.append(note);
+  const actions=el("div","actions");
+  const plan=el("button","btn small",p.planned[s.id]?"参加対象を外す":"参加対象にする");
+  plan.addEventListener("click",()=>{if(p.checked[s.id]&&p.planned[s.id])return alert("受付済みの区分は、そのまま参加対象外に変更できません。先に受付取消を行ってください。");p.planned[s.id]=!p.planned[s.id];renderPersonSessions(p);renderPeople();renderStats("dayStats");renderStats("prepStats");});
+  actions.append(plan);
+  if(s.id===state.current){
+   const btn=el("button","btn small primary",p.planned[s.id]?"現在の区分で手動受付":"参加対象に変更して受付");
+   btn.addEventListener("click",()=>{if(!p.planned[s.id]){if(!confirm(s.name+" を参加対象に変更して受付しますか？"))return;p.planned[s.id]=true;}const ok=checkIn(p,"手動");if(ok){closeDrawer();showMode("day");}else renderPersonSessions(p);});
+   actions.append(btn);
+  }
+  if(p.checked[s.id]){
+   const cancel=el("button","btn small danger","受付取消");
+   cancel.addEventListener("click",()=>{if(!confirm(p.name+" さんの "+s.name+" の受付を取り消しますか？（正式版では取消履歴も保持）"))return; p.checked[s.id]=null;renderPersonSessions(p);updateAll();$("searchHint").textContent="受付を取り消しました（ワイヤーフレーム内の模擬操作です）。";});
+   actions.append(cancel);
+  }
+  div.append(actions);root.append(div);
+ });
+}
+document.querySelectorAll("[data-mode]").forEach(b=>b.addEventListener("click",()=>showMode(b.dataset.mode)));
+document.querySelectorAll("[data-prep]").forEach(b=>b.addEventListener("click",()=>showPrep(b.dataset.prep)));
+document.querySelectorAll("[data-open]").forEach(b=>b.addEventListener("click",()=>openDrawer(b.dataset.open)));
+document.querySelectorAll("[data-message]").forEach(b=>b.addEventListener("click",()=>alert(b.dataset.message)));
+$("closeDrawer").addEventListener("click",closeDrawer);
+$("overlay").addEventListener("click",e=>{if(e.target===$("overlay"))closeDrawer();});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("overlay").hidden)closeDrawer();});
+$("addSession").addEventListener("click",()=>{const name=$("newSession").value.trim();if(!name)return alert("区分名を入力してください。");if(state.sessions.some(s=>s.name===name))return alert("同じ区分名があります。");const id="s"+state.nextSession++;state.sessions.push({id,name});state.people.forEach(p=>{p.planned[id]=false;p.checked[id]=null;});$("newSession").value="";updateAll();});
+$("saveEvent").addEventListener("click",()=>{const name=$("eventName").value.trim();if(!name)return alert("イベント名を入力してください。");state.eventName=name;state.date=$("eventDate").value;state.custom=[$("customOne").value.trim(),$("customTwo").value.trim()];updateAll();alert("画面イメージに反映しました。再読み込みすると元に戻ります。");});
+$("prepSearch").addEventListener("input",renderPeople);
+$("daySession").addEventListener("change",e=>{state.current=e.target.value;updateAll();message(currentSession().name+" に切り替えました。次の受付はこの区分に記録します。","warn");});
+$("demoScan").addEventListener("click",()=>{const p=state.people[0];checkIn(p,"サンプルQR");});
+$("newName").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();addParticipant(true);}});
+$("addAndCheck").addEventListener("click",()=>addParticipant(true));
+$("addOnly").addEventListener("click",()=>addParticipant(false));
+$("daySearch").addEventListener("input",()=>{state.selected=null;$("selectedPerson").hidden=true;renderSearch();});
+$("savePerson").addEventListener("click",()=>{const p=state.people.find(x=>x.id===state.selected);if(!p)return;const name=$("editName").value.trim();if(!name)return alert("氏名は必須です。");p.name=name;p.dept=$("editDept").value.trim();$("searchHint").textContent="情報を修正しました。参加者IDやQRは変わりません。";renderSearch();renderPeople();});
+showPrep("event");updateAll();
+})();
+</script>
+</body>
+</html>
