@@ -20,4 +20,16 @@
 .delete-confirm strong{display:block;margin-bottom:5px}
 .delete-phrase{font-weight:900;letter-spacing:.08em;color:#9f3037}
 .delete-dialog-buttons{margin-top:17px;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+
+/* CSV import mapping / audit log */
+.dialog:has(#csvPreview){max-width:880px}
+.dialog .summary{margin-top:8px;margin-bottom:10px}
+.dialog .tablewrap{margin-top:12px;max-height:220px;overflow:auto;border:1px solid #dce8ed;border-radius:8px}
+.dialog .tablewrap table{min-width:max-content}
+.dialog .tablewrap th,.dialog .tablewrap td{white-space:nowrap}
+.history-card{border:1px solid #d6e4ea;border-radius:9px;padding:12px 14px;margin-bottom:11px;background:#fafcfd}
+.history-events{margin-top:8px;border-top:1px solid #e0ebef;padding-top:6px}
+.history-event{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:5px 0;font-size:.82rem;color:#526c7f}
+.history-event span:last-child{white-space:nowrap;font-variant-numeric:tabular-nums;color:#2b6170}
+#exportQRZip:disabled{opacity:.7}
 @media(max-width:850px){.layout,.reception-grid{grid-template-columns:1fr}.sidebar{display:flex;position:static;overflow:auto}.sidebar button{white-space:nowrap}.pending-list{max-height:320px}}@media(max-width:590px){header .bar{padding:15px;align-items:flex-start}.head-actions{justify-content:flex-end}.wrap{padding:0 13px;margin-top:16px}.fields,.fields.two,.summary,.grid2{grid-template-columns:1fr}.event-card{grid-template-columns:1fr}.event-controls{justify-content:flex-start}.tabs{flex-wrap:wrap}.tabs button{min-width:100px}.panel{padding:15px}}@media print{header,.wrap>section:not(#eventView),footer,.sidebar,.tools,.btn,.topback,.tabs,#homeView,#receptionView,.notice{display:none!important}.wrap{margin:0;padding:0}.layout{display:block}#eventView,#prepView,#qrPanel{display:block!important}#qrPanel{padding:0;border:0}#qrPanel>:not(#printSheets){display:none!important}.print-sheet{display:block!important}.print-page{display:grid;grid-template-columns:repeat(2,91mm);grid-template-rows:repeat(5,55mm);gap:0;break-after:page} .print-page:last-child{break-after:auto}.print-card{width:91mm;height:55mm;border:1px dashed #9aa;display:flex;align-items:center;gap:4mm;padding:4mm;break-inside:avoid;font-size:10pt}.print-card img,.print-card canvas{width:36mm;height:36mm}.print-name{font-size:12pt;font-weight:bold}.print-card span{overflow-wrap:anywhere}@page{size:A4 portrait;margin:10mm}}
