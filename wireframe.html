@@ -65,6 +65,59 @@ th{background:#eef3f6;text-align:left;color:#4c6073;font-size:.78rem}th,td{paddi
 
 @media(max-width:770px){.layout{grid-template-columns:1fr}aside{position:static;display:flex;overflow:auto;gap:5px;padding:6px}aside h2{display:none}aside button{white-space:nowrap;min-width:max-content;width:auto}.page{padding:17px}.cols,.cols.three{grid-template-columns:1fr}.day-page{max-width:none}}
 @media(max-width:500px){header{padding:15px}.switcher button{padding:12px 5px}.quick{grid-template-columns:1fr}.camera{min-height:230px}}
+
+/* Text-light UI: demonstrate behavior through visual hierarchy */
+.demo-strip{display:flex;align-items:center;gap:9px;padding:8px 12px;border-radius:9px;background:#e9edf1;border:1px solid #d3dce4;font-size:.78rem;color:#526579;margin:0 0 16px;flex-wrap:wrap}
+.demo-strip strong{color:#385064}.demo-dot{width:8px;height:8px;background:#d89c45;border-radius:50%}
+.admin-title{margin-bottom:13px}.admin-title h2{font-size:1.55rem;margin:0;letter-spacing:.01em}
+.workspace-tag,.mini-tag{display:inline-flex;align-items:center;gap:5px;border-radius:6px;background:#edf2f6;color:#567082;padding:4px 9px;font-size:.72rem;font-weight:700}
+.metrics-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 18px}
+.metric{background:white;border:1px solid #dbe5ec;border-radius:12px;padding:16px 18px;min-width:0}
+.metric-number{display:block;color:#193f55;font-size:1.68rem;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.3}
+.metric-name{font-size:.76rem;color:#6c7e8d;font-weight:700}
+.panel-label{font-size:.84rem!important;color:#496779;margin-bottom:14px!important}
+.btn-light{background:#f5f8fb}.result-count{font-size:.8rem;color:#486275;font-weight:700;padding:1px 3px}
+.event-card{display:grid;grid-template-columns:minmax(0,1fr) minmax(170px,240px);column-gap:24px;row-gap:15px}
+.event-left{min-width:0}.event-topline{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:7px}
+.date-chip{font-size:.8rem;font-weight:800;color:#496a7d;background:#edf3f7;padding:4px 10px;border-radius:6px;font-variant-numeric:tabular-nums}
+.category-chip{font-size:.72rem;color:#116b72;background:#e5f5f2;padding:4px 9px;border-radius:20px;font-weight:700}
+.category-chip.briefing{color:#77518b;background:#f5edf8}.category-chip.other{color:#7a6350;background:#f7f1e9}
+.event-id{font-size:.72rem;color:#8998a5;font-weight:700;font-variant-numeric:tabular-nums}
+.event-progress{min-width:0;align-self:center}
+.progress-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-size:.78rem;color:#627788}
+.progress-header strong{font-size:.82rem;color:#2b5b66;font-variant-numeric:tabular-nums}
+.progress-track{background:#e4edf0;border-radius:50px;height:8px;overflow:hidden}
+.progress-fill{background:#159289;height:100%;border-radius:50px}
+.event-bottom{grid-column:1/-1;display:flex;justify-content:space-between;gap:12px;align-items:center;border-top:1px solid #edf0f3;padding-top:12px;flex-wrap:wrap}
+.event-actions{display:flex;gap:7px;flex-wrap:wrap}.event-actions .btn{padding:8px 12px}
+.event-count{font-size:.81rem;font-weight:700;color:#60768a}
+.status-tag{display:inline-flex;align-items:center;font-size:.76rem;padding:4px 9px;border-radius:30px;background:#eef1f4;color:#627486;font-weight:700;white-space:nowrap}
+.status-tag.done{background:#e4f5e8;color:#217243}.status-tag.partial{background:#fff3e5;color:#985719}
+.data-tile{display:flex;flex-direction:column;gap:12px;min-height:280px}.data-tile h3{font-size:1.12rem;margin:0}
+.data-tile .btn{margin-top:auto;align-self:flex-start}.tile-icon{font-size:1.8rem;background:#e3f4f4;color:#16717b;width:52px;height:52px;border-radius:13px;display:grid;place-items:center;font-weight:800}
+.tile-number{font-size:1.9rem;font-weight:800;color:#1c5566;font-variant-numeric:tabular-nums}.tile-number small{font-size:.84rem;font-weight:500;color:#748594}
+.tile-sub,.tile-preview{color:#667c8d;font-size:.84rem}.tile-preview{background:#f1f5f7;border-radius:6px;padding:8px 10px}
+.security-note{font-size:.8rem;color:#65727b;background:#f0f3f5;border-radius:8px;padding:11px 14px}
+.scan-target{width:170px;aspect-ratio:1;border:3px solid #62919e;border-radius:14px;display:grid;place-items:center;background:#f6fafd;position:relative}
+.scan-target:before,.scan-target:after{content:"";position:absolute;left:16px;right:16px;height:2px;background:#2aabb1}
+.scan-target:before{top:48%}.scan-target:after{top:51%;opacity:.22}
+.qr-shape{width:90px;height:90px;display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.qr-shape span{width:32px;height:32px;border:7px solid #476d83;background:#e1edf3;display:block}
+.qr-shape i{background:repeating-conic-gradient(#476d83 0 25%,transparent 0 50%) 0 0/16px 16px}
+.camera{min-height:270px;gap:15px;background:#f3f8fa;border:1px solid #cbdde4}
+.notice.idle{background:#edf3f7;border-color:#d3e0e8;color:#516b7a}
+.day-session{background:#e8f5f4;border-color:#b1d2d1;padding:16px 18px}
+.day-session select{border:2px solid #559f9d;font-size:1.3rem;background:#fff}
+.live-pill{border-radius:30px;background:#d7f0e9;color:#21705d;font-size:.74rem;font-weight:700;padding:5px 10px}
+.live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#26a07e;margin-right:5px}
+.issue-tile{display:flex;flex-direction:column;gap:14px}.issue-tile .btn{align-self:flex-start}
+.mail-preview{display:flex;gap:15px;align-items:center;background:#f6f9fa;border:1px solid #e1e9ec;border-radius:10px;padding:20px;min-height:135px}
+.qr-small{height:88px;width:88px;flex-shrink:0;background:repeating-conic-gradient(#244557 0% 25%,#fff 0% 50%) 50%/15px 15px;outline:7px solid #fff}
+.mail-lines{display:flex;flex-direction:column;gap:8px;flex:1}.mail-lines b{font-size:.88rem}.mail-lines span{display:block;height:7px;border-radius:4px;background:#d5e1e7;width:88%}
+.paper-preview{margin:auto;max-width:156px;width:100%;aspect-ratio:210/297;border:1px solid #bfccd2;box-shadow:0 3px 9px #d2dbe0;padding:10px;display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(5,1fr);gap:4px}
+.paper-preview span{border:1px dashed #b8c6cd;background:linear-gradient(90deg,#7a9aaa 26%,transparent 26%) left 7px top 5px/45px 18px no-repeat,#f8fafb}
+@media(max-width:770px){.event-card{grid-template-columns:1fr}.metrics-row{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:500px){.metrics-row{grid-template-columns:repeat(2,minmax(0,1fr))}.metric{padding:12px}.event-bottom{align-items:flex-start}.event-actions{width:100%}.event-actions .btn{flex:1}.event-progress{max-width:100%}}
 </style>
 </head>
 <body>
@@ -73,37 +126,36 @@ th{background:#eef3f6;text-align:left;color:#4c6073;font-size:.78rem}th,td{paddi
 <div style="font-size:.84rem;color:#d9e7ef">オフライン・1受付1PC 想定</div>
 </header>
 <main class="shell">
-<div class="banner"><strong>画面設計の確認用です。</strong> サンプルデータのみを使用し、カメラ読取・CSV取込・QR発行・localStorage保存は行いません。ページを再読み込みすると操作結果はリセットされます。</div>
+<div class="demo-strip"><span class="demo-dot"></span><strong>操作デモ</strong><span>サンプルデータ｜保存・実カメラ・CSV入出力は未接続</span></div>
 <section id="home">
-<div><h2 style="margin:0;font-size:1.45rem">総合管理画面</h2><p class="sub" style="margin:5px 0 16px">イベントの管理、横断参加者情報の抽出、バックアップをまとめて行います。</p></div>
+<div class="row admin-title"><h2>総合管理</h2><span class="workspace-tag">すべてのイベント</span></div>
+<div id="globalStats" class="metrics-row" aria-label="総合管理の概要"></div>
 <div class="switcher" id="adminNav" role="navigation" aria-label="総合管理の機能">
-<button type="button" class="active" data-admin="events">イベント管理</button>
-<button type="button" data-admin="cross">横断参加者検索・抽出</button>
-<button type="button" data-admin="data">データ管理</button>
+<button type="button" class="active" data-admin="events"><span aria-hidden="true">▦</span> イベント</button>
+<button type="button" data-admin="cross"><span aria-hidden="true">⌕</span> 横断検索</button>
+<button type="button" data-admin="data"><span aria-hidden="true">▣</span> データ管理</button>
 </div>
 <section id="admin-events">
 <div class="row"><h3 style="margin:0">イベント一覧</h3><button type="button" class="btn primary" id="createEvent">＋ 新規イベントを作成</button></div>
 <div class="panel" style="margin:16px 0">
-<h3>絞り込み・並び替え</h3>
+<h3 class="panel-label">⌕　検索・並び替え</h3>
 <div class="cols three">
-<label class="field">イベント名<input id="eventSearch" placeholder="イベント名で絞り込み"></label>
+<label class="field">イベント名<input id="eventSearch" placeholder="イベント名を検索" aria-label="イベント名"></label>
 <label class="field">開催日（開始）<input id="eventDateFrom" type="date"></label>
 <label class="field">開催日（終了）<input id="eventDateTo" type="date"></label>
-<label class="field">並び替えのキー<select id="eventSortKey"><option value="date">開催日</option><option value="id">イベントID</option></select></label>
-<label class="field">並び順<select id="eventSortOrder"><option value="desc">降順（新しい順／IDが大きい順）</option><option value="asc">昇順（古い順／IDが小さい順）</option></select></label>
-<div style="display:flex;align-items:end"><button class="btn" id="resetEventFilters" type="button">絞り込みを解除</button></div>
+<label class="field">並び替え<select id="eventSortKey"><option value="date">開催日</option><option value="id">イベントID</option></select></label>
+<label class="field">順序<select id="eventSortOrder"><option value="desc">降順 ↓</option><option value="asc">昇順 ↑</option></select></label>
+<div style="display:flex;align-items:end"><button class="btn btn-light" id="resetEventFilters" type="button" title="検索条件だけを解除">↺ クリア</button></div>
 </div>
-<p class="small-note" style="margin-bottom:0">開催日の範囲は両端を含みます。日付未設定のイベントは日付指定時には表示せず、並び替えでは末尾に配置します。</p>
 </div>
-<div id="homeCount" class="small-note" role="status" aria-live="polite"></div>
+<div id="homeCount" class="result-count" role="status" aria-live="polite"></div>
 <div id="homeList" class="home-list"></div>
 </section>
 <section id="admin-cross" hidden>
-<div class="panel"><h3>イベント横断：参加者一覧の抽出</h3>
-<p class="small-note">イベントの開催日を基準に抽出します。「年度」は4月～翌3月です。未受付を含む全件、受付実績がある人だけなどを選べます。</p>
+<div class="panel"><h3>参加者を探す</h3>
 <div class="cols three">
 <label class="field">期間区分<select id="crossPeriod"><option value="fiscal">年度（4月～翌3月）</option><option value="calendar">暦年（1月～12月）</option><option value="all">全期間</option></select></label>
-<label class="field">年・年度の開始年<input id="crossYear" type="number" min="2000" max="2100" value="2026"></label>
+<label class="field">年<input id="crossYear" type="number" min="2000" max="2100" value="2026"></label>
 <label class="field">イベント分類<select id="crossCategory"><option value="all">すべて</option><option value="training">研修</option><option value="briefing">説明会</option><option value="other">その他</option></select></label>
 <label class="field">受付状況<select id="crossStatus"><option value="all">全件（未受付・対象外を含む）</option><option value="checked">受付実績あり</option><option value="partial">一部受付</option><option value="pending">未受付</option></select></label>
 <label class="field" style="grid-column:span 2">氏名・職員番号・所属・イベント名<input id="crossKeyword" placeholder="例：総務課、00123、業務改善"></label>
@@ -111,19 +163,30 @@ th{background:#eef3f6;text-align:left;color:#4c6073;font-size:.78rem}th,td{paddi
 </div>
 <div class="cols three" id="crossStats"></div>
 <div class="panel">
-<div class="row"><h3>抽出結果（イベント×参加者で1行）</h3><span id="crossPeriodLabel" class="pill"></span></div>
-<p class="small-note">同じ人が午前・午後の両方に出席しても、この一覧ではイベントあたり1行です。区分別の時刻は「区分別受付詳細」で出力します。</p>
+<div class="row"><h3>検索結果 <span class="mini-tag">1イベント × 1人</span></h3><span id="crossPeriodLabel" class="pill"></span></div>
 <div class="table-wrap"><table><thead><tr><th>イベントID</th><th>開催日</th><th>イベント名</th><th>参加者ID</th><th>職員番号</th><th>氏名</th><th>所属</th><th>受付状態</th></tr></thead><tbody id="crossRows"></tbody></table></div>
-<div class="actions" style="margin-top:16px"><button type="button" class="btn primary" id="crossExport">参加者一覧CSVを出力（予定）</button><button type="button" class="btn outline" id="crossExportSession">区分別受付詳細CSV（予定）</button></div>
-<p class="small-note">このワイヤーフレームでは結果表示だけを試せます。実際のCSVファイルは生成しません。職員の横断名寄せには共通の職員番号を使います。</p>
+<div class="actions" style="margin-top:16px"><button type="button" class="btn primary" id="crossExport">⇩ 参加者一覧CSV</button><button type="button" class="btn outline" id="crossExportSession">⇩ 区分別詳細CSV</button></div>
+ 
 </div>
 </section>
 <section id="admin-data" hidden>
-<div class="panel"><h3>全イベントのデータ管理</h3>
-<p class="small-note">現在のブラウザに保存されている全イベントを一括バックアップする構成です。復元前には既存イベントとの重複を確認します。</p>
-<div class="actions"><button type="button" class="btn primary" data-allbackup>全イベントJSONバックアップ（予定）</button><button type="button" class="btn" id="restoreDemo">JSONから復元（予定）</button></div>
-<div class="notice warn">実運用時はJSONに個人情報とQR識別情報が含まれます。バックアップファイルの管理に注意してください。</div>
+<div class="cols data-tiles">
+<div class="panel data-tile">
+<div class="tile-icon" aria-hidden="true">⇩</div>
+<h3>バックアップ</h3>
+<div class="tile-number" id="backupEventCount">0 <small>イベント</small></div>
+<div class="tile-sub">設定・名簿・受付履歴をまとめて保存</div>
+<button type="button" class="btn primary" data-allbackup>全件JSONを出力</button>
 </div>
+<div class="panel data-tile">
+<div class="tile-icon" aria-hidden="true">↶</div>
+<h3>復元</h3>
+<div class="tile-sub">JSONファイルからイベントを取り込む</div>
+<div class="tile-preview">既存を保持　／　重複を確認</div>
+<button type="button" class="btn outline" id="restoreDemo">JSONを読み込む</button>
+</div>
+</div>
+<div class="security-note"><span aria-hidden="true">▣</span> JSONには氏名・QR識別子等が含まれます。庁内ルールに従って保管してください。</div>
 </section>
 </section>
 <div id="backline" class="backline" hidden><button type="button" class="btn" id="goHome">← イベント一覧に戻る</button></div>
@@ -142,7 +205,7 @@ th{background:#eef3f6;text-align:left;color:#4c6073;font-size:.78rem}th,td{paddi
 <div>
 <section class="page" id="panel-event">
 <h2>イベント設定</h2>
-<p class="sub">イベント情報、受付区分、任意項目を設定します。</p>
+
 <div class="panel">
 <h3>基本情報</h3>
 <div class="cols">
@@ -155,7 +218,7 @@ th{background:#eef3f6;text-align:left;color:#4c6073;font-size:.78rem}th,td{paddi
 <h3>受付区分</h3>
 <div id="sessionsList" class="list"></div>
 <div class="actions" style="margin-top:14px"><input id="newSession" class="search" style="width:min(280px,100%)" placeholder="例：第3部"><button class="btn outline" type="button" id="addSession">＋ 区分を追加</button></div>
-<p class="small-note">各区分に固定IDを付与します。受付記録がある区分は削除できない設計です。新規イベントの初期設定は「全体」1区分です。</p>
+
 </div>
 <div class="panel">
 <h3>任意項目（最大2つ）</h3>
@@ -165,7 +228,7 @@ th{background:#eef3f6;text-align:left;color:#4c6073;font-size:.78rem}th,td{paddi
 </section>
 <section class="page" id="panel-participants" hidden>
 <h2>参加者管理</h2>
-<p class="sub">CSV一括登録を基本に、個別登録や参加予定の修正も行います。</p>
+
 <div class="actions" style="margin-bottom:18px">
 <button class="btn primary" data-message="CSV取込画面では列の対応・重複確認・取り込み結果を確認する想定です（未実装）。">CSVから一括登録</button>
 <button class="btn outline" data-open="new">＋ 個別に追加</button>
@@ -178,32 +241,42 @@ th{background:#eef3f6;text-align:left;color:#4c6073;font-size:.78rem}th,td{paddi
 </section>
 <section class="page" id="panel-issue" hidden>
 <h2>QRコード発行</h2>
-<p class="sub">イベントごとに参加者へQRを発行。午前・午後は同じQRを使います。</p>
+
 <div class="cols">
-<div class="panel"><h3>✉ メール配布用</h3><p class="small-note">参加者ごとのQR画像をPNGで生成し、宛先対応表と合わせてZIPで出力します。</p><button class="btn outline" data-message="ここから参加者別のQR画像・メール宛先一覧を出力する予定です。ワイヤーフレームでは生成しません。">一括発行の確認</button></div>
-<div class="panel"><h3>▦ 紙配布用</h3><p class="small-note">A4縦の用紙に名刺サイズ（91×55mm）を10面付けし、切り取り線を付けます。</p><button class="btn outline" data-message="A4縦・2列×5段の印刷プレビューに進む予定です。ワイヤーフレームでは印刷しません。">印刷イメージを見る</button></div>
+<div class="panel issue-tile"><div class="row"><h3>✉ メール配布</h3><span class="mini-tag">PNG ＋ CSV</span></div>
+<div class="mail-preview" aria-hidden="true"><div class="qr-small"></div><div class="mail-lines"><b>QR受付票</b><span></span><span></span><span style="width:64%"></span></div></div>
+<button class="btn primary" data-message="参加者ごとのPNG＋宛先CSVをまとめて出力する予定です。">⇩ ZIPで一括発行</button>
 </div>
-<div class="panel"><h3>個別発行・再発行</h3><p class="small-note">発行済みQRの識別子は変えずに再出力します。既存のQR発行検証版は別ページ（issue.html）にあります。</p><a href="./issue.html" class="btn" style="display:inline-block;text-decoration:none">既存のQR発行検証画面を開く ↗</a></div>
+<div class="panel issue-tile"><div class="row"><h3>▦ 紙配布</h3><span class="mini-tag">A4 ・10面</span></div>
+<div class="paper-preview" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+<button class="btn primary" data-message="A4縦2列×5段の印刷プレビューを表示する予定です。">▧ 印刷プレビュー</button>
+</div>
+</div>
+<div class="panel"><div class="row"><h3>個別発行・再発行</h3><a href="./issue.html" class="btn small" style="text-decoration:none">QRを個別発行 ↗</a></div></div>
 </section>
 <section class="page" id="panel-results" hidden>
 <h2>集計・データ出力</h2>
-<p class="sub">各区分の受付状況と、バックアップ／Excel分析用出力を確認します。</p>
+
 <div class="cols three" id="prepStats"></div>
-<div class="panel"><h3>出力メニュー</h3><div class="actions">
-<button class="btn outline" data-allbackup>全イベントJSONバックアップ</button>
-<button class="btn outline" data-message="CSVはイベント×参加者×受付区分で1行の形式です。未受付者・参加対象外も含めます。">Excel分析用CSV</button>
-</div><p class="small-note">一括JSONには過去も含む全イベントを保存します。正式版ではバックアップ件数・日時を表示し、復元時に既存イベントとの重複を確認します。</p></div>
+<div class="panel"><h3>出力</h3><div class="actions">
+<button class="btn outline" data-allbackup>⇩ 全イベントJSON</button>
+<button class="btn primary" data-message="このイベントの全参加者×受付区分をCSVに出力する予定です。">⇩ イベント結果CSV</button>
+</div></div>
 </section>
 </div>
 </div>
 <section id="day" class="day-page" hidden>
-<div class="day-header"><div class="row"><div><strong id="dayEventName">令和8年度 業務改善研修</strong><div class="small-note">当日受付モード・受付PC用</div></div><button class="btn small" data-mode="prep" type="button">事前準備へ戻る</button></div></div>
-<div class="day-session"><div class="row" style="margin-bottom:10px"><strong>現在の受付区分</strong><span class="pill">区分ごとに別の受付記録</span></div><select id="daySession" aria-label="現在の受付区分"></select><div class="small-note">受付前に区分を確認してください。QRは同じものを利用できます。</div></div>
+<div class="day-header"><div class="row"><div><span class="mini-tag">▣ 当日受付</span><h2 id="dayEventName" style="font-size:1.2rem;margin:8px 0 0">令和8年度 業務改善研修</h2></div><button class="btn small" data-mode="prep" type="button">⚙ 事前準備</button></div></div>
+<div class="day-session"><div class="row" style="margin-bottom:10px"><strong>受付区分</strong><span class="live-pill"><span class="live-dot"></span>選択中</span></div><select id="daySession" aria-label="現在の受付区分"></select></div>
 <div class="cols three" id="dayStats" style="margin:15px 0"></div>
-<div class="panel"><h3>QRコード受付</h3><div class="camera"><div class="symbol">▣</div><strong>カメラ読み取りエリア</strong><p>ここに既存のQR読み取り機能を組み込みます。現在は操作フローの確認用です。</p><button class="btn outline" id="demoScan">サンプルQRを読み取った想定で試す</button></div><div id="lastMessage" class="notice" role="status" aria-live="polite">受付結果がここに大きく表示されます。</div></div>
+<div class="panel"><div class="row"><h3>QR受付</h3><span class="mini-tag">カメラ領域</span></div><div class="camera">
+<div class="scan-target" aria-hidden="true"><div class="qr-shape"><span></span><span></span><span></span><i></i></div></div>
+<strong>QRコードをかざしてください</strong>
+<button class="btn outline" id="demoScan">▣ デモ読取</button>
+</div><div id="lastMessage" class="notice idle" role="status" aria-live="polite">◯　スキャン待機中</div></div>
 <div class="panel"><h3>当日の参加者変更</h3><div class="quick">
-<button type="button" data-open="new"><span>＋</span>飛び入り参加<small>名前を登録し、そのまま受付</small></button>
-<button type="button" data-open="search"><span>⌕</span>参加者を検索<small>QR忘れ・区分変更・情報修正・受付取消</small></button>
+<button type="button" data-open="new"><span>＋</span>飛び入り登録<small>新規登録 → 受付</small></button>
+<button type="button" data-open="search"><span>⌕</span>名前から受付<small>手動受付・情報修正</small></button>
 </div></div>
 </section>
 </main>
@@ -211,11 +284,11 @@ th{background:#eef3f6;text-align:left;color:#4c6073;font-size:.78rem}th,td{paddi
 <div class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
 <div class="drawer-head"><h2 id="drawerTitle">参加者変更</h2><button id="closeDrawer" type="button" class="btn small" aria-label="閉じる">✕ 閉じる</button></div>
 <div id="drawerNew" hidden>
-<p class="small-note">現在選択している受付区分で参加受付する場合は「登録して受付」を押します。QRコードは後から発行できます。</p>
+
 <div class="cols"><label class="field">氏名（必須）<input id="newName" placeholder="例：沖縄 花子"></label><label class="field">職員番号（任意）<input id="newStaff" placeholder="職員番号がない場合は空欄"></label>
 <label class="field">所属（任意）<input id="newDept" placeholder="例：外部参加者"></label><label class="field">メール（任意）<input id="newEmail" type="email" placeholder="example@example.jp"></label>
 <label class="field" id="customOneField"><span id="newCustomOneLabel"></span><input id="newCustomOne"></label><label class="field" id="customTwoField"><span id="newCustomTwoLabel"></span><input id="newCustomTwo"></label></div>
-<div class="hr"></div><strong>参加予定の受付区分</strong><div class="small-note">現在選択中の受付区分だけを初期選択します。</div><div id="newPlanned"></div>
+<div class="hr"></div><strong>参加する区分</strong><div id="newPlanned"></div>
 <div class="actions" style="margin-top:20px"><button class="btn primary" id="addAndCheck">登録して受付</button><button class="btn outline" id="addOnly">登録のみ</button></div>
 <p id="newHint" class="small-note" role="status"></p>
 </div>
@@ -228,7 +301,7 @@ th{background:#eef3f6;text-align:left;color:#4c6073;font-size:.78rem}th,td{paddi
 <div class="cols"><label class="field">氏名<input id="editName"></label><label class="field">所属<input id="editDept"></label></div>
 <div class="actions" style="margin:12px 0"><button class="btn small" id="savePerson">氏名・所属を修正</button></div>
 <p id="selectedId" class="small-note"></p>
-<h3 style="margin:18px 0 10px">受付区分ごとの参加予定・実績</h3>
+<h3 style="margin:18px 0 10px">受付状況</h3>
 <div id="personSessions"></div>
 <p id="searchHint" role="status" class="small-note"></p>
 </div>
