@@ -295,7 +295,24 @@ function renderOneQR(){
  try{new QRCode(root,{text:p.staffId,width:360,height:360,correctLevel:QRCode.CorrectLevel.M});}
  catch(err){announce("QR生成に失敗しました："+err.message,"error");}
 }
-function qrDataURL(root){const canvas=root.querySelector("canvas"),img=root.querySelector("img");if(canvas)return canvas.toDataURL("image/png");if(img?.src.startsWith("data:"))return img.src;return null;}
+function qrDataURL(root){
+ const canvas=root.querySelector("canvas"),img=root.querySelector("img");
+ if(canvas&&canvas.width&&canvas.height){
+  // Add a quiet zone to the exported pixels, not merely to the on-screen element.
+  const border=Math.ceil(Math.max(canvas.width,canvas.height)*0.20);
+  const out=document.createElement("canvas");
+  out.width=canvas.width+2*border;out.height=canvas.height+2*border;
+  const ctx=out.getContext("2d");
+  if(ctx){
+   ctx.fillStyle="#FFFFFF";ctx.fillRect(0,0,out.width,out.height);
+   ctx.imageSmoothingEnabled=false;ctx.drawImage(canvas,border,border);
+   return out.toDataURL("image/png");
+  }
+ }
+ if(canvas)return canvas.toDataURL("image/png");
+ if(img?.src.startsWith("data:"))return img.src;
+ return null;
+}
 function downloadOneQR(){const data=qrDataURL($("qrCanvas"));if(!data)return announce("QR画像が準備できていません。","warn");downloadLink(data,"QR_staff_"+current().participants.find(p=>p.id===qrRendered)?.staffId+".png");}
 function printQR(){
  if(typeof QRCode!=="function")return announce("QRライブラリがありません。","error");
