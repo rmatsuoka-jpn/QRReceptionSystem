@@ -75,13 +75,45 @@ th{background:#eef3f6;text-align:left;color:#4c6073;font-size:.78rem}th,td{paddi
 <main class="shell">
 <div class="banner"><strong>画面設計の確認用です。</strong> サンプルデータのみを使用し、カメラ読取・CSV取込・QR発行・localStorage保存は行いません。ページを再読み込みすると操作結果はリセットされます。</div>
 <section id="home">
-<div class="row"><div><h2 style="margin:0;font-size:1.45rem">イベント一覧</h2><p class="sub" style="margin:5px 0">過去・現在のイベントを選択して、事前準備または当日受付を開きます。</p></div>
-<button type="button" class="btn primary" id="createEvent">＋ 新規イベントを作成</button></div>
-<div class="home-toolbar"><label class="field" style="max-width:360px;flex:1">イベント名で検索<input id="eventSearch" placeholder="イベント名を入力"></label>
-<div class="actions"><button type="button" class="btn outline" data-allbackup>全イベントJSONバックアップ</button><button type="button" class="btn" id="restoreDemo">JSONから復元</button></div></div>
-<div class="banner"><strong>一括JSONバックアップ：</strong>開催済み・準備中の全イベント（設定・参加者名簿・QR識別子・受付記録）をまとめて保存する予定です。ここでは操作の確認だけできます。</div>
+<div><h2 style="margin:0;font-size:1.45rem">総合管理画面</h2><p class="sub" style="margin:5px 0 16px">イベントの管理、横断参加者情報の抽出、バックアップをまとめて行います。</p></div>
+<div class="switcher" id="adminNav" role="navigation" aria-label="総合管理の機能">
+<button type="button" class="active" data-admin="events">イベント管理</button>
+<button type="button" data-admin="cross">横断参加者検索・抽出</button>
+<button type="button" data-admin="data">データ管理</button>
+</div>
+<section id="admin-events">
+<div class="row"><h3 style="margin:0">イベント一覧</h3><button type="button" class="btn primary" id="createEvent">＋ 新規イベントを作成</button></div>
+<div class="home-toolbar"><label class="field" style="max-width:360px;flex:1">イベント名で検索<input id="eventSearch" placeholder="イベント名を入力"></label></div>
 <div id="homeCount" class="small-note"></div>
 <div id="homeList" class="home-list"></div>
+</section>
+<section id="admin-cross" hidden>
+<div class="panel"><h3>イベント横断：参加者一覧の抽出</h3>
+<p class="small-note">イベントの開催日を基準に抽出します。「年度」は4月～翌3月です。未受付を含む全件、受付実績がある人だけなどを選べます。</p>
+<div class="cols three">
+<label class="field">期間区分<select id="crossPeriod"><option value="fiscal">年度（4月～翌3月）</option><option value="calendar">暦年（1月～12月）</option><option value="all">全期間</option></select></label>
+<label class="field">年・年度の開始年<input id="crossYear" type="number" min="2000" max="2100" value="2026"></label>
+<label class="field">イベント分類<select id="crossCategory"><option value="all">すべて</option><option value="training">研修</option><option value="briefing">説明会</option><option value="other">その他</option></select></label>
+<label class="field">受付状況<select id="crossStatus"><option value="all">全件（未受付・対象外を含む）</option><option value="checked">受付実績あり</option><option value="partial">一部受付</option><option value="pending">未受付</option></select></label>
+<label class="field" style="grid-column:span 2">氏名・職員番号・所属・イベント名<input id="crossKeyword" placeholder="例：総務課、00123、業務改善"></label>
+</div>
+</div>
+<div class="cols three" id="crossStats"></div>
+<div class="panel">
+<div class="row"><h3>抽出結果（イベント×参加者で1行）</h3><span id="crossPeriodLabel" class="pill"></span></div>
+<p class="small-note">同じ人が午前・午後の両方に出席しても、この一覧ではイベントあたり1行です。区分別の時刻は「区分別受付詳細」で出力します。</p>
+<div class="table-wrap"><table><thead><tr><th>イベントID</th><th>開催日</th><th>イベント名</th><th>参加者ID</th><th>職員番号</th><th>氏名</th><th>所属</th><th>受付状態</th></tr></thead><tbody id="crossRows"></tbody></table></div>
+<div class="actions" style="margin-top:16px"><button type="button" class="btn primary" id="crossExport">参加者一覧CSVを出力（予定）</button><button type="button" class="btn outline" id="crossExportSession">区分別受付詳細CSV（予定）</button></div>
+<p class="small-note">このワイヤーフレームでは結果表示だけを試せます。実際のCSVファイルは生成しません。職員の横断名寄せには共通の職員番号を使います。</p>
+</div>
+</section>
+<section id="admin-data" hidden>
+<div class="panel"><h3>全イベントのデータ管理</h3>
+<p class="small-note">現在のブラウザに保存されている全イベントを一括バックアップする構成です。復元前には既存イベントとの重複を確認します。</p>
+<div class="actions"><button type="button" class="btn primary" data-allbackup>全イベントJSONバックアップ（予定）</button><button type="button" class="btn" id="restoreDemo">JSONから復元（予定）</button></div>
+<div class="notice warn">実運用時はJSONに個人情報とQR識別情報が含まれます。バックアップファイルの管理に注意してください。</div>
+</div>
+</section>
 </section>
 <div id="backline" class="backline" hidden><button type="button" class="btn" id="goHome">← イベント一覧に戻る</button></div>
 <div class="switcher" id="modeSwitch" role="navigation" aria-label="モード切替" hidden>
@@ -105,6 +137,7 @@ th{background:#eef3f6;text-align:left;color:#4c6073;font-size:.78rem}th,td{paddi
 <div class="cols">
 <label class="field">イベント名<input id="eventName" value="令和8年度 業務改善研修"></label>
 <label class="field">開催日<input type="date" id="eventDate" value="2026-11-12"></label>
+<label class="field">イベント分類<select id="eventCategory"><option value="training">研修</option><option value="briefing">説明会</option><option value="other">その他</option></select></label>
 </div>
 </div>
 <div class="panel">
@@ -196,7 +229,7 @@ th{background:#eef3f6;text-align:left;color:#4c6073;font-size:.78rem}th,td{paddi
 "use strict";
 const $=id=>document.getElementById(id);
 const state={
- mode:"home",tab:"event",eventName:"令和8年度 業務改善研修",date:"2026-11-12",
+ mode:"home",tab:"event",eventName:"令和8年度 業務改善研修",date:"2026-11-12",category:"training",
  sessions:[{id:"am",name:"午前"},{id:"pm",name:"午後"}],current:"am",nextSession:3,nextParticipant:4,selected:null,
  custom:["PC利用有無","持参機器"],
  people:[
@@ -207,15 +240,69 @@ const state={
 };
 // 各イベントは操作デモのメモリにだけ保存。localStorageには保存しない。
 function clone(x){return JSON.parse(JSON.stringify(x));}
-const eventFields=["eventName","date","sessions","current","nextSession","nextParticipant","custom","people"];
+const eventFields=["eventName","date","category","sessions","current","nextSession","nextParticipant","custom","people"];
 function snapshot(){const d={};eventFields.forEach(key=>d[key]=clone(state[key]));return d;}
 const events=new Map();
-let activeEventId="EVT001",nextEventNumber=4;
+let activeEventId="EVT001",nextEventNumber=5;
 events.set(activeEventId,snapshot());
-events.set("EVT002",{eventName:"DX推進研修",date:"2026-10-15",sessions:[{id:"all",name:"全体"}],current:"all",nextSession:2,nextParticipant:2,custom:["",""],people:[{id:"0001",name:"比嘉 一郎",staff:"00881",dept:"総務課",email:"",custom:["",""],planned:{all:true},checked:{all:"2026-10-15T01:05:00.000Z"},removed:false}]});
-events.set("EVT003",{eventName:"Excel活用研修",date:"2026-09-18",sessions:[{id:"all",name:"全体"}],current:"all",nextSession:2,nextParticipant:1,custom:["PC持参",""],people:[]});
+events.set("EVT002",{eventName:"DX推進研修",date:"2026-10-15",category:"training",sessions:[{id:"all",name:"全体"}],current:"all",nextSession:2,nextParticipant:2,custom:["",""],people:[{id:"0001",name:"比嘉 一郎",staff:"00881",dept:"総務課",email:"",custom:["",""],planned:{all:true},checked:{all:"2026-10-15T01:05:00.000Z"},removed:false},{id:"0002",name:"山田 太郎",staff:"00123",dept:"総務課",email:"",custom:["",""],planned:{all:true},checked:{all:"2026-10-15T01:09:00.000Z"},removed:false}]});
+events.set("EVT003",{eventName:"Excel活用研修",date:"2026-09-18",category:"training",sessions:[{id:"all",name:"全体"}],current:"all",nextSession:2,nextParticipant:1,custom:["PC持参",""],people:[]});
+events.set("EVT004",{eventName:"庁内システム説明会",date:"2025-11-20",category:"briefing",sessions:[{id:"all",name:"全体"}],current:"all",nextSession:2,nextParticipant:2,custom:["",""],people:[{id:"0001",name:"山田 太郎",staff:"00123",dept:"総務課",email:"",custom:["",""],planned:{all:true},checked:{all:"2025-11-20T01:05:00.000Z"},removed:false}]});
 function saveActive(){if(activeEventId && events.has(activeEventId))events.set(activeEventId,snapshot());}
 function readRecord(id){return events.get(id);}
+function categoryName(id){return ({training:"研修",briefing:"説明会",other:"その他"})[id]||"その他";}
+function showAdmin(tab){
+ ["events","cross","data"].forEach(x=>$("admin-"+x).hidden=(x!==tab));
+ document.querySelectorAll("[data-admin]").forEach(b=>b.classList.toggle("active",b.dataset.admin===tab));
+ if(tab==="cross")renderCross();
+ if(tab==="events")renderHome();
+}
+function getCrossData(){
+ saveActive();
+ const period=$("crossPeriod").value,year=Number($("crossYear").value);
+ const category=$("crossCategory").value,status=$("crossStatus").value,keyword=$("crossKeyword").value.trim().toLowerCase();
+ const matchedEvents=[...events.entries()].filter(([id,r])=>{
+  if(category!=="all" && (r.category||"other")!==category)return false;
+  if(period!=="all"){
+   if(!r.date || !Number.isInteger(year) || year<2000 || year>2100)return false;
+   const start=period==="fiscal"?year+"-04-01":year+"-01-01";
+   const end=period==="fiscal"?(year+1)+"-04-01":(year+1)+"-01-01";
+   if(!(r.date>=start && r.date<end))return false;
+  }
+  return true;
+ });
+ const rows=[];
+ matchedEvents.forEach(([eventId,record])=>{
+  record.people.filter(p=>!p.removed).forEach(p=>{
+   const eligible=record.sessions.filter(s=>p.planned[s.id]);
+   const checked=eligible.filter(s=>p.checked[s.id]);
+   const statusValue=!eligible.length?"対象外":!checked.length?"未受付":checked.length===eligible.length?"受付済み":"一部受付";
+   if(status==="checked" && checked.length===0)return;
+   if(status==="partial" && statusValue!=="一部受付")return;
+   if(status==="pending" && statusValue!=="未受付")return;
+   if(keyword && ![eventId,record.eventName,p.id,p.name,p.staff,p.dept].join(" ").toLowerCase().includes(keyword))return;
+   rows.push({eventId,eventName:record.eventName,date:record.date,category:record.category||"other",id:p.id,staff:p.staff,name:p.name,dept:p.dept,status:statusValue,sessionPlanned:eligible.length,sessionChecked:checked.length});
+  });
+ });
+ return {rows,matchedEvents,period,year,category,status,keyword};
+}
+function renderCross(){
+ const data=getCrossData(),root=$("crossRows");root.replaceChildren();
+ const periodLabel=data.period==="all"?"全期間":data.period==="fiscal"?data.year+"年度（4月～翌3月）":data.year+"年（1月～12月）";
+ $("crossPeriodLabel").textContent=periodLabel;
+ $("crossYear").disabled=data.period==="all";
+ data.rows.forEach(r=>{
+  const tr=el("tr");
+  [r.eventId,r.date,r.eventName,r.id,r.staff||"―",r.name,r.dept||"―",r.status].forEach(t=>tr.appendChild(el("td",null,String(t))));
+  root.appendChild(tr);
+ });
+ if(!data.rows.length){
+  const tr=el("tr"),td=el("td",null,"条件に該当する参加者はありません。");td.colSpan=8;tr.append(td);root.append(tr);
+ }
+ const ids=new Set(data.rows.filter(r=>r.staff).map(r=>r.staff));
+ const stats=$("crossStats");stats.replaceChildren();
+ [[data.matchedEvents.length,"対象イベント"],[data.rows.length,"イベント別参加記録"],[ids.size,"職員番号あり・実人数"]].forEach(([n,label])=>{const d=el("div","stat");d.append(el("strong",null,String(n)),el("small",null,label));stats.append(d);});
+}
 function renderHome(){
  saveActive();
  const q=$("eventSearch").value.trim().toLowerCase();
@@ -226,7 +313,7 @@ function renderHome(){
   const card=el("div","event-card"),lhs=el("div");lhs.style.flex="1";
   const title=el("h3",null,r.eventName),stat=r.people.filter(p=>!p.removed).length+"名登録";
   lhs.append(title,el("div","small-note",r.date+"　／　"+id+"　／　"+stat));
-  lhs.append(el("div","small-note","受付区分："+r.sessions.map(s=>s.name).join("・")));
+  lhs.append(el("div","small-note","分類："+categoryName(r.category)+" ／ 受付区分："+r.sessions.map(s=>s.name).join("・")));
   const actions=el("div","actions");
   const pre=el("button","btn small primary","事前準備を開く");
   pre.addEventListener("click",()=>openEvent(id,"prep"));
@@ -249,7 +336,7 @@ function createNewEvent(duplicateId){
  if(!name.trim())return alert("イベント名を入力してください。");
  const id="EVT"+String(nextEventNumber++).padStart(3,"0");
  const sessions=old?old.sessions.map((s,i)=>({id:"s"+(i+1),name:s.name})):[{id:"all",name:"全体"}];
- const record={eventName:name.trim(),date:"",sessions,current:sessions[0].id,nextSession:sessions.length+1,nextParticipant:1,custom:old?clone(old.custom):["",""],people:[]};
+ const record={eventName:name.trim(),date:"",category:old?old.category:"training",sessions,current:sessions[0].id,nextSession:sessions.length+1,nextParticipant:1,custom:old?clone(old.custom):["",""],people:[]};
  events.set(id,record);
  openEvent(id,"prep");
 }
@@ -257,7 +344,7 @@ function openEvent(id,mode){
  saveActive();
  const record=readRecord(id);if(!record)return;
  activeEventId=id;Object.assign(state,clone(record));state.selected=null;
- $("eventName").value=state.eventName;$("eventDate").value=state.date;
+ $("eventName").value=state.eventName;$("eventDate").value=state.date;$("eventCategory").value=state.category||"other";
  $("customOne").value=state.custom[0]||"";$("customTwo").value=state.custom[1]||"";
  $("newSession").value="";$("prepSearch").value="";
  showMode(mode);if(mode==="prep")showPrep("event");
@@ -266,8 +353,8 @@ function showHome(){
  closeDrawer();saveActive();
  $("home").hidden=false;$("modeSwitch").hidden=true;$("backline").hidden=true;
  $("prep").hidden=true;$("day").hidden=true;state.mode="home";
- document.querySelector("header .muted-head").textContent="イベント一覧（サンプル）";
- renderHome();
+ document.querySelector("header .muted-head").textContent="総合管理画面（サンプル）";
+ showAdmin("events");
 }
 function describeAllBackup(){
  saveActive();
@@ -366,6 +453,19 @@ document.querySelectorAll("[data-mode]").forEach(b=>b.addEventListener("click",(
 $("goHome").addEventListener("click",showHome);
 $("createEvent").addEventListener("click",()=>createNewEvent(null));
 $("eventSearch").addEventListener("input",renderHome);
+document.querySelectorAll("[data-admin]").forEach(b=>b.addEventListener("click",()=>showAdmin(b.dataset.admin)));
+["crossPeriod","crossYear","crossCategory","crossStatus","crossKeyword"].forEach(id=>{
+ const input=$(id);input.addEventListener(id==="crossYear"||id==="crossKeyword"?"input":"change",renderCross);
+});
+$("crossExport").addEventListener("click",()=>{
+ const d=getCrossData();
+ alert("参加者一覧CSV（正式版で実装）\n"+d.rows.length+"行：イベント×参加者で1行\n含む項目：イベントID、参加者ID、職員番号、氏名、所属、受付状況など\n\nこのワイヤーフレームではCSVファイルは生成しません。");
+});
+$("crossExportSession").addEventListener("click",()=>{
+ const d=getCrossData();
+ const total=d.rows.reduce((n,row)=>{const ev=events.get(row.eventId);return n+ev.sessions.length;},0);
+ alert("区分別受付詳細CSV（正式版で実装）\n対象："+d.rows.length+"イベント参加記録、区分別："+total+"行\n各区分の参加予定・受付状態・タイムスタンプを出力します。\n\nこのワイヤーフレームではCSVファイルは生成しません。");
+});
 $("restoreDemo").addEventListener("click",()=>alert("正式版ではJSONを選択し、取り込むイベントと既存イベントの重複を確認してから復元します。この画面は設計確認用です。"));
 document.querySelectorAll("[data-allbackup]").forEach(b=>b.addEventListener("click",describeAllBackup));
 document.querySelectorAll("[data-prep]").forEach(b=>b.addEventListener("click",()=>showPrep(b.dataset.prep)));
@@ -375,7 +475,7 @@ $("closeDrawer").addEventListener("click",closeDrawer);
 $("overlay").addEventListener("click",e=>{if(e.target===$("overlay"))closeDrawer();});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("overlay").hidden)closeDrawer();});
 $("addSession").addEventListener("click",()=>{const name=$("newSession").value.trim();if(!name)return alert("区分名を入力してください。");if(state.sessions.some(s=>s.name===name))return alert("同じ区分名があります。");const id="s"+state.nextSession++;state.sessions.push({id,name});state.people.forEach(p=>{p.planned[id]=false;p.checked[id]=null;});$("newSession").value="";updateAll();});
-$("saveEvent").addEventListener("click",()=>{const name=$("eventName").value.trim();if(!name)return alert("イベント名を入力してください。");state.eventName=name;state.date=$("eventDate").value;state.custom=[$("customOne").value.trim(),$("customTwo").value.trim()];updateAll();alert("画面イメージに反映しました。再読み込みすると元に戻ります。");});
+$("saveEvent").addEventListener("click",()=>{const name=$("eventName").value.trim();if(!name)return alert("イベント名を入力してください。");state.eventName=name;state.date=$("eventDate").value;state.category=$("eventCategory").value;state.custom=[$("customOne").value.trim(),$("customTwo").value.trim()];updateAll();alert("画面イメージに反映しました。再読み込みすると元に戻ります。");});
 $("prepSearch").addEventListener("input",renderPeople);
 $("daySession").addEventListener("change",e=>{state.current=e.target.value;updateAll();message(currentSession().name+" に切り替えました。次の受付はこの区分に記録します。","warn");});
 $("demoScan").addEventListener("click",()=>{const p=state.people[0];checkIn(p,"サンプルQR");});
