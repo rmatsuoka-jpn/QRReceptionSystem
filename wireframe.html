@@ -336,6 +336,7 @@ function saveActive(){if(activeEventId && events.has(activeEventId))events.set(a
 function readRecord(id){return events.get(id);}
 function categoryName(id){return ({training:"研修",briefing:"説明会",other:"その他"})[id]||"その他";}
 function showAdmin(tab){
+ renderAdminMetrics();
  ["events","cross","data"].forEach(x=>$("admin-"+x).hidden=(x!==tab));
  document.querySelectorAll("[data-admin]").forEach(b=>b.classList.toggle("active",b.dataset.admin===tab));
  if(tab==="cross")renderCross();
@@ -377,8 +378,9 @@ function renderCross(){
  $("crossYear").disabled=data.period==="all";
  data.rows.forEach(r=>{
   const tr=el("tr");
-  [r.eventId,r.date,r.eventName,r.id,r.staff||"―",r.name,r.dept||"―",r.status].forEach(t=>tr.appendChild(el("td",null,String(t))));
-  root.appendChild(tr);
+  [r.eventId,r.date,r.eventName,r.id,r.staff||"―",r.name,r.dept||"―"].forEach(t=>tr.appendChild(el("td",null,String(t))));
+  const td=el("td");td.append(el("span","status-tag"+(r.status==="受付済み"?" done":r.status==="一部受付"?" partial":""),r.status));
+  tr.append(td);root.appendChild(tr);
  });
  if(!data.rows.length){
   const tr=el("tr"),td=el("td",null,"条件に該当する参加者はありません。");td.colSpan=8;tr.append(td);root.append(tr);
@@ -387,6 +389,16 @@ function renderCross(){
  const stats=$("crossStats");stats.replaceChildren();
  [[data.matchedEvents.length,"対象イベント"],[data.rows.length,"イベント別参加記録"],[ids.size,"職員番号あり・実人数"]].forEach(([n,label])=>{const d=el("div","stat");d.append(el("strong",null,String(n)),el("small",null,label));stats.append(d);});
 }
+function renderAdminMetrics(){
+ saveActive();
+ const entries=[...events.values()];
+ const totalParticipants=entries.reduce((n,r)=>n+r.people.filter(p=>!p.removed).length,0);
+ const checkIns=entries.reduce((n,r)=>n+r.people.filter(p=>!p.removed).reduce((sum,p)=>sum+r.sessions.filter(s=>p.planned[s.id]&&p.checked[s.id]).length,0),0);
+ const metrics=[["▦",entries.length,"イベント"],["♙",totalParticipants,"参加登録（延べ）"],["✓",checkIns,"受付記録（区分別）"]];
+ const root=$("globalStats");root.replaceChildren();
+ metrics.forEach(([icon,n,label])=>{const block=el("div","metric");block.append(el("div","metric-name",icon+"　"+label),el("strong","metric-number",String(n)));root.append(block);});
+ $("backupEventCount").textContent=entries.length+" イベント";
+}
 function renderHome(){
  saveActive();
  const q=$("eventSearch").value.trim().toLocaleLowerCase("ja-JP");
@@ -394,7 +406,7 @@ function renderHome(){
  const sortKey=$("eventSortKey").value,order=$("eventSortOrder").value;
  const list=$("homeList");list.replaceChildren();
  if(from&&to&&from>to){
-  $("homeCount").textContent="開催日の開始日が終了日より後になっています。日付を修正してください。";
+  $("homeCount").textContent="日付範囲を確認してください";
   list.append(el("div","notice warn","開始日と終了日を確認してください。"));
   return;
  }
@@ -416,22 +428,38 @@ function renderHome(){
   const cmp=a[0].localeCompare(b[0],"ja",{numeric:true});
   return order==="asc"?cmp:-cmp;
  });
- $("homeCount").textContent="登録イベント："+events.size+"件 ／ 表示："+arr.length+"件（サンプル）";
+ $("homeCount").textContent=arr.length+" / "+events.size+" 件を表示";
  arr.forEach(([id,r])=>{
-  const card=el("div","event-card"),lhs=el("div");lhs.style.flex="1";
-  const title=el("h3",null,r.eventName),stat=r.people.filter(p=>!p.removed).length+"名登録";
-  lhs.append(title,el("div","small-note",r.date+"　／　"+id+"　／　"+stat));
-  lhs.append(el("div","small-note","分類："+categoryName(r.category)+" ／ 受付区分："+r.sessions.map(s=>s.name).join("・")));
-  const actions=el("div","actions");
-  const pre=el("button","btn small primary","事前準備を開く");
-  pre.addEventListener("click",()=>openEvent(id,"prep"));
-  const day=el("button","btn small outline","当日受付を開く");
-  day.addEventListener("click",()=>openEvent(id,"day"));
-  const duplicate=el("button","btn small","設定を複製");
-  duplicate.addEventListener("click",()=>createNewEvent(id));
+  const card=el("article","event-card");
+  const left=el("div","event-left");
+  const top=el("div","event-topline");
+  top.append(el("span","date-chip",r.date||"日付未設定"),el("span","category-chip "+(r.category||"other"),categoryName(r.category)),el("span","event-id",id));
+  left.append(top,el("h3",null,r.eventName));
+  const planned=r.people.filter(p=>!p.removed).reduce((n,p)=>n+r.sessions.filter(s=>p.planned[s.id]).length,0);
+  const checked=r.people.filter(p=>!p.removed).reduce((n,p)=>n+r.sessions.filter(s=>p.planned[s.id]&&p.checked[s.id]).length,0);
+  const percent=planned?Math.round(100*checked/planned):0;
+  const progress=el("div","event-progress");
+  const progressLabel=el("div","progress-header");
+  progressLabel.append(el("span",null,"受付進捗"),el("strong",null,checked+" / "+planned));
+  const track=el("div","progress-track"),fill=el("div","progress-fill");fill.style.width=percent+"%";track.append(fill);
+  progress.append(progressLabel,track);
+  const bottom=el("div","event-bottom"),leftFooter=el("div","actions");
+  const status=planned===0?["名簿未登録",""]:checked===planned?["全員受付済み","done"]:checked>0?["受付中","partial"]:["未受付",""];
+  leftFooter.append(el("span","event-count",r.people.filter(p=>!p.removed).length+"名 登録"),el("span","status-tag "+status[1],status[0]));
+  const actions=el("div","event-actions");
+  const pre=el("button","btn small outline","⚙ 準備");
+  pre.type="button";pre.addEventListener("click",()=>openEvent(id,"prep"));
+  const day=el("button","btn small primary","▣ 受付");
+  day.type="button";day.addEventListener("click",()=>openEvent(id,"day"));
+  const duplicate=el("button","btn small","⧉ 複製");
+  duplicate.type="button";duplicate.addEventListener("click",()=>createNewEvent(id));
   const del=el("button","btn small danger","削除");
-  del.addEventListener("click",()=>{if(!confirm("「"+r.eventName+"」を削除しますか？正式版では削除前にJSONバックアップを案内します。"))return;events.delete(id);if(activeEventId===id)activeEventId=null;renderHome();});
-  actions.append(pre,day,duplicate,del);card.append(lhs,actions);list.append(card);
+  del.type="button";del.addEventListener("click",()=>{
+   if(!confirm("「"+r.eventName+"」を削除しますか？正式版では削除前にJSONバックアップを案内します。"))return;
+   events.delete(id);if(activeEventId===id)activeEventId=null;renderAdminMetrics();renderHome();
+  });
+  actions.append(pre,day,duplicate,del);bottom.append(leftFooter,actions);
+  card.append(left,progress,bottom);list.append(card);
  });
  if(!arr.length)list.append(el("div","panel","該当するイベントはありません。新規作成できます。"));
 }
@@ -461,7 +489,7 @@ function showHome(){
  closeDrawer();saveActive();
  $("home").hidden=false;$("modeSwitch").hidden=true;$("backline").hidden=true;
  $("prep").hidden=true;$("day").hidden=true;state.mode="home";
- document.querySelector("header .muted-head").textContent="総合管理画面（サンプル）";
+ document.querySelector("header .muted-head").textContent="イベントを管理・検索・抽出";
  showAdmin("events");
 }
 function describeAllBackup(){
@@ -487,7 +515,7 @@ function updateSessions(){
  const sel=$("daySession");sel.replaceChildren();state.sessions.forEach(s=>{const opt=new Option(s.name,s.id);sel.add(opt)});sel.value=state.current;
 }
 function renderStats(id){const root=$(id);root.replaceChildren();const p=activePeople(), s=currentSession(),total=p.filter(x=>x.planned[s.id]).length,done=p.filter(x=>x.planned[s.id]&&x.checked[s.id]).length;
- [[p.length,"登録者数"],[total,"参加対象"],[done+" / "+total,"受付済み"]].forEach(([num,label])=>{const d=el("div","stat");d.append(el("strong",null,String(num)),el("small",null,label));root.appendChild(d);});
+ [[p.length,"登録者数"],[total,"参加対象"],[done+" / "+total,"受付済み"]].forEach(([num,label],i)=>{const d=el("div","stat");d.append(el("strong",null,String(num)),el("small",null,label));if(i===2){const track=el("div","progress-track");track.style.marginTop="10px";const fill=el("div","progress-fill");fill.style.width=(total?100*done/total:0)+"%";track.append(fill);d.append(track);}root.appendChild(d);});
 }
 function renderPeople(){
  const search=$("prepSearch").value.trim().toLowerCase();$("peopleCount").textContent="("+activePeople().length+"名)";
