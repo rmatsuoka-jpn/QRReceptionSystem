@@ -45,6 +45,7 @@ dt{font-weight:700;margin-top:12px}dd{margin:2px 0 8px;color:#587184;font-size:.
 </section>
 <section id="prepare">
 <h2>⚙ 事前準備モード</h2>
+<p class="mini">QR発行では、個別PNG、全参加者のPNG＋宛先CSVをまとめたZIP、A4・10面付け印刷を利用できます。</p>
 <div class="panel">
 <div class="steps">
 <div class="step"><span class="n">STEP 01</span><strong>イベント設定</strong><small>名前・日付・分類・受付区分</small></div>
@@ -53,6 +54,8 @@ dt{font-weight:700;margin-top:12px}dd{margin:2px 0 8px;color:#587184;font-size:.
 <div class="step"><span class="n">STEP 04</span><strong>当日受付へ</strong><small>QRを読み取り、出欠を確認</small></div>
 </div>
 </div>
+<div class="panel"><h3>CSV取込・名簿更新</h3><p class="mini">CSVを選択して「取り込み内容を確認」を押し、氏名・職員番号・所属・区分の列対応を選びます。プレビューで登録件数を確認してから確定します。既存者を更新してもQRや受付履歴は変わりません。</p></div>
+<div class="panel"><h3>任意項目</h3><p class="mini">イベント設定で2項目まで設定できます。入力形式は自由入力・有無・選択肢から選べます。選択肢は「|」で区切って登録します。</p></div>
 <div class="panel">
 <h3>受付区分について</h3>
 <p class="mini">初期状態は「全体」1区分。必要に応じて「午前」「午後」「第1部」などを追加できます。1人のQRコードは同じイベント内の各区分で共通です。参加予定は区分ごとに管理します。</p>
@@ -68,6 +71,7 @@ dt{font-weight:700;margin-top:12px}dd{margin:2px 0 8px;color:#587184;font-size:.
 </div>
 <p class="mini">選択中の区分ごとに受付を記録します。すでに受け付けたQRは二重登録せず、初回時刻を表示する設計です。</p>
 </div>
+<div class="panel"><h3>受付の変更履歴</h3><p class="mini">参加者の編集画面で初回受付・取消・再受付の履歴を区分別に確認できます。「結果・出力」から受付変更履歴CSVも出力できます。</p></div>
 <div class="panel">
 <h3>未受付／受付済み一覧</h3>
 <p class="mini">当日受付のタブで「未受付」と「受付済み」を切り替えられます。未受付には事前登録者を、受付済みにはQR・手動受付・飛び入り参加者を含めて氏名・所属・受付時刻を表示します。区分切替、受付、取消に連動して一覧と人数が更新されます。</p>
@@ -96,7 +100,7 @@ dt{font-weight:700;margin-top:12px}dd{margin:2px 0 8px;color:#587184;font-size:.
 <details><summary>事前登録者のうち誰がまだ来ていないか知りたいです</summary><p>当日受付モードの「未受付者」欄を確認してください。選択中の区分の対象者だけが表示され、受付済みになると自動的に消えます。</p></details>
 <details><summary>過去の参加記録を年間で集計したいです</summary><p>総合管理の「横断検索」で年度・イベント分類などを指定し、参加者一覧CSVを出力します。同じ職員の名寄せには職員番号を利用します。</p></details>
 </section>
-<div class="panel" style="background:#eef4f6;border-color:#dbe5eb"><strong>現在の実装状況</strong><p class="mini">総合管理・イベント設定・参加者登録・QR受付・JSONバックアップ／復元・CSV出力は初期実装済みです。メール配布用QRのZIP一括生成など一部機能は今後実装します。旧ワイヤーフレームは wireframe.html で確認できます。</p><a class="back" style="display:inline-block;color:#1a5b6b;border-color:#9dbecb" href="./index.html">総合管理画面に戻る →</a></div>
+<div class="panel" style="background:#eef4f6;border-color:#dbe5eb"><strong>現在の実装状況</strong><p class="mini">イベント設定・CSV列対応／既存者更新・QRの一括ZIP発行・当日受付・履歴確認・JSONバックアップ／復元に対応しています。追加した機能は実ブラウザでの検証を完了していません。旧ワイヤーフレームは wireframe.html で確認できます。</p><a class="back" style="display:inline-block;color:#1a5b6b;border-color:#9dbecb" href="./index.html">総合管理画面に戻る →</a></div>
 </main>
 </body>
 </html>
