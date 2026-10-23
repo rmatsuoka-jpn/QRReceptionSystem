@@ -66,11 +66,11 @@
   <div class="grid2" style="margin-top:18px"><div class="tile"><h3>✉ メール配布</h3><div class="hint">参加者別PNG・宛先CSVをひとつにまとめて出力</div><button id="exportQRZip" class="btn main">⇩ QR一括ZIP</button></div><div class="tile"><h3>▦ 紙配布（A4・10面）</h3><div class="hint">名刺サイズ／2列×5行</div><button id="printQRs" class="btn main">▧ 印刷プレビュー</button></div></div>
   <div id="printSheets" class="print-sheet"></div>
  </section>
- <section id="resultsPanel" class="panel" hidden><h3>受付集計</h3><div id="sessionStats" class="summary"></div><div class="buttons"><button class="btn main" id="exportResult">⇩ このイベントの区分別CSV</button><button class="btn" id="exportAudit">⇩ 受付変更履歴CSV</button><button class="btn" data-backup>⇩ 全イベントJSON</button></div></section>
+ <section id="resultsPanel" class="panel" hidden><h3>受付集計</h3><div id="sessionStats" class="summary"></div><div class="panel roster-print-controls"><h3>紙の受付名簿</h3><div class="row"><label class="field">印刷する受付区分<select id="rosterSession"></select></label><button type="button" class="btn main" id="printRosterPrep">▤ 受付名簿を印刷</button></div><p class="hint">PC不調に備え、開催前に印刷してください。手書きチェック欄・当日追加用の空欄付き。</p></div><div class="buttons"><button class="btn main" id="exportResult">⇩ このイベントの区分別CSV</button><button class="btn" id="exportAudit">⇩ 受付変更履歴CSV</button><button class="btn" data-backup>⇩ 全イベントJSON</button></div></section>
  </div></div>
 
  <section id="receptionView" class="reception" hidden>
-  <div class="day-session"><div class="row"><strong>受付区分</strong><span class="tag">現在選択中</span></div><select id="checkinSession"></select></div><div id="daySummary" class="summary"></div>
+  <div class="day-session"><div class="row"><strong>受付区分</strong><button type="button" class="btn small" id="printRosterDay">▤ 受付名簿を印刷</button></div><select id="checkinSession"></select></div><div id="daySummary" class="summary"></div>
   <div class="reception-grid">
   <div><div class="panel"><h3>QR受付</h3><div class="camera"><div id="reader" class="reader"></div><div id="cameraHint" class="hint">カメラを選択してQRを読み取ってください。</div></div><div id="checkinResult" class="result" role="status" aria-live="polite">スキャン待機中</div></div>
   <div class="panel"><h3>当日の参加者変更</h3><div class="grid2"><button id="walkinBtn" class="btn main">＋ 飛び入り登録</button><button id="manualBtn" class="btn">⌕ 名前から受付</button></div></div></div>
@@ -91,5 +91,5 @@
  <div class="dialog-head"><h2 id="dialogTitle">参加者</h2><button class="btn small" id="closeDialog" aria-label="閉じる">✕</button></div>
  <div id="dialogBody"></div>
 </div></div>
-</main><footer>QR受付システム　／　このPCのブラウザに保存　／　庁内運用</footer>
+</main><div id="receptionPrint" class="reception-print-sheet" hidden></div><footer>QR受付システム　／　このPCのブラウザに保存　／　庁内運用</footer>
 </body></html>
