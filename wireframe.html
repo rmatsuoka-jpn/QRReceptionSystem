@@ -631,7 +631,7 @@ function addParticipant(andCheck){
  if(staff&&activePeople().some(p=>p.staff===staff)){if(!confirm("同じ職員番号の参加者が既に存在します。追加を続けますか？"))return;}
  const planned={};const checked={};$("newPlanned").querySelectorAll("input").forEach(input=>{planned[input.value]=input.checked;checked[input.value]=null;});
  if(andCheck&&!planned[state.current]){planned[state.current]=true;}
- const p={id:String(state.nextParticipant++).padStart(4,"0"),name,staff,dept:$("newDept").value.trim(),email:$("newEmail").value.trim(),custom:[$("newCustomOne").value.trim(),$("newCustomTwo").value.trim()],planned,checked,removed:false,preRegistered:false};
+ const p={id:String(state.nextParticipant++).padStart(4,"0"),name,staff,dept:$("newDept").value.trim(),email:$("newEmail").value.trim(),custom:[$("newCustomOne").value.trim(),$("newCustomTwo").value.trim()],planned,checked,removed:false,preRegistered:state.mode!=="day"};
  state.people.push(p);closeDrawer();updateAll();
  if(andCheck){checkIn(p,"手動");showMode("day");}else{alert(name+" さんを登録しました。QRの発行は必要な場合だけ行います。");}
 }
@@ -708,7 +708,7 @@ $("newName").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault
 $("addAndCheck").addEventListener("click",()=>addParticipant(true));
 $("addOnly").addEventListener("click",()=>addParticipant(false));
 $("daySearch").addEventListener("input",()=>{state.selected=null;$("selectedPerson").hidden=true;renderSearch();});
-$("savePerson").addEventListener("click",()=>{const p=state.people.find(x=>x.id===state.selected);if(!p)return;const name=$("editName").value.trim();if(!name)return alert("氏名は必須です。");p.name=name;p.dept=$("editDept").value.trim();$("searchHint").textContent="情報を修正しました。参加者IDやQRは変わりません。";renderSearch();renderPeople();});
+$("savePerson").addEventListener("click",()=>{const p=state.people.find(x=>x.id===state.selected);if(!p)return;const name=$("editName").value.trim();if(!name)return alert("氏名は必須です。");p.name=name;p.dept=$("editDept").value.trim();$("searchHint").textContent="情報を修正しました。参加者IDやQRは変わりません。";renderSearch();updateAll();});
 showHome();
 })();
 </script>
