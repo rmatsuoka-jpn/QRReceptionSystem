@@ -10,11 +10,10 @@ function localDate(s){if(!s)return "—";const t=new Date(s);return Number.isNaN
 function randomHex(n=12){if(!globalThis.crypto?.getRandomValues)throw Error("安全な乱数生成が利用できません。このブラウザを確認してください。");const b=new Uint8Array(n);crypto.getRandomValues(b);return [...b].map(x=>x.toString(16).padStart(2,"0")).join("");}
 function eventId(){let id;do{id="EVT-"+new Date().toISOString().slice(0,10).replace(/-/g,"")+"-"+randomHex(4).toUpperCase();}while(db.has(id));return id;}
 function sessionId(){return "S-"+randomHex(5);}
-function token(id){return "QRRS1:"+id+":"+randomHex(16);}
 function announce(msg,type=""){const n=$("notice");n.textContent=msg;n.className="notice "+type;n.hidden=!msg;}
 function key(id){return PREFIX+id;}
 function loadAll(){try{const index=JSON.parse(localStorage.getItem(IX)||'{"ids":[]}');if(!Array.isArray(index.ids))throw Error("イベント一覧の形式が正しくありません");order=[...new Set(index.ids.filter(x=>typeof x==="string"))];const missing=[];for(const id of order){try{const raw=localStorage.getItem(key(id));if(!raw){missing.push(id);continue;}const event=JSON.parse(raw);validateEvent(event);if(event.id!==id)throw Error("イベントIDが一致しません");db.set(id,event);}catch(err){missing.push(id);}}if(missing.length)announce("一部の保存データを読み込めませんでした："+missing.join("、")+"。既存データは自動削除していません。","error");}catch(err){announce("保存済みデータを読み込めません："+err.message+"。復元用JSONがある場合は保管してください。","error");}}
-function validateEvent(e){if(!e||typeof e!=="object"||typeof e.id!=="string"||!/^EVT-[A-Za-z0-9-]+$/.test(e.id)||typeof e.name!=="string"||!e.name||!Array.isArray(e.sessions)||!e.sessions.length||!Array.isArray(e.participants)||!Number.isInteger(e.nextParticipant)||e.nextParticipant<1)throw Error("イベントの構造が正しくありません");const ss=new Set();for(const s of e.sessions){if(!s||typeof s.id!=="string"||typeof s.name!=="string"||!s.name||ss.has(s.id))throw Error("受付区分が不正です");ss.add(s.id);}const ids=new Set(),tokens=new Set();for(const p of e.participants){if(!p||typeof p.id!=="string"||typeof p.name!=="string"||!p.name||typeof p.token!=="string"||!p.planned||!p.checkins||ids.has(p.id)||tokens.has(p.token))throw Error("参加者情報が不正です");ids.add(p.id);tokens.add(p.token);}}
+function validateEvent(e){if(!e||typeof e!=="object"||typeof e.id!=="string"||!/^EVT-[A-Za-z0-9-]+$/.test(e.id)||typeof e.name!=="string"||!e.name||!Array.isArray(e.sessions)||!e.sessions.length||!Array.isArray(e.participants)||!Number.isInteger(e.nextParticipant)||e.nextParticipant<1)throw Error("イベントの構造が正しくありません");const ss=new Set();for(const s of e.sessions){if(!s||typeof s.id!=="string"||typeof s.name!=="string"||!s.name||ss.has(s.id))throw Error("受付区分が不正です");ss.add(s.id);}const ids=new Set(),staffIds=new Set();for(const p of e.participants){if(!p||typeof p.id!=="string"||typeof p.name!=="string"||!p.name||!p.planned||!p.checkins||ids.has(p.id))throw Error("参加者情報が不正です");ids.add(p.id);if(!p.removed&&p.staffId){if(typeof p.staffId!=="string"||!/^[0-9]+$/.test(p.staffId)||staffIds.has(p.staffId))throw Error("職員番号が不正または重複しています");staffIds.add(p.staffId);}}}
 function writeEvent(e){validateEvent(e);try{localStorage.setItem(key(e.id),JSON.stringify(e));db.set(e.id,e);return true;}catch(err){announce("保存できませんでした。操作は確定していません："+err.message,"error");return false;}}
 function writeIndex(ids){try{localStorage.setItem(IX,JSON.stringify({version:SCHEMA,ids}));order=ids;return true;}catch(err){announce("イベント一覧を保存できません："+err.message,"error");return false;}}
 function mutate(fn){const old=db.get(activeId);if(!old)return false;const next=clone(old);try{fn(next)}catch(err){announce(err.message,"error");return false;}if(!writeEvent(next))return false;render();return true;}
@@ -80,9 +79,9 @@ function saveSettings(){
 }
 function addSession(){const name=$("newSessionName").value.trim();if(!name)return announce("受付区分名を入力してください。","warn");const ok=mutate(e=>{if(e.sessions.some(s=>s.name===name))throw Error("同じ名前の受付区分があります");const id=sessionId();e.sessions.push({id,name});for(const p of e.participants){p.planned[id]=false;}});if(ok){$("newSessionName").value="";announce("受付区分を追加しました。","success");}}
 function removeSession(id){const e=current(),s=e.sessions.find(x=>x.id===id);if(!s)return;if(e.sessions.length===1)return announce("受付区分は最低1つ必要です。","warn");if(e.participants.some(p=>p.checkins?.[id]))return announce("受付履歴がある区分は削除できません。","warn");if(!confirm("受付区分「"+s.name+"」を削除しますか？"))return;mutate(next=>{next.sessions=next.sessions.filter(x=>x.id!==id);for(const p of next.participants){delete p.planned[id];delete p.checkins[id];}});}
-function renderParticipants(){const e=current(),q=$("personQuery").value.trim().toLowerCase();const people=e.participants.filter(p=>!p.removed&&[p.name,p.staffId,p.department,p.id].join(" ").toLowerCase().includes(q));$("peopleCount").textContent=people.length+"名";const tbody=$("participantRows");tbody.replaceChildren();for(const p of people){const tr=document.createElement("tr");const sessions=e.sessions.filter(s=>p.planned[s.id]).map(s=>s.name).join(" / ");tr.innerHTML="<td>"+esc(p.id)+"</td><td>"+esc(p.name)+"</td><td>"+esc(p.staffId||"—")+"</td><td>"+esc(p.department||"—")+'</td><td><span class="tag">'+esc(sessions||"対象外")+'</span></td><td><button class="btn small" data-action="edit-person" data-person="'+esc(p.id)+'">編集</button></td>';tbody.append(tr);}}
-function newPerson(name,staffId,department,email,customValues,planned,source){const e=current();if(staffId&&e.participants.some(p=>!p.removed&&p.staffId===staffId))throw Error("同じ職員番号の参加者がすでに登録されています");const n=e.nextParticipant;return {id:String(n).padStart(4,"0"),name,staffId,department,email,customValues,token:token(e.id),planned,checkins:{},source,removed:false};}
-function savePersonFromForm(andCheck){const id=$("personId")?.value||"",name=$("personName").value.trim(),staffId=$("personStaff").value.trim(),department=$("personDept").value.trim(),email=$("personEmail").value.trim();if(!name)return announce("氏名は必須です。","warn");const e=current(),planned=Object.fromEntries(e.sessions.map(s=>[s.id,!!$("planned-"+s.id)?.checked]));let values;try{values=[0,1].map(i=>normalizeCustom(e,i,$("personCustom"+i)?.value||""));}catch(err){return announce(err.message,"warn");}if(andCheck)planned[curSession().id]=true;let checkResult=null;const ok=mutate(next=>{if(staffId&&next.participants.some(p=>p.id!==id&&!p.removed&&p.staffId===staffId))throw Error("同じ職員番号の人が登録されています");let p=id?next.participants.find(p=>p.id===id):null;if(id&&!p)throw Error("参加者が見つかりません");if(!p){p={id:String(next.nextParticipant++).padStart(4,"0"),name,staffId,department,email,customValues:values,token:token(next.id),planned,checkins:{},source:day?"walkin":"pre",removed:false};next.participants.push(p);}else{for(const s of next.sessions)if(!planned[s.id]&&checked(p,s.id))throw Error("受付済みの区分は参加対象外にできません。受付取消後に変更してください。");Object.assign(p,{name,staffId,department,email,customValues:values,planned});}
+function renderParticipants(){const e=current(),q=$("personQuery").value.trim().toLowerCase();const people=e.participants.filter(p=>!p.removed&&[p.name,p.staffId,p.department,p.group,p.id].join(" ").toLowerCase().includes(q));$("peopleCount").textContent=people.length+"名";const tbody=$("participantRows");tbody.replaceChildren();for(const p of people){const tr=document.createElement("tr");const sessions=e.sessions.filter(s=>p.planned[s.id]).map(s=>s.name).join(" / ");tr.innerHTML="<td>"+esc(p.id)+"</td><td>"+esc(p.name)+"</td><td>"+esc(p.staffId||"—")+"</td><td>"+esc(p.department||"—")+'</td><td><span class="tag">'+esc(sessions||"対象外")+'</span></td><td><button class="btn small" data-action="edit-person" data-person="'+esc(p.id)+'">編集</button></td>';tbody.append(tr);}}
+
+function savePersonFromForm(andCheck){const id=$("personId")?.value||"",name=$("personName").value.trim(),staffId=$("personStaff").value.trim(),department=$("personDept").value.trim(),group=$("personGroup").value.trim();if(staffId&&!/^[0-9]+$/.test(staffId))return announce("職員番号は半角数字で入力してください。","warn");if(!name)return announce("氏名は必須です。","warn");const e=current(),planned=Object.fromEntries(e.sessions.map(s=>[s.id,!!$("planned-"+s.id)?.checked]));let values;try{values=[0,1].map(i=>normalizeCustom(e,i,$("personCustom"+i)?.value||""));}catch(err){return announce(err.message,"warn");}if(andCheck)planned[curSession().id]=true;let checkResult=null;const ok=mutate(next=>{if(staffId&&next.participants.some(p=>p.id!==id&&!p.removed&&p.staffId===staffId))throw Error("同じ職員番号の人が登録されています");let p=id?next.participants.find(p=>p.id===id):null;if(id&&!p)throw Error("参加者が見つかりません");if(!p){p={id:String(next.nextParticipant++).padStart(4,"0"),name,staffId,department,group,customValues:values,planned,checkins:{},source:day?"walkin":"pre",removed:false};next.participants.push(p);}else{for(const s of next.sessions)if(!planned[s.id]&&checked(p,s.id))throw Error("受付済みの区分は参加対象外にできません。受付取消後に変更してください。");Object.assign(p,{name,staffId,department,group,customValues:values,planned});}
  if(andCheck){const s=curSession(),prior=p.checkins[s.id];if(prior?.active!==false&&prior){checkResult={duplicate:true,person:p,when:prior.lastAt||prior.at};}else{const at=iso();if(prior){prior.active=true;prior.lastAt=at;prior.method="manual";(prior.history||(prior.history=[])).push({type:"recheck",at,method:"manual"});}else p.checkins[s.id]={at,lastAt:at,method:"manual",initialMethod:"manual",active:true,history:[]};checkResult={person:p,when:at};}}
  });if(!ok)return;closeDialog();if(andCheck){showResult(checkResult.person,checkResult.duplicate?"受付済み（重複）":"受付完了",checkResult.duplicate?"warn":"success",curSession()?.name,checkResult.when);announce("参加者情報を保存しました。","success");}else announce("参加者情報を保存しました。","success");}
 
@@ -104,7 +103,7 @@ function openPerson(id=null,dayMode=day){
  '<label class="field">氏名（必須）<input id="personName" value="'+esc(p?.name||"")+'"></label>'+
  '<label class="field">職員番号<input id="personStaff" value="'+esc(p?.staffId||"")+'"></label>'+
  '<label class="field">所属<input id="personDept" value="'+esc(p?.department||"")+'"></label>'+
- '<label class="field">メール<input id="personEmail" type="email" value="'+esc(p?.email||"")+'"></label>'+
+ '<label class="field">グループ（任意）<input id="personGroup" value="'+esc(p?.group||"")+'"></label>'+
  customFieldHTML(e,p,0)+customFieldHTML(e,p,1)+'</div>'+
  '<h3 style="margin-top:16px">参加予定</h3><div class="checkboxes">'+
  e.sessions.map(s=>'<label class="check"><input type="checkbox" id="planned-'+esc(s.id)+'" '+(planned(s)?"checked":"")+">"+esc(s.name)+"</label>").join("")+
@@ -421,7 +420,7 @@ const CSV_FIELDS=[
  ["participantId","参加者ID（更新用）",["participant_id","参加者ID"]],
  ["eventId","イベントID（照合用）",["event_id","イベントID"]],
  ["department","所属",["所属","department"]],
- ["email","メール",["メール","メールアドレス","email"]],
+ ["group","グループ",["グループ","group"]],
  ["custom0","任意項目1",["custom_1"]],
  ["custom1","任意項目2",["custom_2"]]
 ];
@@ -444,6 +443,7 @@ function prepareCsv(rows,m,mode,e){
   const csvEvent=mappedValue(row,m,"eventId");
   if(csvEvent&&csvEvent!==e.id)throw Error((ri+1)+"行目：イベントIDが現在のイベントと異なります");
   const staff=mappedValue(row,m,"staffId"),pid=mappedValue(row,m,"participantId");
+  if(staff&&!/^[0-9]+$/.test(staff))throw Error((ri+1)+"行目：職員番号は半角数字にしてください");
   const byPid=pid?e.participants.find(p=>p.id===pid):null;
   const byStaff=staff?e.participants.find(p=>p.staffId===staff):null;
   if(pid&&!byPid)throw Error((ri+1)+"行目：参加者ID "+pid+" はこのイベントにありません");
@@ -454,7 +454,7 @@ function prepareCsv(rows,m,mode,e){
   const unique=exists?"id:"+exists.id:staff?"staff:"+staff:null;
   if(unique&&seen.has(unique)){skip++;continue;}
   if(unique)seen.add(unique);
-  const values={name,staffId:staff,department:mappedValue(row,m,"department"),email:mappedValue(row,m,"email"),custom0:mappedValue(row,m,"custom0"),custom1:mappedValue(row,m,"custom1")};
+  const values={name,staffId:staff,department:mappedValue(row,m,"department"),group:mappedValue(row,m,"group"),custom0:mappedValue(row,m,"custom0"),custom1:mappedValue(row,m,"custom1")};
   for(let i=0;i<2;i++)if(values["custom"+i]!==null){try{values["custom"+i]=normalizeCustom(e,i,values["custom"+i]);}catch(err){throw Error((ri+1)+"行目："+err.message);}}
   const planned={};
   for(const s of e.sessions){const v=mappedValue(row,m,"session:"+s.id);if(v!==null){try{planned[s.id]=globalThis.QRSupport.participation(v);}catch(err){throw Error((ri+1)+"行目「"+s.name+"」："+err.message);} }}
@@ -498,14 +498,14 @@ function commitCsvImport(){
     p.name=v.name;
     if(v.staffId!==null&&v.staffId)p.staffId=v.staffId;
     if(v.department!==null)p.department=v.department;
-    if(v.email!==null)p.email=v.email;
+    if(v.group!==null)p.group=v.group;
     if(!Array.isArray(p.customValues))p.customValues=["",""];
     if(v.custom0!==null)p.customValues[0]=v.custom0;
     if(v.custom1!==null)p.customValues[1]=v.custom1;
     Object.assign(p.planned,item.planned);
    }else{
     const v=item.values;
-    e.participants.push({id:String(e.nextParticipant++).padStart(4,"0"),name:v.name,staffId:v.staffId||"",department:v.department||"",email:v.email||"",customValues:[v.custom0||"",v.custom1||""],token:token(e.id),planned:item.planned,checkins:{},source:"pre",removed:false});
+    e.participants.push({id:String(e.nextParticipant++).padStart(4,"0"),name:v.name,staffId:v.staffId||"",department:v.department||"",group:v.group||"",customValues:[v.custom0||"",v.custom1||""],planned:item.planned,checkins:{},source:"pre",removed:false});
    }
   }
  });
