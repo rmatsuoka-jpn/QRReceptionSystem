@@ -314,9 +314,9 @@ function qrDataURL(root){
  return null;
 }
 function downloadOneQR(){const data=qrDataURL($("qrCanvas"));if(!data)return announce("QR画像が準備できていません。","warn");downloadLink(data,"QR_staff_"+current().participants.find(p=>p.id===qrRendered)?.staffId+".png");}
-function printQR(){
+async function printQR(){
  if(typeof QRCode!=="function")return announce("QRライブラリがありません。","error");
- const root=$("printSheets");root.replaceChildren();let page=null,count=0;const e=current(),people=eligibleQrPeople(e);
+ const root=$("printSheets");root.replaceChildren();const qrImages=[];let page=null,count=0;const e=current(),people=eligibleQrPeople(e);
  try{
   for(const p of people){
    if(count%10===0){page=document.createElement("div");page.className="print-page";root.append(page);}
@@ -324,7 +324,7 @@ function printQR(){
    const qr=document.createElement("div");new QRCode(qr,{text:p.staffId,width:360,height:360,correctLevel:QRCode.CorrectLevel.M});
    const data=qrDataURL(qr);if(!data)throw Error("QR画像の生成に失敗しました");
    const holder=document.createElement("div");holder.className="print-qr-holder";
-   const img=document.createElement("img");img.src=data;img.alt="職員番号QR";holder.append(img);
+   const img=document.createElement("img");img.src=data;img.alt="職員番号QR";holder.append(img);qrImages.push(img);
    const meta=document.createElement("div");meta.className="print-meta";
    const title=document.createElement("div");title.className="print-name";title.textContent=p.name;
    const staff=document.createElement("div");staff.className="print-staff";staff.textContent=p.staffId;
@@ -334,6 +334,7 @@ function printQR(){
   }
  }catch(err){return announce("QR印刷の準備に失敗しました："+err.message,"error");}
  if(!count)return announce("職員番号のあるQR発行対象者がいません。","warn");
+ await Promise.all(qrImages.map(img=>typeof img.decode==="function"?img.decode().catch(()=>{}):Promise.resolve()));
  document.body.dataset.printMode="qr";window.print();
 }
 const ROSTER_ROWS_PER_PAGE=20;
