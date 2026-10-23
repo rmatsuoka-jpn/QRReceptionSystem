@@ -82,12 +82,50 @@ function addSession(){const name=$("newSessionName").value.trim();if(!name)retur
 function removeSession(id){const e=current(),s=e.sessions.find(x=>x.id===id);if(!s)return;if(e.sessions.length===1)return announce("受付区分は最低1つ必要です。","warn");if(e.participants.some(p=>p.checkins?.[id]))return announce("受付履歴がある区分は削除できません。","warn");if(!confirm("受付区分「"+s.name+"」を削除しますか？"))return;mutate(next=>{next.sessions=next.sessions.filter(x=>x.id!==id);for(const p of next.participants){delete p.planned[id];delete p.checkins[id];}});}
 function renderParticipants(){const e=current(),q=$("personQuery").value.trim().toLowerCase();const people=e.participants.filter(p=>!p.removed&&[p.name,p.staffId,p.department,p.id].join(" ").toLowerCase().includes(q));$("peopleCount").textContent=people.length+"名";const tbody=$("participantRows");tbody.replaceChildren();for(const p of people){const tr=document.createElement("tr");const sessions=e.sessions.filter(s=>p.planned[s.id]).map(s=>s.name).join(" / ");tr.innerHTML="<td>"+esc(p.id)+"</td><td>"+esc(p.name)+"</td><td>"+esc(p.staffId||"—")+"</td><td>"+esc(p.department||"—")+'</td><td><span class="tag">'+esc(sessions||"対象外")+'</span></td><td><button class="btn small" data-action="edit-person" data-person="'+esc(p.id)+'">編集</button></td>';tbody.append(tr);}}
 function newPerson(name,staffId,department,email,customValues,planned,source){const e=current();if(staffId&&e.participants.some(p=>!p.removed&&p.staffId===staffId))throw Error("同じ職員番号の参加者がすでに登録されています");const n=e.nextParticipant;return {id:String(n).padStart(4,"0"),name,staffId,department,email,customValues,token:token(e.id),planned,checkins:{},source,removed:false};}
-function savePersonFromForm(andCheck){const id=$("personId")?.value||"",name=$("personName").value.trim(),staffId=$("personStaff").value.trim(),department=$("personDept").value.trim(),email=$("personEmail").value.trim();if(!name)return announce("氏名は必須です。","warn");const e=current(),planned=Object.fromEntries(e.sessions.map(s=>[s.id,!!$("planned-"+s.id)?.checked]));const values=[$("personCustom0")?.value||"",$("personCustom1")?.value||""];if(andCheck)planned[curSession().id]=true;let checkResult=null;const ok=mutate(next=>{if(staffId&&next.participants.some(p=>p.id!==id&&!p.removed&&p.staffId===staffId))throw Error("同じ職員番号の人が登録されています");let p=id?next.participants.find(p=>p.id===id):null;if(id&&!p)throw Error("参加者が見つかりません");if(!p){p={id:String(next.nextParticipant++).padStart(4,"0"),name,staffId,department,email,customValues:values,token:token(next.id),planned,checkins:{},source:day?"walkin":"pre",removed:false};next.participants.push(p);}else{for(const s of next.sessions)if(!planned[s.id]&&checked(p,s.id))throw Error("受付済みの区分は参加対象外にできません。受付取消後に変更してください。");Object.assign(p,{name,staffId,department,email,customValues:values,planned});}
+function savePersonFromForm(andCheck){const id=$("personId")?.value||"",name=$("personName").value.trim(),staffId=$("personStaff").value.trim(),department=$("personDept").value.trim(),email=$("personEmail").value.trim();if(!name)return announce("氏名は必須です。","warn");const e=current(),planned=Object.fromEntries(e.sessions.map(s=>[s.id,!!$("planned-"+s.id)?.checked]));let values;try{values=[0,1].map(i=>normalizeCustom(e,i,$("personCustom"+i)?.value||""));}catch(err){return announce(err.message,"warn");}if(andCheck)planned[curSession().id]=true;let checkResult=null;const ok=mutate(next=>{if(staffId&&next.participants.some(p=>p.id!==id&&!p.removed&&p.staffId===staffId))throw Error("同じ職員番号の人が登録されています");let p=id?next.participants.find(p=>p.id===id):null;if(id&&!p)throw Error("参加者が見つかりません");if(!p){p={id:String(next.nextParticipant++).padStart(4,"0"),name,staffId,department,email,customValues:values,token:token(next.id),planned,checkins:{},source:day?"walkin":"pre",removed:false};next.participants.push(p);}else{for(const s of next.sessions)if(!planned[s.id]&&checked(p,s.id))throw Error("受付済みの区分は参加対象外にできません。受付取消後に変更してください。");Object.assign(p,{name,staffId,department,email,customValues:values,planned});}
  if(andCheck){const s=curSession(),prior=p.checkins[s.id];if(prior?.active!==false&&prior){checkResult={duplicate:true,person:p,when:prior.lastAt||prior.at};}else{const at=iso();if(prior){prior.active=true;prior.lastAt=at;prior.method="manual";(prior.history||(prior.history=[])).push({type:"recheck",at,method:"manual"});}else p.checkins[s.id]={at,lastAt:at,method:"manual",initialMethod:"manual",active:true,history:[]};checkResult={person:p,when:at};}}
  });if(!ok)return;closeDialog();if(andCheck){showResult(checkResult.person,checkResult.duplicate?"受付済み（重複）":"受付完了",checkResult.duplicate?"warn":"success",curSession()?.name,checkResult.when);announce("参加者情報を保存しました。","success");}else announce("参加者情報を保存しました。","success");}
-function openPerson(id=null,dayMode=day){const e=current(),p=id?e.participants.find(x=>x.id===id):null;const session=curSession();const div=document.createElement("div");const planned=(s)=>p?p.planned[s.id]===true:(dayMode?s.id===session?.id:e.sessions.length===1);
-div.innerHTML='<input type="hidden" id="personId" value="'+esc(p?.id||"")+'"><div class="fields two"><label class="field">氏名（必須）<input id="personName" value="'+esc(p?.name||"")+'"></label><label class="field">職員番号<input id="personStaff" value="'+esc(p?.staffId||"")+'"></label><label class="field">所属<input id="personDept" value="'+esc(p?.department||"")+'"></label><label class="field">メール<input id="personEmail" type="email" value="'+esc(p?.email||"")+'"></label><label class="field">'+esc(e.customLabels[0]||"任意項目1")+'<input id="personCustom0" value="'+esc(p?.customValues?.[0]||"")+'"></label><label class="field">'+esc(e.customLabels[1]||"任意項目2")+'<input id="personCustom1" value="'+esc(p?.customValues?.[1]||"")+'"></label></div><h3 style="margin-top:16px">参加予定</h3><div class="checkboxes">'+e.sessions.map(s=>'<label class="check"><input type="checkbox" id="planned-'+esc(s.id)+'" '+(planned(s)?"checked":"")+">"+esc(s.name)+"</label>").join("")+'</div><div id="personHistory"></div><div class="form-actions"><button class="btn main" id="savePersonDialog">保存</button>'+(dayMode?'<button class="btn soft" id="saveAndCheck">保存して受付</button>':"")+(p?'<button class="btn danger right" id="removePerson">参加者を除外</button>':"")+'</div>';
-openDialog(p?"参加者の編集":"参加者を追加",div);$("savePersonDialog").onclick=()=>savePersonFromForm(false);if(dayMode)$("saveAndCheck").onclick=()=>savePersonFromForm(true);if(p){$("removePerson").onclick=()=>{if(!confirm("参加者を除外しますか？過去の受付履歴は保持します。"))return;if(mutate(next=>{next.participants.find(x=>x.id===id).removed=true;})){closeDialog();announce("参加者を除外しました。","warn");}};renderPersonHistory(p);}$("personName").focus();}
+
+function customFieldHTML(e,p,i){
+ const label=esc(e.customLabels?.[i]||"任意項目"+(i+1)),value=p?.customValues?.[i]||"";
+ const type=getCustomType(e,i),id="personCustom"+i;
+ if(type==="text")return '<label class="field">'+label+'<input id="'+id+'" value="'+esc(value)+'"></label>';
+ const choices=type==="bool"?["有","無"]:getCustomOptions(e,i);
+ const values=["",...choices];
+ if(value&&!values.includes(value))values.push(value);
+ return '<label class="field">'+label+'<select id="'+id+'">'+values.map(v=>'<option value="'+esc(v)+'"'+(v===value?" selected":"")+'>'+esc(v||(type==="bool"?"未選択":"選択してください"))+'</option>').join("")+'</select></label>';
+}
+function openPerson(id=null,dayMode=day){
+ const e=current(),p=id?e.participants.find(x=>x.id===id):null;
+ const session=curSession(),div=document.createElement("div");
+ const planned=s=>p?p.planned[s.id]===true:(dayMode?s.id===session?.id:e.sessions.length===1);
+ div.innerHTML='<input type="hidden" id="personId" value="'+esc(p?.id||"")+'">'+
+ '<div class="fields two">'+
+ '<label class="field">氏名（必須）<input id="personName" value="'+esc(p?.name||"")+'"></label>'+
+ '<label class="field">職員番号<input id="personStaff" value="'+esc(p?.staffId||"")+'"></label>'+
+ '<label class="field">所属<input id="personDept" value="'+esc(p?.department||"")+'"></label>'+
+ '<label class="field">メール<input id="personEmail" type="email" value="'+esc(p?.email||"")+'"></label>'+
+ customFieldHTML(e,p,0)+customFieldHTML(e,p,1)+'</div>'+
+ '<h3 style="margin-top:16px">参加予定</h3><div class="checkboxes">'+
+ e.sessions.map(s=>'<label class="check"><input type="checkbox" id="planned-'+esc(s.id)+'" '+(planned(s)?"checked":"")+">"+esc(s.name)+"</label>").join("")+
+ '</div><div id="personHistory"></div><div class="form-actions">'+
+ '<button class="btn main" id="savePersonDialog">保存</button>'+
+ (dayMode?'<button class="btn soft" id="saveAndCheck">保存して受付</button>':"")+
+ (p?'<button class="btn danger right" id="removePerson">参加者を除外</button>':"")+'</div>';
+ openDialog(p?"参加者の編集":"参加者を追加",div);
+ $("savePersonDialog").onclick=()=>savePersonFromForm(false);
+ if(dayMode)$("saveAndCheck").onclick=()=>savePersonFromForm(true);
+ if(p){
+  $("removePerson").onclick=()=>{
+   if(!confirm("参加者を除外しますか？過去の受付履歴は保持します。"))return;
+   if(mutate(next=>{next.participants.find(x=>x.id===id).removed=true;})){
+    closeDialog();announce("参加者を除外しました。","warn");
+   }
+  };
+  renderPersonHistory(p);
+ }
+ $("personName").focus();
+}
 function renderPersonHistory(p){
  const e=current(),root=$("personHistory");root.replaceChildren();
  const heading=document.createElement("h3");heading.style.marginTop="18px";heading.textContent="受付履歴";root.append(heading);
@@ -356,6 +394,7 @@ function prepareCsv(rows,m,mode,e){
   if(unique&&seen.has(unique)){skip++;continue;}
   if(unique)seen.add(unique);
   const values={name,staffId:staff,department:mappedValue(row,m,"department"),email:mappedValue(row,m,"email"),custom0:mappedValue(row,m,"custom0"),custom1:mappedValue(row,m,"custom1")};
+  for(let i=0;i<2;i++)if(values["custom"+i]!==null){try{values["custom"+i]=normalizeCustom(e,i,values["custom"+i]);}catch(err){throw Error((ri+1)+"行目："+err.message);}}
   const planned={};
   for(const s of e.sessions){const v=mappedValue(row,m,"session:"+s.id);if(v!==null){try{planned[s.id]=globalThis.QRSupport.participation(v);}catch(err){throw Error((ri+1)+"行目「"+s.name+"」："+err.message);} }}
   if(exists){
@@ -470,7 +509,7 @@ for(const id of ["eventQuery","dateFrom","dateTo","sortKey","sortOrder"])$(id).a
 for(const id of ["crossPeriod","crossYear","crossCategory","crossStatus","crossQuery"])$(id).addEventListener(["crossYear","crossQuery"].includes(id)?"input":"change",renderCross);
 $("crossPeriod").onchange=()=>{$("crossYear").disabled=$("crossPeriod").value==="all";renderCross();};
 $("exportCross").onclick=()=>exportCross(false);$("exportCrossDetail").onclick=()=>exportCross(true);$("restoreBtn").onclick=restore;$("deleteAllData").onclick=openDeleteAllDialog;
-$("saveSettings").onclick=saveSettings;$("addSession").onclick=addSession;$("addPerson").onclick=()=>openPerson(null,false);
+$("saveSettings").onclick=saveSettings;$("addSession").onclick=addSession;for(let i=1;i<=2;i++)$("customType"+i).onchange=()=>toggleCustomOptions(i);$("addPerson").onclick=()=>openPerson(null,false);
 $("personQuery").oninput=renderParticipants;$("importParticipants").onclick=importParticipants;$("exportRoster").onclick=exportRoster;
 $("qrPerson").onchange=renderOneQR;$("showQR").onclick=renderOneQR;$("downloadQR").onclick=downloadOneQR;$("printQRs").onclick=printQR;$("exportQRZip").onclick=exportQRZip;
 $("exportResult").onclick=eventDetailCSV;$("exportAudit").onclick=exportAudit;$("checkinSession").onchange=()=>{showResult(null,"スキャン待機中","");renderReception();};
