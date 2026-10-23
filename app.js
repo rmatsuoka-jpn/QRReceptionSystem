@@ -187,7 +187,7 @@ function renderPersonHistory(p){
  }
 }
 function openManual(){const panel=document.createElement("div");panel.innerHTML='<input id="manualQuery" class="search" placeholder="氏名・職員番号・所属・参加者IDを検索" autofocus><div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>ID</th><th>氏名</th><th>所属</th><th>状況</th><th>受付</th></tr></thead><tbody id="manualRows"></tbody></table></div>';openDialog("名前から受付・変更",panel);$("manualQuery").addEventListener("input",renderManual);renderManual();$("manualQuery").focus();}
-function renderManual(){const q=$("manualQuery").value.toLowerCase().trim(),e=current(),s=curSession(),tbody=$("manualRows");tbody.replaceChildren();for(const p of e.participants.filter(p=>!p.removed&&[p.name,p.staffId,p.department,p.id].join(" ").toLowerCase().includes(q)).slice(0,100)){const tr=document.createElement("tr");const td=document.createElement("td");td.innerHTML='<button class="btn small" data-manual-person="'+esc(p.id)+'">選択</button>';for(const v of [p.id,p.name,p.department||"—",checked(p,s.id)?"受付済み":p.planned[s.id]?"未受付":"対象外"]){const x=document.createElement("td");x.textContent=v;tr.append(x);}tr.append(td);tbody.append(tr);}}
+function renderManual(){const q=$("manualQuery").value.toLowerCase().trim(),e=current(),s=curSession(),tbody=$("manualRows");tbody.replaceChildren();for(const p of e.participants.filter(p=>!p.removed&&[p.name,p.staffId,p.department,p.group,p.id].join(" ").toLowerCase().includes(q)).slice(0,100)){const tr=document.createElement("tr");const td=document.createElement("td");td.innerHTML='<button class="btn small" data-manual-person="'+esc(p.id)+'">選択</button>';for(const v of [p.id,p.name,p.department||"—",checked(p,s.id)?"受付済み":p.planned[s.id]?"未受付":"対象外"]){const x=document.createElement("td");x.textContent=v;tr.append(x);}tr.append(td);tbody.append(tr);}}
 function manualCheck(id){const e=current(),p=e.participants.find(x=>x.id===id),s=curSession();if(!p)return;if(checked(p,s.id))return openPerson(id,true);if(!p.planned[s.id]&&!confirm(p.name+" さんを「"+s.name+"」の参加対象にして受付しますか？"))return;const res=checkIn(id,"manual",true);if(res){closeDialog();}}
 function checkInByToken(code){
  const staffId=String(code).trim();
@@ -198,7 +198,7 @@ function checkInByToken(code){
 }
 function checkIn(id,method,allowPlan){const e=current(),s=curSession();let result=null;const person=e.participants.find(p=>p.id===id);if(!person||person.removed){showResult(person,"受付できません","error");return false;}if(checked(person,s.id)){const c=person.checkins[s.id];showResult(person,"受付済み（重複）","warn",s.name,c.lastAt||c.at);return false;}if(!person.planned[s.id]&&!allowPlan){showResult(person,"この区分は参加対象外です","warn",s.name);const action=document.createElement("button");action.type="button";action.className="btn soft";action.style.marginTop="12px";action.textContent="この区分を参加対象に変更して受付";action.onclick=()=>{if(!confirm(person.name+" さんを「"+s.name+"」の参加対象に変更して受付しますか？"))return;checkIn(id,method,true);};$("checkinResult").append(action);return false;}
 const ok=mutate(next=>{const p=next.participants.find(p=>p.id===id),at=iso();if(allowPlan)p.planned[s.id]=true;const c=p.checkins[s.id];if(c){c.active=true;c.lastAt=at;c.method=method;(c.history||(c.history=[])).push({type:"recheck",at,method});}else p.checkins[s.id]={at,lastAt:at,method,initialMethod:method,active:true,history:[]};result={person:p,at};});if(!ok){showResult(person,"保存に失敗しました","error");return false;}showResult(result.person,"受付完了","success",s.name,result.at);return true;}
-function showResult(person,txt,level="warn",session="",at=""){const d=$("checkinResult");d.className="result "+level;d.replaceChildren();const head=document.createElement("div");head.className="outcome";head.textContent=txt;d.append(head);if(person){const name=document.createElement("div");name.className="person-name";name.textContent=person.name;d.append(name);const meta=document.createElement("div");meta.className="person-meta";meta.textContent=[person.department,session,at?localDate(at):""].filter(Boolean).join("　/　");d.append(meta);}}
+function showResult(person,txt,level="warn",session="",at=""){const d=$("checkinResult");d.className="result "+level;d.replaceChildren();const head=document.createElement("div");head.className="outcome";head.textContent=txt;d.append(head);if(person){const name=document.createElement("div");name.className="person-name";name.textContent=person.name;d.append(name);const meta=document.createElement("div");meta.className="person-meta";meta.textContent=[person.department,person.group,session,at?localDate(at):""].filter(Boolean).join("　/　");d.append(meta);}}
 function showReceptionTab(tab){
  receptionTab=tab==="checked"?"checked":"pending";
  $("pendingRows").hidden=receptionTab!=="pending";
@@ -235,7 +235,7 @@ function renderReception(){
  for(const p of pending){
   const row=document.createElement("div");row.className="pending-person";
   const text=document.createElement("div"),title=document.createElement("b"),sub=document.createElement("small");
-  title.textContent=p.name;sub.textContent=p.department||"所属未登録";text.append(title,sub);
+  title.textContent=p.name;sub.textContent=[p.department,p.group].filter(Boolean).join(" ／ ")||"所属未登録";text.append(title,sub);
   const id=document.createElement("span");id.className="code";id.textContent="#"+p.id;
   row.append(text,id);waiting.append(row);
  }
@@ -243,7 +243,7 @@ function renderReception(){
  for(const p of attended){
   const row=document.createElement("div");row.className="pending-person";
   const text=document.createElement("div"),title=document.createElement("b"),sub=document.createElement("small"),detail=document.createElement("div");
-  title.textContent=p.name;sub.textContent=p.department||"所属未登録";
+  title.textContent=p.name;sub.textContent=[p.department,p.group].filter(Boolean).join(" ／ ")||"所属未登録";
   detail.className="attendance-detail";
   const method=document.createElement("span");method.className="attendance-method"+(p.source==="walkin"?" walkin":"");
   const record=p.checkins[s.id];
@@ -345,12 +345,12 @@ function printReceptionRoster(sessionID){
   page.append(heading);
   const table=document.createElement("table");table.className="roster-print-table";
   const colgroup=document.createElement("colgroup");
-  for(const width of ["12mm","18mm","23mm","40mm","33mm","26mm","38mm"]){
+  for(const width of ["11mm","16mm","20mm","35mm","28mm","25mm","22mm","33mm"]){
    const col=document.createElement("col");col.style.width=width;colgroup.append(col);
   }
   table.append(colgroup);
   const thead=document.createElement("thead"),trhead=document.createElement("tr");
-  for(const label of ["✓","参加者ID","職員番号","氏名","所属","印刷時受付","手書き時刻・備考"]){
+  for(const label of ["✓","参加者ID","職員番号","氏名","所属","グループ","印刷時受付","手書き時刻・備考"]){
    const th=document.createElement("th");th.textContent=label;trhead.append(th);
   }
   thead.append(trhead);table.append(thead);
@@ -360,12 +360,12 @@ function printReceptionRoster(sessionID){
    const tdCheck=document.createElement("td");const box=document.createElement("span");box.className="roster-checkbox";box.setAttribute("aria-label","手書きチェック欄");tdCheck.append(box);tr.append(tdCheck);
    const p=item.person;
    const record=p?.checkins?.[session.id],isDone=p&&checked(p,session.id);
-   const values=p?[p.id,p.staffId||"—",p.name,p.department||"—",isDone?"済 "+localDate(record.lastAt||record.at).split(" ").pop().slice(0,5):"未",""] :["","","","","",""];
+   const values=p?[p.id,p.staffId||"—",p.name,p.department||"—",p.group||"—",isDone?"済 "+localDate(record.lastAt||record.at).split(" ").pop().slice(0,5):"未",""] :["","","","","","",""];
    for(let ci=0;ci<values.length;ci++){
     const td=document.createElement("td");
     td.textContent=values[ci];
     if(ci===2)td.className="roster-name-cell";
-    if(ci===4)td.className=isDone?"roster-existing-done":"roster-existing-pending";
+    if(ci===5)td.className=isDone?"roster-existing-done":"roster-existing-pending";
     tr.append(td);
    }
    tbody.append(tr);
