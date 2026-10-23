@@ -45,7 +45,7 @@ dt{font-weight:700;margin-top:12px}dd{margin:2px 0 8px;color:#587184;font-size:.
 </section>
 <section id="prepare">
 <h2>⚙ 事前準備モード</h2>
-<p class="mini">QR発行では、個別PNG、全参加者のPNG＋宛先CSVをまとめたZIP、A4・10面付け印刷を利用できます。</p>
+<p class="mini">QR発行では、職員番号のある参加者の個別PNG・一括ZIP・A4 10面付け印刷を利用できます。紙のQRは読み取りやすい余白と大きさで印刷します。</p>
 <div class="panel">
 <div class="steps">
 <div class="step"><span class="n">STEP 01</span><strong>イベント設定</strong><small>名前・日付・分類・受付区分</small></div>
@@ -54,11 +54,11 @@ dt{font-weight:700;margin-top:12px}dd{margin:2px 0 8px;color:#587184;font-size:.
 <div class="step"><span class="n">STEP 04</span><strong>当日受付へ</strong><small>QRを読み取り、出欠を確認</small></div>
 </div>
 </div>
-<div class="panel"><h3>CSV取込・名簿更新</h3><p class="mini">CSVを選択して「取り込み内容を確認」を押し、氏名・職員番号・所属・区分の列対応を選びます。プレビューで登録件数を確認してから確定します。既存者を更新してもQRや受付履歴は変わりません。</p></div>
-<div class="panel"><h3>任意項目</h3><p class="mini">イベント設定で2項目まで設定できます。入力形式は自由入力・有無・選択肢から選べます。選択肢は「|」で区切って登録します。</p></div>
+<div class="panel"><h3>CSV取込・名簿更新</h3><p class="mini">イベント別のCSVテンプレートをダウンロードできます。CSVファイルの取込、またはExcelの表をタブ区切りで貼り付ける方法を選び、氏名・職員番号・所属・グループ・区分の列対応を確認します。プレビューで登録件数を確認してから確定します。既存者を更新しても参加者IDと受付履歴は維持されます。QRの中身は現在の職員番号を使います。</p></div>
+<div class="panel"><h3>任意項目</h3><p class="mini">イベント設定で最大2項目を自由入力・有無・選択肢から設定できます。入力内容のプレビューと「保存済み／未保存」を確認して保存してください。グループは任意項目とは別の標準項目です。</p></div>
 <div class="panel">
 <h3>受付区分について</h3>
-<p class="mini">初期状態は「全体」1区分。必要に応じて「午前」「午後」「第1部」などを追加できます。1人のQRコードは同じイベント内の各区分で共通です。参加予定は区分ごとに管理します。</p>
+<p class="mini">初期状態は「全体」1区分。必要に応じて「午前」「午後」「第1部」などを追加できます。QRの中身は職員番号のみです。同じQRを他のイベントでも使用できます。職員番号がない方は手動受付を利用します。参加予定は区分ごとに管理します。</p>
 </div>
 </section>
 <section id="reception">
@@ -100,7 +100,7 @@ dt{font-weight:700;margin-top:12px}dd{margin:2px 0 8px;color:#587184;font-size:.
 </section>
 <section id="faq">
 <h2>よくある操作</h2>
-<details><summary>同じ人が午前・午後の両方に参加します</summary><p>同じQRを使い、午前と午後で受付区分を切り替えて読み取ります。記録と時刻は区分ごとに残します。</p></details>
+<details><summary>同じ人が午前・午後の両方に参加します</summary><p>同じ職員番号QRを使い、午前と午後で受付区分を切り替えて読み取ります。記録と時刻は区分ごとに残します。</p></details>
 <details><summary>QRコードを持っていない参加者が来ました</summary><p>当日受付モードの「名前から受付」で検索し、対象の区分で手動受付します。未登録なら「飛び入り登録」で追加します。</p></details>
 <details><summary>事前登録者のうち誰がまだ来ていないか知りたいです</summary><p>当日受付モードの「未受付者」欄を確認してください。選択中の区分の対象者だけが表示され、受付済みになると自動的に消えます。</p></details>
 <details><summary>過去の参加記録を年間で集計したいです</summary><p>総合管理の「横断検索」で年度・イベント分類などを指定し、参加者一覧CSVを出力します。同じ職員の名寄せには職員番号を利用します。</p></details>
