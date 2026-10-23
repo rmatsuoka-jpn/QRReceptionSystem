@@ -237,12 +237,144 @@ async function restore(){const f=$("restoreFile").files[0];if(!f)return announce
 const mode=$("restoreMode").value,existing=data.events.filter(e=>db.has(e.id)).length,records=data.events.filter(e=>!db.has(e.id)||mode==="replace");if(!records.length)return announce("追加するイベントがありません（既存は保持）。","warn");if(!confirm(data.events.length+"件のバックアップを読み込みます。\n新規・更新："+records.length+"件／既存との重複："+existing+"件\n方式："+(mode==="skip"?"既存を保持":"重複するイベントを上書き")+"\n実行しますか？"))return;if(mode==="replace"&&existing&&!confirm("既存イベントをバックアップ側のデータで上書きします。現在の受付記録が失われる可能性があります。本当に実行しますか？"))return;
 const previous=records.map(e=>[e.id,localStorage.getItem(key(e.id))]),newIds=[...order,...records.map(e=>e.id).filter(id=>!order.includes(id))];try{for(const e of records)localStorage.setItem(key(e.id),JSON.stringify(e));localStorage.setItem(IX,JSON.stringify({version:SCHEMA,ids:newIds}));for(const e of records)db.set(e.id,e);order=newIds;render();announce(records.length+"件を復元しました。","success");}catch(err){for(const [id,old] of previous){try{if(old===null)localStorage.removeItem(key(id));else localStorage.setItem(key(id),old);}catch{}}announce("復元に失敗しました。可能な限り元のデータに戻しました："+err.message,"error");}}
 function csvParse(text){let i=0,inQuotes=false,field="",row=[],out=[];text=text.replace(/^\uFEFF/,"");while(i<text.length){const ch=text[i++];if(inQuotes){if(ch==='"'){if(text[i]==='"'){field+='"';i++;}else inQuotes=false;}else field+=ch;}else if(ch==='"'){inQuotes=true;}else if(ch===","){row.push(field);field="";}else if(ch==="\r"||ch==="\n"){if(ch==="\r"&&text[i]==="\n")i++;row.push(field);if(row.some(x=>x.trim()))out.push(row);field="";row=[];}else field+=ch;}if(inQuotes)throw Error("CSVの引用符が閉じられていません");if(field||row.length){row.push(field);if(row.some(x=>x.trim()))out.push(row);}return out;}
-async function importParticipants(){const f=$("participantFile").files[0];if(!f)return announce("CSVを選択してください。","warn");let rows;try{const bytes=await f.arrayBuffer();let txt=new TextDecoder("utf-8").decode(bytes);if(txt.includes("�")){try{const sj=new TextDecoder("shift_jis").decode(bytes);if((sj.match(/�/g)||[]).length<(txt.match(/�/g)||[]).length)txt=sj;}catch{}}rows=csvParse(txt);if(rows.length<2)throw Error("データ行がありません");}catch(err){return announce("CSVを読み込めません："+err.message,"error");}
-const e=current(),heads=rows[0].map(x=>x.trim()),idx=(names)=>heads.findIndex(h=>names.some(n=>n===h)),nameIdx=idx(["氏名","name","名前"]);if(nameIdx<0)return announce("CSVの列名に「氏名」または「name」が必要です。","error");
-const staff=idx(["職員番号","staff_id"]),dep=idx(["所属","department"]),email=idx(["メール","メールアドレス","email"]),custom=e.customLabels.map((v,i)=>idx([v,"custom_"+(i+1)].filter(Boolean)));
-const sIndexes=e.sessions.map(s=>idx([s.name,"参加_"+s.name,s.name+"_参加"]));const out=[],bad=[];for(let n=1;n<rows.length;n++){const row=rows[n],name=(row[nameIdx]||"").trim();if(!name){bad.push(n+1);continue;}const planned={};e.sessions.forEach((s,i)=>{const value=sIndexes[i]<0?(e.sessions.length===1):/^(○|〇|1|true|TRUE|はい|有|参加|対象|yes|YES)$/i.test((row[sIndexes[i]]||"").trim());planned[s.id]=value;});out.push({name,staffId:staff<0?"":(row[staff]||"").trim(),department:dep<0?"":(row[dep]||"").trim(),email:email<0?"":(row[email]||"").trim(),customValues:custom.map(i=>i<0?"":(row[i]||"").trim()),planned});}
-if(!out.length)return announce("登録できるデータがありません。氏名列を確認してください。","warn");if(!confirm(out.length+"名を登録します。\n空白の氏名行："+bad.length+"件\n同じ職員番号の参加者はスキップします。よろしいですか？"))return;
-let added=0,skipped=0;const ok=mutate(next=>{for(const r of out){if(r.staffId&&next.participants.some(p=>!p.removed&&p.staffId===r.staffId)){skipped++;continue;}next.participants.push({id:String(next.nextParticipant++).padStart(4,"0"),...r,token:token(next.id),checkins:{},source:"pre",removed:false});added++;}});if(ok){$("participantFile").value="";announce("CSV取込：登録"+added+"名、重複スキップ"+skipped+"名、氏名なし"+bad.length+"行","success");}}
+
+const CSV_FIELDS=[
+ ["name","氏名（必須）",["氏名","name","名前"]],
+ ["staffId","職員番号",["職員番号","staff_id"]],
+ ["participantId","参加者ID（更新用）",["participant_id","参加者ID"]],
+ ["eventId","イベントID（照合用）",["event_id","イベントID"]],
+ ["department","所属",["所属","department"]],
+ ["email","メール",["メール","メールアドレス","email"]],
+ ["custom0","任意項目1",["custom_1"]],
+ ["custom1","任意項目2",["custom_2"]]
+];
+let csvPending=null;
+function csvMapping(){
+ const obj={};
+ for(const el of document.querySelectorAll("[data-csv-field]"))obj[el.dataset.csvField]=Number(el.value);
+ return obj;
+}
+function mappedValue(row,m,key){const idx=m[key];return Number.isInteger(idx)&&idx>=0?String(row[idx]??"").trim():null;}
+function prepareCsv(rows,m,mode,e){
+ if(!Number.isInteger(m.name)||m.name<0)throw Error("氏名の列を指定してください");
+ const fields=Object.entries(m).filter(([k,v])=>v>=0);
+ const selected=new Set();for(const [field,index]of fields){if(selected.has(index))throw Error("同じCSV列を複数項目に割り当てられません（"+field+"）");selected.add(index);}
+ const plans=[],seen=new Set();let invalid=0,skip=0,adds=0,updates=0,blank=0,nonTarget=0;
+ for(let ri=1;ri<rows.length;ri++){
+  const row=rows[ri],name=mappedValue(row,m,"name");
+  if(!name){blank++;continue;}
+  if(name.length>200)throw Error((ri+1)+"行目：氏名が長すぎます");
+  const csvEvent=mappedValue(row,m,"eventId");
+  if(csvEvent&&csvEvent!==e.id)throw Error((ri+1)+"行目：イベントIDが現在のイベントと異なります");
+  const staff=mappedValue(row,m,"staffId"),pid=mappedValue(row,m,"participantId");
+  const byPid=pid?e.participants.find(p=>p.id===pid):null;
+  const byStaff=staff?e.participants.find(p=>p.staffId===staff):null;
+  if(pid&&!byPid)throw Error((ri+1)+"行目：参加者ID "+pid+" はこのイベントにありません");
+  if(byPid&&byStaff&&byPid.id!==byStaff.id)throw Error((ri+1)+"行目：参加者IDと職員番号の対応が不一致です");
+  if(byPid&&staff&&byPid.staffId&&byPid.staffId!==staff)throw Error((ri+1)+"行目：登録済みの職員番号と一致しません");
+  const exists=byPid||byStaff;
+  if(exists?.removed)throw Error((ri+1)+"行目：除外済みの参加者は一括更新できません");
+  const unique=exists?"id:"+exists.id:staff?"staff:"+staff:null;
+  if(unique&&seen.has(unique)){skip++;continue;}
+  if(unique)seen.add(unique);
+  const values={name,staffId:staff,department:mappedValue(row,m,"department"),email:mappedValue(row,m,"email"),custom0:mappedValue(row,m,"custom0"),custom1:mappedValue(row,m,"custom1")};
+  const planned={};
+  for(const s of e.sessions){const v=mappedValue(row,m,"session:"+s.id);if(v!==null){try{planned[s.id]=QRSupport.participation(v);}catch(err){throw Error((ri+1)+"行目「"+s.name+"」："+err.message);} }}
+  if(exists){
+   if(mode==="skip"){skip++;continue;}
+   for(const s of e.sessions)if(planned[s.id]===false&&checked(exists,s.id))throw Error((ri+1)+"行目：受付済みの「"+s.name+"」を参加対象外にはできません");
+   plans.push({kind:"update",id:exists.id,values,planned});updates++;
+  }else{
+   const plannedNew=Object.fromEntries(e.sessions.map(s=>[s.id,Object.hasOwn(planned,s.id)?planned[s.id]:(e.sessions.length===1&&!e.sessions.some(x=>m["session:"+x.id]>=0))]));
+   if(!Object.values(plannedNew).some(Boolean))nonTarget++;
+   plans.push({kind:"add",values,planned:plannedNew});adds++;
+  }
+ }
+ return{plans,adds,updates,skip,blank,nonTarget};
+}
+function previewCsvImport(){
+ if(!csvPending)return;
+ const e=current(),mapping=csvMapping(),mode=$("csvConflictMode").value,root=$("csvPreview");
+ try{
+  const plan=prepareCsv(csvPending.rows,mapping,mode,e);
+  root.innerHTML='<div class="summary">'+summaryMetric("新規",plan.adds)+summaryMetric("更新",plan.updates)+summaryMetric("スキップ",plan.skip)+'</div>'+
+  '<div class="hint">氏名なし：'+plan.blank+'行'+(plan.nonTarget?'　／　参加区分なし：'+plan.nonTarget+'名（対象外で登録）':"")+'</div>';
+  $("csvCommit").disabled=plan.plans.length===0;
+  $("csvCommit").textContent=plan.adds+"名追加・"+plan.updates+"名更新する";
+  return plan;
+ }catch(err){
+  root.replaceChildren();const notice=document.createElement("div");notice.className="notice error";notice.textContent=err.message;root.append(notice);
+  $("csvCommit").disabled=true;return null;
+ }
+}
+function commitCsvImport(){
+ if(!csvPending)return;
+ const plan=previewCsvImport();if(!plan)return;
+ if(!confirm("名簿を更新します。新規 "+plan.adds+"名、更新 "+plan.updates+"名、スキップ "+plan.skip+"名。実行しますか？"))return;
+ const ok=mutate(e=>{
+  for(const item of plan.plans){
+   if(item.kind==="update"){
+    const p=e.participants.find(p=>p.id===item.id);
+    if(!p||p.removed)throw Error("対象者が見つかりません");
+    const v=item.values;
+    p.name=v.name;
+    if(v.staffId!==null&&v.staffId)p.staffId=v.staffId;
+    if(v.department!==null)p.department=v.department;
+    if(v.email!==null)p.email=v.email;
+    if(!Array.isArray(p.customValues))p.customValues=["",""];
+    if(v.custom0!==null)p.customValues[0]=v.custom0;
+    if(v.custom1!==null)p.customValues[1]=v.custom1;
+    Object.assign(p.planned,item.planned);
+   }else{
+    const v=item.values;
+    e.participants.push({id:String(e.nextParticipant++).padStart(4,"0"),name:v.name,staffId:v.staffId||"",department:v.department||"",email:v.email||"",customValues:[v.custom0||"",v.custom1||""],token:token(e.id),planned:item.planned,checkins:{},source:"pre",removed:false});
+   }
+  }
+ });
+ if(ok){closeDialog();csvPending=null;$("participantFile").value="";announce("CSV登録完了：新規 "+plan.adds+"名、更新 "+plan.updates+"名、スキップ "+plan.skip+"名","success");}
+}
+async function importParticipants(){
+ const file=$("participantFile").files?.[0];if(!file)return announce("CSVファイルを選択してください。","warn");
+ if(file.size>5*1024*1024)return announce("CSVが大きすぎます。5MB以下に分けてください。","warn");
+ let rows;try{
+  if(!globalThis.QRSupport)throw Error("CSV処理ライブラリがありません");
+  const raw=await file.arrayBuffer();
+  rows=QRSupport.parseCSV(QRSupport.decodeCSV(raw));
+  if(rows.length<2)throw Error("データ行がありません");
+  if(rows.length>10001)throw Error("10,000行以下に分割してください");
+  if(rows[0].length>100)throw Error("列数が多すぎます");
+ }catch(err){return announce("CSVを読み込めません："+err.message,"error");}
+ csvPending={rows,eventId:activeId};
+ const e=current(),headers=rows[0].map(x=>String(x).trim());
+ const fields=CSV_FIELDS.map(([id,label,aliases])=>[id,id==="custom0"?(e.customLabels[0]||"任意項目1"):id==="custom1"?(e.customLabels[1]||"任意項目2"):label,id==="custom0"?[e.customLabels[0],"custom_1"]:id==="custom1"?[e.customLabels[1],"custom_2"]:aliases]);
+ for(const s of e.sessions)fields.push(["session:"+s.id,"参加予定："+s.name,[s.name,"参加_"+s.name,s.name+"_参加"]]);
+ const root=document.createElement("div");
+ const labels=document.createElement("div");labels.className="fields two";
+ for(const [id,label,aliases]of fields){
+  const wrap=document.createElement("label");wrap.className="field";wrap.textContent=label;
+  const select=document.createElement("select");select.dataset.csvField=id;
+  select.add(new Option("割り当てない","-1"));
+  headers.forEach((h,i)=>select.add(new Option((i+1)+": "+h,String(i))));
+  select.value=String(QRSupport.detectColumn(headers,aliases.filter(Boolean)));
+  select.addEventListener("change",previewCsvImport);
+  wrap.append(select);labels.append(wrap);
+ }
+ const title=document.createElement("h3");title.textContent="CSV列の対応（"+(rows.length-1)+"行）";root.append(title,labels);
+ const modeLabel=document.createElement("label");modeLabel.className="field";modeLabel.style.marginTop="18px";modeLabel.textContent="同じ職員番号・参加者IDがある場合";
+ const mode=document.createElement("select");mode.id="csvConflictMode";mode.add(new Option("既存をスキップ","skip"));mode.add(new Option("既存の名簿情報を更新（QR・受付記録は維持）","update"));mode.value="skip";mode.onchange=previewCsvImport;modeLabel.append(mode);root.append(modeLabel);
+ const sub=document.createElement("h3");sub.style.marginTop="18px";sub.textContent="取込プレビュー";root.append(sub);
+ const sample=document.createElement("div");sample.className="tablewrap";
+ const table=document.createElement("table");const thead=document.createElement("thead"),tr=document.createElement("tr");
+ headers.slice(0,12).forEach(x=>{const th=document.createElement("th");th.textContent=x;tr.append(th);});thead.append(tr);table.append(thead);
+ const tbody=document.createElement("tbody");
+ rows.slice(1,6).forEach(row=>{const tr=document.createElement("tr");row.slice(0,12).forEach(x=>{const td=document.createElement("td");td.textContent=x;tr.append(td);});tbody.append(tr);});table.append(tbody);sample.append(table);root.append(sample);
+ const preview=document.createElement("div");preview.id="csvPreview";preview.style.marginTop="16px";root.append(preview);
+ const footer=document.createElement("div");footer.className="form-actions";
+ const commit=document.createElement("button");commit.id="csvCommit";commit.className="btn main";commit.type="button";commit.textContent="登録する";commit.onclick=commitCsvImport;
+ const cancel=document.createElement("button");cancel.className="btn";cancel.textContent="キャンセル";cancel.onclick=()=>{csvPending=null;closeDialog();};
+ footer.append(commit,cancel);root.append(footer);
+ openDialog("CSV取込・列の対応",root);previewCsvImport();
+}
 function openDialog(title,body){dialogReturnFocus=document.activeElement;$("dialogTitle").textContent=title;$("dialogBody").replaceChildren(body);$("dialogBackdrop").hidden=false;$("closeDialog").focus();}
 function closeDialog(){$("dialogBackdrop").hidden=true;$("dialogBody").replaceChildren();dialogReturnFocus?.focus?.();}
 function render(){const home=view==="home";$("homeView").hidden=!home;$("eventView").hidden=home;if(home)renderHome();else renderEvent();}
