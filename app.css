@@ -32,7 +32,7 @@
 .history-event{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:5px 0;font-size:.82rem;color:#526c7f}
 .history-event span:last-child{white-space:nowrap;font-variant-numeric:tabular-nums;color:#2b6170}
 #exportQRZip:disabled{opacity:.7}
-@media(max-width:850px){.layout,.reception-grid{grid-template-columns:1fr}.sidebar{display:flex;position:static;overflow:auto}.sidebar button{white-space:nowrap}.pending-list{max-height:320px}}@media(max-width:590px){header .bar{padding:15px;align-items:flex-start}.head-actions{justify-content:flex-end}.wrap{padding:0 13px;margin-top:16px}.fields,.fields.two,.summary,.grid2{grid-template-columns:1fr}.event-card{grid-template-columns:1fr}.event-controls{justify-content:flex-start}.tabs{flex-wrap:wrap}.tabs button{min-width:100px}.panel{padding:15px}}@media print{header,.wrap>section:not(#eventView),footer,.sidebar,.tools,.btn,.topback,.tabs,#homeView,#receptionView,.notice{display:none!important}.wrap{margin:0;padding:0}.layout{display:block}#eventView,#prepView,#qrPanel{display:block!important}#qrPanel{padding:0;border:0}#qrPanel>:not(#printSheets){display:none!important}.print-sheet{display:block!important}.print-page{display:grid;grid-template-columns:repeat(2,91mm);grid-template-rows:repeat(5,55mm);gap:0;break-after:page} .print-page:last-child{break-after:auto}.print-card{width:91mm;height:55mm;border:1px dashed #9aa;display:flex;align-items:center;gap:4mm;padding:4mm;break-inside:avoid;font-size:10pt}.print-card img,.print-card canvas{width:36mm;height:36mm}.print-name{font-size:12pt;font-weight:bold}.print-card span{overflow-wrap:anywhere}@page{size:A4 portrait;margin:10mm}}
+@media(max-width:850px){.layout,.reception-grid{grid-template-columns:1fr}.sidebar{display:flex;position:static;overflow:auto}.sidebar button{white-space:nowrap}.pending-list{max-height:320px}}@media(max-width:590px){header .bar{padding:15px;align-items:flex-start}.head-actions{justify-content:flex-end}.wrap{padding:0 13px;margin-top:16px}.fields,.fields.two,.summary,.grid2{grid-template-columns:1fr}.event-card{grid-template-columns:1fr}.event-controls{justify-content:flex-start}.tabs{flex-wrap:wrap}.tabs button{min-width:100px}.panel{padding:15px}}@media print{header,.wrap>section:not(#eventView),footer,.sidebar,.tools,.btn,.topback,.tabs,#homeView,#receptionView,.notice{display:none!important}.wrap{margin:0;padding:0}.layout{display:block}#eventView,#prepView,#qrPanel{display:block!important}#qrPanel{padding:0;border:0}#qrPanel>:not(#printSheets){display:none!important}.print-sheet{display:block!important}.print-page{display:grid;grid-template-columns:repeat(2,91mm);grid-template-rows:repeat(5,55mm);gap:0;break-after:page} .print-page:last-child{break-after:auto}.print-card{width:91mm;height:55mm;border:1px dashed #9aa;display:flex;align-items:center;gap:4mm;padding:4mm;break-inside:avoid;font-size:10pt}.print-card img,.print-card canvas{width:36mm;height:36mm}.print-name{font-size:12pt;font-weight:bold}.print-card span{overflow-wrap:anywhere}@page{size:A4 portrait;margin:8mm 9mm}}
 
 /* Paper fallback: separate print-only attendance roster. */
 .roster-print-controls{margin-top:18px;background:#f5f9fa;border-color:#cbdde6}
@@ -63,4 +63,31 @@
  body[data-print-mode="roster"] .roster-existing-pending{color:#444}
  body[data-print-mode="roster"] .roster-extra-row td{background:#f5f6f6!important}
  body[data-print-mode="roster"] .roster-print-footer{font-size:8pt;line-height:1.4;color:#303030;margin-top:3mm;border-top:.2mm solid #aaa;padding-top:2mm}
+}
+
+
+/* New paper QR: quiet zone, readable name/number/group and exact 10-up pages */
+.import-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px}
+#participantPaste{width:100%;font-size:.88rem;white-space:pre;resize:vertical;tab-size:4}
+.config-preview{margin-top:20px;background:#f4f9fa}
+.config-preview h3{margin:0}
+#customSaveStatus.unsaved{background:#fff0da;color:#97601b}
+.custom-preview-field{border:1px solid #c8d9e1;border-radius:8px;padding:12px;background:#fff}
+.custom-preview-field .fake-input{margin-top:8px;padding:10px;border-radius:7px;border:1px solid #bfd2db;background:#f7fafb;color:#486d7e}
+#qrCanvas{width:min(100%,400px);height:auto;min-height:250px;padding:15px;background:white}
+#qrCanvas img,#qrCanvas canvas{display:block;max-width:100%;height:auto;margin:auto}
+@media print{
+ body[data-print-mode="qr"] #eventView > :not(#prepView){display:none!important}
+ body[data-print-mode="qr"] #prepView > div:not(.sidebar) > :not(#qrPanel){display:none!important}
+ body[data-print-mode="qr"] #qrPanel{padding:0!important;margin:0!important;border:0!important;box-shadow:none!important}
+ body[data-print-mode="qr"] #printSheets{margin:0!important;padding:0!important;display:block!important}
+ body[data-print-mode="qr"] .print-page{width:182mm;height:275mm;display:grid!important;grid-template-columns:repeat(2,91mm);grid-template-rows:repeat(5,55mm);break-after:page;page-break-after:always;overflow:hidden;padding:0;margin:0}
+ body[data-print-mode="qr"] .print-page:last-child{break-after:auto!important;page-break-after:auto!important}
+ body[data-print-mode="qr"] .print-card{width:91mm;height:55mm;display:flex;align-items:center;gap:3mm;padding:3mm;overflow:hidden;page-break-inside:avoid;break-inside:avoid;border:.2mm dashed #abb3b8}
+ body[data-print-mode="qr"] .print-qr-holder{box-sizing:border-box;background:#fff;width:42mm;height:42mm;padding:3mm;display:flex;justify-content:center;align-items:center;flex:none}
+ body[data-print-mode="qr"] .print-qr-holder img{width:36mm;height:36mm;max-width:none;object-fit:contain;image-rendering:pixelated}
+ body[data-print-mode="qr"] .print-meta{flex:1;min-width:0;display:flex;flex-direction:column;gap:2mm;overflow-wrap:anywhere;line-height:1.3}
+ body[data-print-mode="qr"] .print-name{font-size:12pt;font-weight:800}
+ body[data-print-mode="qr"] .print-staff{font-size:11pt;letter-spacing:.03em;font-variant-numeric:tabular-nums}
+ body[data-print-mode="qr"] .print-group{font-size:9.5pt;color:#333}
 }
