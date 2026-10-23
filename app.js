@@ -192,13 +192,13 @@ async function exportQRZip(){
    const png=qrDataURL(qr);
    if(!png)throw Error(p.name+" のQR画像を生成できません");
    const filename="QR_"+fileSafe(e.id)+"_"+p.id+".png";
-   files.push({name:filename,content:QRSupport.pngBytes(png)});
+   files.push({name:filename,content:globalThis.QRSupport.pngBytes(png)});
    csv.push([p.id,p.name,p.department||"",p.email||"",filename]);
    if((i+1)%20===0){button.textContent="生成中 "+(i+1)+"/"+people.length;await new Promise(resolve=>setTimeout(resolve,0));}
   }
   files.push({name:"recipient_mapping.csv",content:"\uFEFF"+csv.map(row=>row.map(csvCell).join(",")).join("\r\n")+"\r\n"});
   files.push({name:"README.txt",content:"QR受付システム　QR配布用\nイベント: "+e.name+"\n開催日: "+e.date+"\n発行数: "+people.length+"\n\n画像ファイル名と宛先の対応はrecipient_mapping.csvを確認してください。\nQR画像には氏名等を直接埋め込まず、イベント専用の識別トークンを記録しています。\n"});
-  const archive=QRSupport.zip(files);
+  const archive=globalThis.QRSupport.zip(files);
   downloadBlob(archive,"QR_reception_"+fileSafe(e.id)+"_"+stamp()+".zip");
   announce(people.length+"名分のQR画像と宛先CSVをZIPにまとめました。ダウンロード先を確認してください。","success");
  }catch(err){announce("QRの一括発行に失敗しました："+err.message,"error");}
@@ -322,7 +322,7 @@ function prepareCsv(rows,m,mode,e){
   if(unique)seen.add(unique);
   const values={name,staffId:staff,department:mappedValue(row,m,"department"),email:mappedValue(row,m,"email"),custom0:mappedValue(row,m,"custom0"),custom1:mappedValue(row,m,"custom1")};
   const planned={};
-  for(const s of e.sessions){const v=mappedValue(row,m,"session:"+s.id);if(v!==null){try{planned[s.id]=QRSupport.participation(v);}catch(err){throw Error((ri+1)+"行目「"+s.name+"」："+err.message);} }}
+  for(const s of e.sessions){const v=mappedValue(row,m,"session:"+s.id);if(v!==null){try{planned[s.id]=globalThis.QRSupport.participation(v);}catch(err){throw Error((ri+1)+"行目「"+s.name+"」："+err.message);} }}
   if(exists){
    if(mode==="skip"){skip++;continue;}
    for(const s of e.sessions)if(planned[s.id]===false&&checked(exists,s.id))throw Error((ri+1)+"行目：受付済みの「"+s.name+"」を参加対象外にはできません");
@@ -382,7 +382,7 @@ async function importParticipants(){
  let rows;try{
   if(!globalThis.QRSupport)throw Error("CSV処理ライブラリがありません");
   const raw=await file.arrayBuffer();
-  rows=QRSupport.parseCSV(QRSupport.decodeCSV(raw));
+  rows=globalThis.QRSupport.parseCSV(globalThis.QRSupport.decodeCSV(raw));
   if(rows.length<2)throw Error("データ行がありません");
   if(rows.length>10001)throw Error("10,000行以下に分割してください");
   if(rows[0].length>100)throw Error("列数が多すぎます");
@@ -398,7 +398,7 @@ async function importParticipants(){
   const select=document.createElement("select");select.dataset.csvField=id;
   select.add(new Option("割り当てない","-1"));
   headers.forEach((h,i)=>select.add(new Option((i+1)+": "+h,String(i))));
-  select.value=String(QRSupport.detectColumn(headers,aliases.filter(Boolean)));
+  select.value=String(globalThis.QRSupport.detectColumn(headers,aliases.filter(Boolean)));
   select.addEventListener("change",previewCsvImport);
   wrap.append(select);labels.append(wrap);
  }
