@@ -24,6 +24,9 @@
    <div class="panel"><h3>⇩ 全イベントJSONバックアップ</h3><div id="backupCount" class="hint"></div><p class="hint">イベント設定・参加者名簿・QR識別子・受付履歴を保存</p><button class="btn main" data-backup>JSONを保存</button></div>
    <div class="panel"><h3>↶ JSONから復元</h3><label class="field">バックアップファイルを選択<input type="file" accept=".json,application/json" id="restoreFile"></label><label class="field">重複イベントの扱い<select id="restoreMode"><option value="skip">既存のイベントを保持する</option><option value="replace">選択ファイルで上書きする</option></select></label><button class="btn" id="restoreBtn">ファイルを確認して復元</button></div>
   </div><div class="alertline">JSONには個人情報とQR識別子が含まれます。庁内の保管ルールに従ってください。</div>
+  <div class="panel danger-zone">
+   <div class="row"><div><h3>データの一括削除</h3><p class="hint">このブラウザに保存された全イベント・参加者・受付履歴を削除します。</p></div><button id="deleteAllData" class="btn danger">すべてのデータを削除</button></div>
+  </div>
  </section>
 </section>
 
@@ -61,7 +64,15 @@
   <div class="reception-grid">
   <div><div class="panel"><h3>QR受付</h3><div class="camera"><div id="reader" class="reader"></div><div id="cameraHint" class="hint">カメラを選択してQRを読み取ってください。</div></div><div id="checkinResult" class="result" role="status" aria-live="polite">スキャン待機中</div></div>
   <div class="panel"><h3>当日の参加者変更</h3><div class="grid2"><button id="walkinBtn" class="btn main">＋ 飛び入り登録</button><button id="manualBtn" class="btn">⌕ 名前から受付</button></div></div></div>
-  <div class="panel"><div class="pending-header"><div><h3 style="margin:0">未受付者 <span id="pendingSessionName" class="tag"></span></h3><small class="hint">事前登録者</small></div><strong id="pendingCount">0</strong></div><div class="pending-list" id="pendingRows"></div></div>
+  <div class="panel attendance-panel">
+    <div class="pending-header"><h3 style="margin:0">受付状況 <span id="pendingSessionName" class="tag"></span></h3></div>
+    <div class="attendance-tabs" role="tablist" aria-label="参加者の受付状況">
+      <button id="tabPending" type="button" role="tab" aria-controls="pendingRows" aria-selected="true" class="active" data-reception-tab="pending">未受付 <span id="pendingCount" class="attendance-count">0</span></button>
+      <button id="tabChecked" type="button" role="tab" aria-controls="checkedRows" aria-selected="false" data-reception-tab="checked">受付済み <span id="checkedCount" class="attendance-count">0</span></button>
+    </div>
+    <div id="pendingRows" class="pending-list" role="tabpanel" aria-labelledby="tabPending"></div>
+    <div id="checkedRows" class="pending-list" role="tabpanel" aria-labelledby="tabChecked" hidden></div>
+  </div>
   </div>
  </section>
 </section>
