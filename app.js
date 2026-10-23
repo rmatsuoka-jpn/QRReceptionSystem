@@ -54,6 +54,22 @@ function normalizeCustom(e,i,value){
  return v;
 }
 function toggleCustomOptions(i){$("customOptionsWrap"+i).hidden=$("customType"+i).value!=="select";}
+function renderCustomPreview(){
+ const e=current();if(!e)return;
+ const root=$("customPreview");root.replaceChildren();
+ const labels=[1,2].map(i=>$("customLabel"+i).value.trim());
+ const types=[1,2].map(i=>$("customType"+i).value);
+ const opts=[1,2].map(i=>$("customOptions"+i).value.split("|").map(v=>v.trim()).filter(Boolean));
+ const saved=labels.every((v,i)=>v===(e.customLabels?.[i]||""))&&types.every((v,i)=>v===getCustomType(e,i))&&opts.every((v,i)=>JSON.stringify(v)===JSON.stringify(getCustomOptions(e,i)));
+ const status=$("customSaveStatus");status.textContent=saved?"保存済み":"未保存";status.className="tag"+(saved?"":" unsaved");
+ for(let i=0;i<2;i++){
+  const el=document.createElement("div");el.className="custom-preview-field";
+  const label=document.createElement("strong");label.textContent=labels[i]||"任意項目"+(i+1);
+  const field=document.createElement("div");field.className="fake-input";
+  field.textContent=types[i]==="bool"?"○ 有　／　○ 無":types[i]==="select"?(opts[i].join("　／　")||"選択肢を入力してください"):"自由入力";
+  el.append(label,field);root.append(el);
+ }
+}
 function renderSettings(){
  const e=current();$("editEventName").value=e.name;$("editEventDate").value=e.date||"";$("editEventCategory").value=e.category;
  for(let i=0;i<2;i++){
@@ -62,6 +78,7 @@ function renderSettings(){
   $("customOptions"+(i+1)).value=getCustomOptions(e,i).join("|");
   toggleCustomOptions(i+1);
  }
+ renderCustomPreview();
  const root=$("sessionEditor");root.replaceChildren();e.sessions.forEach((s,i)=>{const line=document.createElement("div");line.className="session-row";line.innerHTML='<span class="tag">'+(i+1)+'</span><input aria-label="受付区分名" class="search" value="'+esc(s.name)+'" data-session-name="'+esc(s.id)+'"><button class="btn danger small" data-action="remove-session" data-session="'+esc(s.id)+'">削除</button>';root.append(line);});
 }
 function saveSettings(){
@@ -657,7 +674,7 @@ for(const id of ["eventQuery","dateFrom","dateTo","sortKey","sortOrder"])$(id).a
 for(const id of ["crossPeriod","crossYear","crossCategory","crossStatus","crossQuery"])$(id).addEventListener(["crossYear","crossQuery"].includes(id)?"input":"change",renderCross);
 $("crossPeriod").onchange=()=>{$("crossYear").disabled=$("crossPeriod").value==="all";renderCross();};
 $("exportCross").onclick=()=>exportCross(false);$("exportCrossDetail").onclick=()=>exportCross(true);$("restoreBtn").onclick=restore;$("deleteAllData").onclick=openDeleteAllDialog;
-$("saveSettings").onclick=saveSettings;$("addSession").onclick=addSession;for(let i=1;i<=2;i++)$("customType"+i).onchange=()=>toggleCustomOptions(i);$("addPerson").onclick=()=>openPerson(null,false);
+$("saveSettings").onclick=saveSettings;$("addSession").onclick=addSession;for(let i=1;i<=2;i++){$("customType"+i).onchange=()=>{toggleCustomOptions(i);renderCustomPreview();};$("customLabel"+i).oninput=renderCustomPreview;$("customOptions"+i).oninput=renderCustomPreview;}$("addPerson").onclick=()=>openPerson(null,false);
 $("personQuery").oninput=renderParticipants;$("importParticipants").onclick=importParticipants;$("exportRoster").onclick=exportRoster;$("downloadTemplate").onclick=downloadTemplate;$("previewPaste").onclick=importFromPaste;for(const btn of document.querySelectorAll("[data-import-mode]"))btn.onclick=()=>setImportMode(btn.dataset.importMode);
 $("qrPerson").onchange=renderOneQR;$("showQR").onclick=renderOneQR;$("downloadQR").onclick=downloadOneQR;$("printQRs").onclick=printQR;$("exportQRZip").onclick=exportQRZip;
 $("exportResult").onclick=eventDetailCSV;$("exportAudit").onclick=exportAudit;$("printRosterPrep").onclick=()=>printReceptionRoster($("rosterSession").value);$("printRosterDay").onclick=()=>printReceptionRoster(curSession()?.id);$("checkinSession").onchange=()=>{showResult(null,"スキャン待機中","");renderReception();};
