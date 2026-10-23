@@ -57,6 +57,12 @@ th{background:#eef3f6;text-align:left;color:#4c6073;font-size:.78rem}th,td{paddi
 .checkline{display:flex;align-items:center;gap:9px;font-size:.9rem;font-weight:400}
 .checkline input{width:auto;accent-color:#117987}.hr{border-top:1px solid #dce6ed;margin:17px 0}
 .pill{font-size:.75rem;padding:3px 8px;border-radius:20px;background:#e5f3ea;color:#2c6d41;white-space:nowrap}.pill.off{background:#f1f2f4;color:#69737b}
+.home-list{display:grid;gap:12px;margin-top:14px}
+.event-card{background:white;border:1px solid #d7e2e9;border-radius:12px;padding:18px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.event-card h3{font-size:1.05rem;margin:0 0 6px}.event-card .small-note{margin:4px 0}
+.home-toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:16px 0}
+.backline{margin:0 0 14px}.backline .btn{background:#fff}
+
 @media(max-width:770px){.layout{grid-template-columns:1fr}aside{position:static;display:flex;overflow:auto;gap:5px;padding:6px}aside h2{display:none}aside button{white-space:nowrap;min-width:max-content;width:auto}.page{padding:17px}.cols,.cols.three{grid-template-columns:1fr}.day-page{max-width:none}}
 @media(max-width:500px){header{padding:15px}.switcher button{padding:12px 5px}.quick{grid-template-columns:1fr}.camera{min-height:230px}}
 </style>
@@ -68,11 +74,21 @@ th{background:#eef3f6;text-align:left;color:#4c6073;font-size:.78rem}th,td{paddi
 </header>
 <main class="shell">
 <div class="banner"><strong>画面設計の確認用です。</strong> サンプルデータのみを使用し、カメラ読取・CSV取込・QR発行・localStorage保存は行いません。ページを再読み込みすると操作結果はリセットされます。</div>
-<div class="switcher" role="navigation" aria-label="モード切替">
+<section id="home">
+<div class="row"><div><h2 style="margin:0;font-size:1.45rem">イベント一覧</h2><p class="sub" style="margin:5px 0">過去・現在のイベントを選択して、事前準備または当日受付を開きます。</p></div>
+<button type="button" class="btn primary" id="createEvent">＋ 新規イベントを作成</button></div>
+<div class="home-toolbar"><label class="field" style="max-width:360px;flex:1">イベント名で検索<input id="eventSearch" placeholder="イベント名を入力"></label>
+<div class="actions"><button type="button" class="btn outline" data-allbackup>全イベントJSONバックアップ</button><button type="button" class="btn" id="restoreDemo">JSONから復元</button></div></div>
+<div class="banner"><strong>一括JSONバックアップ：</strong>開催済み・準備中の全イベント（設定・参加者名簿・QR識別子・受付記録）をまとめて保存する予定です。ここでは操作の確認だけできます。</div>
+<div id="homeCount" class="small-note"></div>
+<div id="homeList" class="home-list"></div>
+</section>
+<div id="backline" class="backline" hidden><button type="button" class="btn" id="goHome">← イベント一覧に戻る</button></div>
+<div class="switcher" id="modeSwitch" role="navigation" aria-label="モード切替" hidden>
 <button type="button" class="active" data-mode="prep">⚙ 事前準備モード</button>
 <button type="button" data-mode="day">▣ 当日受付モード</button>
 </div>
-<div id="prep" class="layout">
+<div id="prep" class="layout" hidden>
 <aside aria-label="事前準備メニュー">
 <h2>事前準備</h2>
 <button class="selected" data-prep="event" type="button">① イベント設定</button>
@@ -130,9 +146,9 @@ th{background:#eef3f6;text-align:left;color:#4c6073;font-size:.78rem}th,td{paddi
 <p class="sub">各区分の受付状況と、バックアップ／Excel分析用出力を確認します。</p>
 <div class="cols three" id="prepStats"></div>
 <div class="panel"><h3>出力メニュー</h3><div class="actions">
-<button class="btn outline" data-message="JSONにはイベント設定・参加者・受付区分・QRトークン・受付履歴を含めます。正式版で保存／復元を実装します。">JSONバックアップ</button>
+<button class="btn outline" data-allbackup>全イベントJSONバックアップ</button>
 <button class="btn outline" data-message="CSVはイベント×参加者×受付区分で1行の形式です。未受付者・参加対象外も含めます。">Excel分析用CSV</button>
-</div><p class="small-note">正式版では保存成功・最終バックアップ日時を明示し、復元時に既存データとの重複を確認します。</p></div>
+</div><p class="small-note">一括JSONには過去も含む全イベントを保存します。正式版ではバックアップ件数・日時を表示し、復元時に既存イベントとの重複を確認します。</p></div>
 </section>
 </div>
 </div>
@@ -180,7 +196,7 @@ th{background:#eef3f6;text-align:left;color:#4c6073;font-size:.78rem}th,td{paddi
 "use strict";
 const $=id=>document.getElementById(id);
 const state={
- mode:"prep",tab:"event",eventName:"令和8年度 業務改善研修",date:"2026-11-12",
+ mode:"home",tab:"event",eventName:"令和8年度 業務改善研修",date:"2026-11-12",
  sessions:[{id:"am",name:"午前"},{id:"pm",name:"午後"}],current:"am",nextSession:3,nextParticipant:4,selected:null,
  custom:["PC利用有無","持参機器"],
  people:[
@@ -189,12 +205,81 @@ const state={
   {id:"0003",name:"田中 一郎",staff:"",dept:"外部参加者",email:"",custom:["有","ノートPC"],planned:{am:false,pm:true},checked:{am:null,pm:null},removed:false}
  ]
 };
+// 各イベントは操作デモのメモリにだけ保存。localStorageには保存しない。
+function clone(x){return JSON.parse(JSON.stringify(x));}
+const eventFields=["eventName","date","sessions","current","nextSession","nextParticipant","custom","people"];
+function snapshot(){const d={};eventFields.forEach(key=>d[key]=clone(state[key]));return d;}
+const events=new Map();
+let activeEventId="EVT001",nextEventNumber=4;
+events.set(activeEventId,snapshot());
+events.set("EVT002",{eventName:"DX推進研修",date:"2026-10-15",sessions:[{id:"all",name:"全体"}],current:"all",nextSession:2,nextParticipant:2,custom:["",""],people:[{id:"0001",name:"比嘉 一郎",staff:"00881",dept:"総務課",email:"",custom:["",""],planned:{all:true},checked:{all:"2026-10-15T01:05:00.000Z"},removed:false}]});
+events.set("EVT003",{eventName:"Excel活用研修",date:"2026-09-18",sessions:[{id:"all",name:"全体"}],current:"all",nextSession:2,nextParticipant:1,custom:["PC持参",""],people:[]});
+function saveActive(){if(activeEventId && events.has(activeEventId))events.set(activeEventId,snapshot());}
+function readRecord(id){return events.get(id);}
+function renderHome(){
+ saveActive();
+ const q=$("eventSearch").value.trim().toLowerCase();
+ const list=$("homeList");list.replaceChildren();
+ const arr=[...events.entries()].sort((a,b)=>b[1].date.localeCompare(a[1].date)).filter(([id,r])=>(r.eventName+" "+id).toLowerCase().includes(q));
+ $("homeCount").textContent="保存中のイベント（デモ）："+events.size+"件 ／ 表示："+arr.length+"件";
+ arr.forEach(([id,r])=>{
+  const card=el("div","event-card"),lhs=el("div");lhs.style.flex="1";
+  const title=el("h3",null,r.eventName),stat=r.people.filter(p=>!p.removed).length+"名登録";
+  lhs.append(title,el("div","small-note",r.date+"　／　"+id+"　／　"+stat));
+  lhs.append(el("div","small-note","受付区分："+r.sessions.map(s=>s.name).join("・")));
+  const actions=el("div","actions");
+  const pre=el("button","btn small primary","事前準備を開く");
+  pre.addEventListener("click",()=>openEvent(id,"prep"));
+  const day=el("button","btn small outline","当日受付を開く");
+  day.addEventListener("click",()=>openEvent(id,"day"));
+  const duplicate=el("button","btn small","設定を複製");
+  duplicate.addEventListener("click",()=>createNewEvent(id));
+  const del=el("button","btn small danger","削除");
+  del.addEventListener("click",()=>{if(!confirm("「"+r.eventName+"」を削除しますか？正式版では削除前にJSONバックアップを案内します。"))return;events.delete(id);if(activeEventId===id)activeEventId=null;renderHome();});
+  actions.append(pre,day,duplicate,del);card.append(lhs,actions);list.append(card);
+ });
+ if(!arr.length)list.append(el("div","panel","該当するイベントはありません。新規作成できます。"));
+}
+function createNewEvent(duplicateId){
+ saveActive();
+ const old=duplicateId?readRecord(duplicateId):null;
+ const defaultName=old?old.eventName+"（複製）":"新しいイベント";
+ const name=prompt("イベント名を入力してください。",defaultName);
+ if(name===null)return;
+ if(!name.trim())return alert("イベント名を入力してください。");
+ const id="EVT"+String(nextEventNumber++).padStart(3,"0");
+ const sessions=old?old.sessions.map((s,i)=>({id:"s"+(i+1),name:s.name})):[{id:"all",name:"全体"}];
+ const record={eventName:name.trim(),date:"",sessions,current:sessions[0].id,nextSession:sessions.length+1,nextParticipant:1,custom:old?clone(old.custom):["",""],people:[]};
+ events.set(id,record);
+ openEvent(id,"prep");
+}
+function openEvent(id,mode){
+ saveActive();
+ const record=readRecord(id);if(!record)return;
+ activeEventId=id;Object.assign(state,clone(record));state.selected=null;
+ $("eventName").value=state.eventName;$("eventDate").value=state.date;
+ $("customOne").value=state.custom[0]||"";$("customTwo").value=state.custom[1]||"";
+ $("newSession").value="";$("prepSearch").value="";
+ showMode(mode);if(mode==="prep")showPrep("event");
+}
+function showHome(){
+ closeDrawer();saveActive();
+ $("home").hidden=false;$("modeSwitch").hidden=true;$("backline").hidden=true;
+ $("prep").hidden=true;$("day").hidden=true;state.mode="home";
+ document.querySelector("header .muted-head").textContent="イベント一覧（サンプル）";
+ renderHome();
+}
+function describeAllBackup(){
+ saveActive();
+ const names=[...events.values()].map(r=>r.eventName).join("、");
+ alert("全イベントJSONバックアップ（正式版で実装）\n対象："+events.size+"イベント\n"+names+"\n\nこのワイヤーフレームではファイル生成・localStorage保存は行いません。");
+}
 function el(tag,cls,text){const d=document.createElement(tag);if(cls)d.className=cls;if(text!==undefined)d.textContent=text;return d;}
 function fmt(s){if(!s)return "未受付";return new Date(s).toLocaleString("ja-JP",{timeZone:"Asia/Tokyo",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false});}
 function activePeople(){return state.people.filter(p=>!p.removed);}
 function currentSession(){return state.sessions.find(s=>s.id===state.current)||state.sessions[0];}
 function message(t,type){const d=$("lastMessage");d.textContent=t;d.className="notice"+(type?" "+type:"");}
-function showMode(mode){state.mode=mode;$("prep").hidden=mode!=="prep";$("day").hidden=mode!=="day";document.querySelectorAll("[data-mode]").forEach(b=>b.classList.toggle("active",b.dataset.mode===mode));updateAll();}
+function showMode(mode){state.mode=mode;$("home").hidden=true;$("modeSwitch").hidden=false;$("backline").hidden=false;$("prep").hidden=mode!=="prep";$("day").hidden=mode!=="day";document.querySelectorAll("[data-mode]").forEach(b=>b.classList.toggle("active",b.dataset.mode===mode));document.querySelector("header .muted-head").textContent="イベント："+state.eventName+" ／ "+(state.date||"開催日未設定")+"（サンプル）";updateAll();}
 function showPrep(tab){state.tab=tab;document.querySelectorAll("[data-prep]").forEach(b=>b.classList.toggle("selected",b.dataset.prep===tab));["event","participants","issue","results"].forEach(x=>$("panel-"+x).hidden=x!==tab);updateAll();}
 function updateSessions(){
  const list=$("sessionsList");list.replaceChildren();
@@ -278,6 +363,11 @@ function renderPersonSessions(p){
  });
 }
 document.querySelectorAll("[data-mode]").forEach(b=>b.addEventListener("click",()=>showMode(b.dataset.mode)));
+$("goHome").addEventListener("click",showHome);
+$("createEvent").addEventListener("click",()=>createNewEvent(null));
+$("eventSearch").addEventListener("input",renderHome);
+$("restoreDemo").addEventListener("click",()=>alert("正式版ではJSONを選択し、取り込むイベントと既存イベントの重複を確認してから復元します。この画面は設計確認用です。"));
+document.querySelectorAll("[data-allbackup]").forEach(b=>b.addEventListener("click",describeAllBackup));
 document.querySelectorAll("[data-prep]").forEach(b=>b.addEventListener("click",()=>showPrep(b.dataset.prep)));
 document.querySelectorAll("[data-open]").forEach(b=>b.addEventListener("click",()=>openDrawer(b.dataset.open)));
 document.querySelectorAll("[data-message]").forEach(b=>b.addEventListener("click",()=>alert(b.dataset.message)));
@@ -294,7 +384,7 @@ $("addAndCheck").addEventListener("click",()=>addParticipant(true));
 $("addOnly").addEventListener("click",()=>addParticipant(false));
 $("daySearch").addEventListener("input",()=>{state.selected=null;$("selectedPerson").hidden=true;renderSearch();});
 $("savePerson").addEventListener("click",()=>{const p=state.people.find(x=>x.id===state.selected);if(!p)return;const name=$("editName").value.trim();if(!name)return alert("氏名は必須です。");p.name=name;p.dept=$("editDept").value.trim();$("searchHint").textContent="情報を修正しました。参加者IDやQRは変わりません。";renderSearch();renderPeople();});
-showPrep("event");updateAll();
+showHome();
 })();
 </script>
 </body>
