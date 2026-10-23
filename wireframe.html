@@ -83,8 +83,19 @@ th{background:#eef3f6;text-align:left;color:#4c6073;font-size:.78rem}th,td{paddi
 </div>
 <section id="admin-events">
 <div class="row"><h3 style="margin:0">イベント一覧</h3><button type="button" class="btn primary" id="createEvent">＋ 新規イベントを作成</button></div>
-<div class="home-toolbar"><label class="field" style="max-width:360px;flex:1">イベント名で検索<input id="eventSearch" placeholder="イベント名を入力"></label></div>
-<div id="homeCount" class="small-note"></div>
+<div class="panel" style="margin:16px 0">
+<h3>絞り込み・並び替え</h3>
+<div class="cols three">
+<label class="field">イベント名<input id="eventSearch" placeholder="イベント名で絞り込み"></label>
+<label class="field">開催日（開始）<input id="eventDateFrom" type="date"></label>
+<label class="field">開催日（終了）<input id="eventDateTo" type="date"></label>
+<label class="field">並び替えのキー<select id="eventSortKey"><option value="date">開催日</option><option value="id">イベントID</option></select></label>
+<label class="field">並び順<select id="eventSortOrder"><option value="desc">降順（新しい順／IDが大きい順）</option><option value="asc">昇順（古い順／IDが小さい順）</option></select></label>
+<div style="display:flex;align-items:end"><button class="btn" id="resetEventFilters" type="button">絞り込みを解除</button></div>
+</div>
+<p class="small-note" style="margin-bottom:0">開催日の範囲は両端を含みます。日付未設定のイベントは日付指定時には表示せず、並び替えでは末尾に配置します。</p>
+</div>
+<div id="homeCount" class="small-note" role="status" aria-live="polite"></div>
 <div id="homeList" class="home-list"></div>
 </section>
 <section id="admin-cross" hidden>
@@ -305,10 +316,34 @@ function renderCross(){
 }
 function renderHome(){
  saveActive();
- const q=$("eventSearch").value.trim().toLowerCase();
+ const q=$("eventSearch").value.trim().toLocaleLowerCase("ja-JP");
+ const from=$("eventDateFrom").value,to=$("eventDateTo").value;
+ const sortKey=$("eventSortKey").value,order=$("eventSortOrder").value;
  const list=$("homeList");list.replaceChildren();
- const arr=[...events.entries()].sort((a,b)=>b[1].date.localeCompare(a[1].date)).filter(([id,r])=>(r.eventName+" "+id).toLowerCase().includes(q));
- $("homeCount").textContent="保存中のイベント（デモ）："+events.size+"件 ／ 表示："+arr.length+"件";
+ if(from&&to&&from>to){
+  $("homeCount").textContent="開催日の開始日が終了日より後になっています。日付を修正してください。";
+  list.append(el("div","notice warn","開始日と終了日を確認してください。"));
+  return;
+ }
+ const arr=[...events.entries()].filter(([id,r])=>{
+  if(q&&!r.eventName.toLocaleLowerCase("ja-JP").includes(q))return false;
+  if(from&&(!r.date||r.date<from))return false;
+  if(to&&(!r.date||r.date>to))return false;
+  return true;
+ }).sort((a,b)=>{
+  // 日付未設定のイベントは昇順・降順とも常に末尾に置く。
+  if(sortKey==="date"){
+   if(!a[1].date||!b[1].date){
+    if(!a[1].date&&!b[1].date)return a[0].localeCompare(b[0],"ja",{numeric:true});
+    return a[1].date?-1:1;
+   }
+   const cmp=a[1].date.localeCompare(b[1].date);
+   return (order==="asc"?cmp:-cmp)||a[0].localeCompare(b[0],"ja",{numeric:true});
+  }
+  const cmp=a[0].localeCompare(b[0],"ja",{numeric:true});
+  return order==="asc"?cmp:-cmp;
+ });
+ $("homeCount").textContent="登録イベント："+events.size+"件 ／ 表示："+arr.length+"件（サンプル）";
  arr.forEach(([id,r])=>{
   const card=el("div","event-card"),lhs=el("div");lhs.style.flex="1";
   const title=el("h3",null,r.eventName),stat=r.people.filter(p=>!p.removed).length+"名登録";
@@ -453,6 +488,13 @@ document.querySelectorAll("[data-mode]").forEach(b=>b.addEventListener("click",(
 $("goHome").addEventListener("click",showHome);
 $("createEvent").addEventListener("click",()=>createNewEvent(null));
 $("eventSearch").addEventListener("input",renderHome);
+["eventDateFrom","eventDateTo","eventSortKey","eventSortOrder"].forEach(id=>$(id).addEventListener("change",renderHome));
+$("resetEventFilters").addEventListener("click",()=>{
+ $("eventSearch").value="";
+ $("eventDateFrom").value="";
+ $("eventDateTo").value="";
+ renderHome();
+});
 document.querySelectorAll("[data-admin]").forEach(b=>b.addEventListener("click",()=>showAdmin(b.dataset.admin)));
 ["crossPeriod","crossYear","crossCategory","crossStatus","crossKeyword"].forEach(id=>{
  const input=$(id);input.addEventListener(id==="crossYear"||id==="crossKeyword"?"input":"change",renderCross);
