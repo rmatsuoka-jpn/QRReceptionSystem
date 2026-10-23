@@ -573,7 +573,7 @@ function commitCsvImport(){
    }
   }
  });
- if(ok){closeDialog();csvPending=null;$("participantFile").value="";announce("CSV登録完了：新規 "+plan.adds+"名、更新 "+plan.updates+"名、スキップ "+plan.skip+"名","success");}
+ if(ok){const src=csvPending?.source;closeDialog();csvPending=null;$("participantFile").value="";if(src==="paste")$("participantPaste").value="";announce("参加者登録完了：新規 "+plan.adds+"名、更新 "+plan.updates+"名、スキップ "+plan.skip+"名","success");}
 }
 async function importParticipants(){
  const file=$("participantFile").files?.[0];if(!file)return announce("CSVファイルを選択してください。","warn");
@@ -586,7 +586,30 @@ async function importParticipants(){
   if(rows.length>10001)throw Error("10,000行以下に分割してください");
   if(rows[0].length>100)throw Error("列数が多すぎます");
  }catch(err){return announce("CSVを読み込めません："+err.message,"error");}
- csvPending={rows,eventId:activeId};
+ showImportPreview(rows,"csv");
+}
+function importFromPaste(){
+ const input=$("participantPaste").value;
+ if(!input.trim())return announce("Excelからコピーした表を貼り付けてください。","warn");
+ if(input.length>5*1024*1024)return announce("貼り付け内容が多すぎます。分割してください。","warn");
+ let rows;try{
+  if(!globalThis.QRSupport)throw Error("CSV処理ライブラリがありません");
+  rows=globalThis.QRSupport.parseTSV(input);
+  if(rows.length<2)throw Error("見出し行とデータ行が必要です");
+  if(rows.length>10001)throw Error("10,000行以下に分割してください");
+  if(rows[0].length>100)throw Error("列数が多すぎます");
+ }catch(err){return announce("貼り付け内容を確認してください："+err.message,"error");}
+ showImportPreview(rows,"paste");
+}
+function setImportMode(mode){
+ const pasted=mode!=="csv";
+ $("pasteImportArea").hidden=!pasted;
+ $("csvImportArea").hidden=pasted;
+ $("importTabPaste").className=pasted?"btn main":"btn";
+ $("importTabCsv").className=pasted?"btn":"btn main";
+}
+function showImportPreview(rows,source){
+ csvPending={rows,eventId:activeId,source};
  const e=current(),headers=rows[0].map(x=>String(x).trim());
  const fields=CSV_FIELDS.map(([id,label,aliases])=>[id,id==="custom0"?(e.customLabels[0]||"任意項目1"):id==="custom1"?(e.customLabels[1]||"任意項目2"):label,id==="custom0"?[e.customLabels[0],"custom_1"]:id==="custom1"?[e.customLabels[1],"custom_2"]:aliases]);
  for(const s of e.sessions)fields.push(["session:"+s.id,"参加予定："+s.name,[s.name,"参加_"+s.name,s.name+"_参加"]]);
@@ -615,7 +638,7 @@ async function importParticipants(){
  const commit=document.createElement("button");commit.id="csvCommit";commit.className="btn main";commit.type="button";commit.textContent="登録する";commit.onclick=commitCsvImport;
  const cancel=document.createElement("button");cancel.className="btn";cancel.textContent="キャンセル";cancel.onclick=()=>{csvPending=null;closeDialog();};
  footer.append(commit,cancel);root.append(footer);
- openDialog("CSV取込・列の対応",root);previewCsvImport();
+ openDialog(source==="paste"?"Excel貼り付け・列の対応":"CSV取込・列の対応",root);previewCsvImport();
 }
 function openDialog(title,body){dialogReturnFocus=document.activeElement;$("dialogTitle").textContent=title;$("dialogBody").replaceChildren(body);$("dialogBackdrop").hidden=false;$("closeDialog").focus();}
 function closeDialog(){$("dialogBackdrop").hidden=true;$("dialogBody").replaceChildren();dialogReturnFocus?.focus?.();}
@@ -635,7 +658,7 @@ for(const id of ["crossPeriod","crossYear","crossCategory","crossStatus","crossQ
 $("crossPeriod").onchange=()=>{$("crossYear").disabled=$("crossPeriod").value==="all";renderCross();};
 $("exportCross").onclick=()=>exportCross(false);$("exportCrossDetail").onclick=()=>exportCross(true);$("restoreBtn").onclick=restore;$("deleteAllData").onclick=openDeleteAllDialog;
 $("saveSettings").onclick=saveSettings;$("addSession").onclick=addSession;for(let i=1;i<=2;i++)$("customType"+i).onchange=()=>toggleCustomOptions(i);$("addPerson").onclick=()=>openPerson(null,false);
-$("personQuery").oninput=renderParticipants;$("importParticipants").onclick=importParticipants;$("exportRoster").onclick=exportRoster;
+$("personQuery").oninput=renderParticipants;$("importParticipants").onclick=importParticipants;$("exportRoster").onclick=exportRoster;$("downloadTemplate").onclick=downloadTemplate;$("previewPaste").onclick=importFromPaste;for(const btn of document.querySelectorAll("[data-import-mode]"))btn.onclick=()=>setImportMode(btn.dataset.importMode);
 $("qrPerson").onchange=renderOneQR;$("showQR").onclick=renderOneQR;$("downloadQR").onclick=downloadOneQR;$("printQRs").onclick=printQR;$("exportQRZip").onclick=exportQRZip;
 $("exportResult").onclick=eventDetailCSV;$("exportAudit").onclick=exportAudit;$("printRosterPrep").onclick=()=>printReceptionRoster($("rosterSession").value);$("printRosterDay").onclick=()=>printReceptionRoster(curSession()?.id);$("checkinSession").onchange=()=>{showResult(null,"スキャン待機中","");renderReception();};
 $("walkinBtn").onclick=()=>openPerson(null,true);$("manualBtn").onclick=openManual;$("closeDialog").onclick=closeDialog;
