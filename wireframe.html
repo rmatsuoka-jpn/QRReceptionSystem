@@ -118,12 +118,54 @@ th{background:#eef3f6;text-align:left;color:#4c6073;font-size:.78rem}th,td{paddi
 .paper-preview span{border:1px dashed #b8c6cd;background:linear-gradient(90deg,#7a9aaa 26%,transparent 26%) left 7px top 5px/45px 18px no-repeat,#f8fafb}
 @media(max-width:770px){.event-card{grid-template-columns:1fr}.metrics-row{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:500px){.metrics-row{grid-template-columns:repeat(2,minmax(0,1fr))}.metric{padding:12px}.event-bottom{align-items:flex-start}.event-actions{width:100%}.event-actions .btn{flex:1}.event-progress{max-width:100%}}
+
+/* Header help link */
+.header-right{display:flex;align-items:center;justify-content:flex-end;gap:14px;flex-wrap:wrap}
+.environment{font-size:.78rem;color:#c8dce7;white-space:nowrap}
+.help-link{background:#fff;color:#16445b;text-decoration:none;display:inline-flex;align-items:center;gap:7px;border-radius:9px;padding:9px 13px;font-weight:800;font-size:.9rem}
+.help-link:hover{background:#e1f4f2}.help-link:focus-visible{outline:3px solid #f7bb5c;outline-offset:3px}
+/* Readable event dates */
+.event-card .date-chip{font-size:1.1rem;letter-spacing:.01em;padding:6px 11px;background:#e4f0f6;color:#1a4b67}
+/* At-a-glance check-in layout */
+.day-page{max-width:1140px}
+.reception-layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(300px,.85fr);gap:17px;align-items:start}
+.reception-main{min-width:0}
+.reception-result{margin-top:14px;min-height:112px;background:#f0f5f8;border:1px solid #d0e0e8;border-left:6px solid #aac2d0;border-radius:11px;padding:18px 21px;display:flex;flex-direction:column;justify-content:center;gap:5px}
+.reception-result.success{background:#eaf7ee;border-color:#b6dbbe;border-left-color:#28a36e}
+.reception-result.warn{background:#fff5e7;border-color:#f0d5ad;border-left-color:#e4a552}
+.reception-result.error{background:#fff0ef;border-color:#e8c1bb;border-left-color:#c35b5b}
+.result-status{font-size:.88rem;font-weight:800;color:#278059;letter-spacing:.04em}
+.reception-result.warn .result-status{color:#9c641d}.reception-result.error .result-status{color:#af3939}
+.result-person-name{font-size:clamp(1.9rem,3.4vw,2.65rem);line-height:1.2;font-weight:900;color:#223c4a;letter-spacing:.045em;overflow-wrap:anywhere}
+.result-person-meta{font-size:.95rem;color:#567080}
+.result-detail{font-size:.87rem;color:#456477;font-variant-numeric:tabular-nums;margin-top:4px}
+.result-idle-text{font-size:1.1rem;font-weight:700;color:#597489}
+.pending-panel{padding:0;overflow:hidden;position:sticky;top:14px}
+.pending-header{padding:17px 18px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid #e1ebef;background:#f5f9fa}
+.pending-header h3{font-size:1.07rem;margin:0 0 4px;color:#2b4a5e}
+.pending-session{font-size:.82rem;font-weight:700;color:#1f7380;background:#e1f2f2;border-radius:6px;padding:3px 8px;margin-left:5px}
+.pending-sub{font-size:.76rem;color:#708796;font-weight:700}
+.pending-count{font-size:1.95rem;font-weight:900;color:#224f64;line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pending-count small{font-size:.82rem;color:#61798b}
+.pending-list{max-height:455px;overflow:auto;overscroll-behavior:contain}
+.pending-person{padding:13px 17px;display:flex;justify-content:space-between;gap:8px;align-items:center;border-bottom:1px solid #e8edf0}
+.pending-person:last-child{border-bottom:none}
+.pending-person-info{display:flex;flex-direction:column;gap:4px;min-width:0}
+.pending-person-name{font-size:1.04rem;line-height:1.4;color:#264454}
+.pending-dept{font-size:.76rem;color:#748796}
+.pending-id{font-size:.77rem;color:#8396a2;white-space:nowrap;font-variant-numeric:tabular-nums}
+.pending-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px;min-height:180px;padding:25px;color:#567081}
+.pending-complete{display:grid;place-items:center;width:44px;height:44px;background:#e0f3e9;color:#27845b;border-radius:50%;font-size:1.4rem}
+.pending-empty strong{font-size:1.08rem;color:#31576a}
+.pending-empty span:last-child{font-size:.78rem;color:#77909e}
+@media(max-width:860px){.reception-layout{grid-template-columns:1fr}.pending-panel{position:static}.pending-list{max-height:370px}}
+@media(max-width:520px){.header-right{width:100%;justify-content:space-between}.help-link{padding:8px 11px}.reception-result{padding:16px}.result-person-name{font-size:2rem}}
 </style>
 </head>
 <body>
 <header>
 <div><h1>▦ QR受付システム <span class="demo">操作ワイヤーフレーム</span></h1><div class="muted-head">イベント：令和8年度 業務改善研修 ／ 2026年11月12日（サンプル）</div></div>
-<div style="font-size:.84rem;color:#d9e7ef">オフライン・1受付1PC 想定</div>
+<div class="header-right"><span class="environment">オフライン・1受付1PC</span><a class="help-link" href="./help.html" aria-label="ヘルプ・操作説明を開く">ⓘ ヘルプ・操作説明 <span aria-hidden="true">↗</span></a></div>
 </header>
 <main class="shell">
 <div class="demo-strip"><span class="demo-dot"></span><strong>操作デモ</strong><span>サンプルデータ｜保存・実カメラ・CSV入出力は未接続</span></div>
@@ -269,15 +311,26 @@ th{background:#eef3f6;text-align:left;color:#4c6073;font-size:.78rem}th,td{paddi
 <div class="day-header"><div class="row"><div><span class="mini-tag">▣ 当日受付</span><h2 id="dayEventName" style="font-size:1.2rem;margin:8px 0 0">令和8年度 業務改善研修</h2></div><button class="btn small" data-mode="prep" type="button">⚙ 事前準備</button></div></div>
 <div class="day-session"><div class="row" style="margin-bottom:10px"><strong>受付区分</strong><span class="live-pill"><span class="live-dot"></span>選択中</span></div><select id="daySession" aria-label="現在の受付区分"></select></div>
 <div class="cols three" id="dayStats" style="margin:15px 0"></div>
+<div class="reception-layout">
+<div class="reception-main">
 <div class="panel"><div class="row"><h3>QR受付</h3><span class="mini-tag">カメラ領域</span></div><div class="camera">
 <div class="scan-target" aria-hidden="true"><div class="qr-shape"><span></span><span></span><span></span><i></i></div></div>
 <strong>QRコードをかざしてください</strong>
 <button class="btn outline" id="demoScan">▣ デモ読取</button>
-</div><div id="lastMessage" class="notice idle" role="status" aria-live="polite">◯　スキャン待機中</div></div>
+</div><div id="lastMessage" class="reception-result idle" role="status" aria-live="polite"><span class="result-idle-text">◯　スキャン待機中</span></div></div>
 <div class="panel"><h3>当日の参加者変更</h3><div class="quick">
 <button type="button" data-open="new"><span>＋</span>飛び入り登録<small>新規登録 → 受付</small></button>
 <button type="button" data-open="search"><span>⌕</span>名前から受付<small>手動受付・情報修正</small></button>
 </div></div>
+</div>
+<section class="panel pending-panel" aria-label="事前登録者の未受付一覧">
+<div class="pending-header">
+<div><h3>未受付者 <span class="pending-session" id="pendingSession">午前</span></h3><div class="pending-sub">事前登録者</div></div>
+<div class="pending-count" id="pendingCount" aria-label="未受付者数">0 <small>名</small></div>
+</div>
+<div class="pending-list" id="pendingList" role="list" aria-live="polite"></div>
+</section>
+</div>
 </section>
 </main>
 <div class="overlay" id="overlay" hidden>
@@ -483,7 +536,7 @@ function openEvent(id,mode){
  $("eventName").value=state.eventName;$("eventDate").value=state.date;$("eventCategory").value=state.category||"other";
  $("customOne").value=state.custom[0]||"";$("customTwo").value=state.custom[1]||"";
  $("newSession").value="";$("prepSearch").value="";
- showMode(mode);if(mode==="prep")showPrep("event");
+ showMode(mode);if(mode==="prep")showPrep("event");else message("◯　スキャン待機中","idle");
 }
 function showHome(){
  closeDrawer();saveActive();
@@ -501,7 +554,36 @@ function el(tag,cls,text){const d=document.createElement(tag);if(cls)d.className
 function fmt(s){if(!s)return "未受付";return new Date(s).toLocaleString("ja-JP",{timeZone:"Asia/Tokyo",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false});}
 function activePeople(){return state.people.filter(p=>!p.removed);}
 function currentSession(){return state.sessions.find(s=>s.id===state.current)||state.sessions[0];}
-function message(t,type){const d=$("lastMessage");d.textContent=t;d.className="notice"+(type?" "+type:"");}
+function message(t,type,person,detail){
+ const d=$("lastMessage");d.className="reception-result "+(type||"idle");d.replaceChildren();
+ if(person){
+  const top=el("div","result-status",t);d.append(top);
+  d.append(el("div","result-person-name",person.name));
+  d.append(el("div","result-person-meta",person.dept||"所属未登録"));
+  if(detail)d.append(el("div","result-detail",detail));
+ }else{
+  d.append(el("div","result-idle-text",t));
+ }
+}
+function renderPending(){
+ const s=currentSession();if(!s)return;
+ $("pendingSession").textContent=s.name;
+ const preRegistered=activePeople().filter(p=>p.preRegistered!==false&&p.planned[s.id]&&!p.checked[s.id]);
+ $("pendingCount").replaceChildren(document.createTextNode(String(preRegistered.length)+" "),el("small",null,"名"));
+ const list=$("pendingList");list.replaceChildren();
+ if(!preRegistered.length){
+  const empty=el("div","pending-empty");
+  empty.append(el("span","pending-complete","✓"),el("strong",null,"未受付者なし"),el("span",null,"この区分の事前登録者は受付済みです"));
+  list.append(empty);return;
+ }
+ preRegistered.forEach(p=>{
+  const row=el("div","pending-person");row.setAttribute("role","listitem");
+  const info=el("div","pending-person-info");
+  info.append(el("strong","pending-person-name",p.name),el("span","pending-dept",p.dept||"所属未登録"));
+  row.append(info,el("span","pending-id","#"+p.id));
+  list.append(row);
+ });
+}
 function showMode(mode){state.mode=mode;$("home").hidden=true;$("modeSwitch").hidden=false;$("backline").hidden=false;$("prep").hidden=mode!=="prep";$("day").hidden=mode!=="day";document.querySelectorAll("[data-mode]").forEach(b=>b.classList.toggle("active",b.dataset.mode===mode));document.querySelector("header .muted-head").textContent="イベント："+state.eventName+" ／ "+(state.date||"開催日未設定")+"（サンプル）";updateAll();}
 function showPrep(tab){state.tab=tab;document.querySelectorAll("[data-prep]").forEach(b=>b.classList.toggle("selected",b.dataset.prep===tab));["event","participants","issue","results"].forEach(x=>$("panel-"+x).hidden=x!==tab);updateAll();}
 function updateSessions(){
@@ -527,14 +609,14 @@ function renderPeople(){
   const td=el("td");const edit=el("button","btn small","編集");edit.addEventListener("click",()=>openSearch(p));td.append(edit);tr.append(td);body.append(tr);
  });
 }
-function updateAll(){updateSessions();renderStats("dayStats");renderStats("prepStats");renderPeople();$("dayEventName").textContent=state.eventName;}
+function updateAll(){updateSessions();renderStats("dayStats");renderStats("prepStats");renderPeople();renderPending();$("dayEventName").textContent=state.eventName;}
 function checkIn(p,source){
- if(p.removed){message("受付不可：参加対象から除外されています。","error");return false;}
+ if(p.removed){message("受付不可・対象から除外","error",p,"参加者情報を確認してください");return false;}
  const s=currentSession();
- if(!p.planned[s.id]){message("参加予定がありません："+p.name+" ／ "+s.name+"。参加者検索から区分を変更してください。","warn");return false;}
- if(p.checked[s.id]){message("受付済み："+p.name+" ／ "+s.name+"（初回 "+fmt(p.checked[s.id])+"）","warn");return false;}
+ if(!p.planned[s.id]){message("この区分の参加予定なし","warn",p,s.name+"・参加予定を変更すると受付できます");return false;}
+ if(p.checked[s.id]){message("受付済み・重複読取","warn",p,s.name+" / 初回 "+fmt(p.checked[s.id]));return false;}
  p.checked[s.id]=new Date().toISOString();
- message("✓ 受付完了："+p.name+" ／ "+s.name+" ／ "+fmt(p.checked[s.id])+"（"+source+"）");
+ message("✓ 受付完了","success",p,s.name+" / "+fmt(p.checked[s.id])+" / "+(source==="手動"?"手動受付":"QR受付"));
  updateAll();return true;
 }
 function openDrawer(kind){$("overlay").hidden=false;$("drawerNew").hidden=kind!=="new";$("drawerSearch").hidden=kind!=="search";$("drawerTitle").textContent=kind==="new"?"飛び入り参加者を追加":"参加者を検索・変更";
@@ -549,7 +631,7 @@ function addParticipant(andCheck){
  if(staff&&activePeople().some(p=>p.staff===staff)){if(!confirm("同じ職員番号の参加者が既に存在します。追加を続けますか？"))return;}
  const planned={};const checked={};$("newPlanned").querySelectorAll("input").forEach(input=>{planned[input.value]=input.checked;checked[input.value]=null;});
  if(andCheck&&!planned[state.current]){planned[state.current]=true;}
- const p={id:String(state.nextParticipant++).padStart(4,"0"),name,staff,dept:$("newDept").value.trim(),email:$("newEmail").value.trim(),custom:[$("newCustomOne").value.trim(),$("newCustomTwo").value.trim()],planned,checked,removed:false};
+ const p={id:String(state.nextParticipant++).padStart(4,"0"),name,staff,dept:$("newDept").value.trim(),email:$("newEmail").value.trim(),custom:[$("newCustomOne").value.trim(),$("newCustomTwo").value.trim()],planned,checked,removed:false,preRegistered:false};
  state.people.push(p);closeDrawer();updateAll();
  if(andCheck){checkIn(p,"手動");showMode("day");}else{alert(name+" さんを登録しました。QRの発行は必要な場合だけ行います。");}
 }
@@ -570,7 +652,7 @@ function renderPersonSessions(p){
   const note=el("div","small-note",p.checked[s.id]?"初回受付："+fmt(p.checked[s.id]):"受付記録なし");note.style.margin="7px 0";div.append(note);
   const actions=el("div","actions");
   const plan=el("button","btn small",p.planned[s.id]?"参加対象を外す":"参加対象にする");
-  plan.addEventListener("click",()=>{if(p.checked[s.id]&&p.planned[s.id])return alert("受付済みの区分は、そのまま参加対象外に変更できません。先に受付取消を行ってください。");p.planned[s.id]=!p.planned[s.id];renderPersonSessions(p);renderPeople();renderStats("dayStats");renderStats("prepStats");});
+  plan.addEventListener("click",()=>{if(p.checked[s.id]&&p.planned[s.id])return alert("受付済みの区分は、そのまま参加対象外に変更できません。先に受付取消を行ってください。");p.planned[s.id]=!p.planned[s.id];renderPersonSessions(p);updateAll();});
   actions.append(plan);
   if(s.id===state.current){
    const btn=el("button","btn small primary",p.planned[s.id]?"現在の区分で手動受付":"参加対象に変更して受付");
@@ -620,7 +702,7 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("overlay").hidde
 $("addSession").addEventListener("click",()=>{const name=$("newSession").value.trim();if(!name)return alert("区分名を入力してください。");if(state.sessions.some(s=>s.name===name))return alert("同じ区分名があります。");const id="s"+state.nextSession++;state.sessions.push({id,name});state.people.forEach(p=>{p.planned[id]=false;p.checked[id]=null;});$("newSession").value="";updateAll();});
 $("saveEvent").addEventListener("click",()=>{const name=$("eventName").value.trim();if(!name)return alert("イベント名を入力してください。");state.eventName=name;state.date=$("eventDate").value;state.category=$("eventCategory").value;state.custom=[$("customOne").value.trim(),$("customTwo").value.trim()];updateAll();alert("画面イメージに反映しました。再読み込みすると元に戻ります。");});
 $("prepSearch").addEventListener("input",renderPeople);
-$("daySession").addEventListener("change",e=>{state.current=e.target.value;updateAll();message(currentSession().name+" に切り替えました。次の受付はこの区分に記録します。","warn");});
+$("daySession").addEventListener("change",e=>{state.current=e.target.value;updateAll();message(currentSession().name+" に切り替えました","idle");});
 $("demoScan").addEventListener("click",()=>{const p=state.people[0];checkIn(p,"サンプルQR");});
 $("newName").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();addParticipant(true);}});
 $("addAndCheck").addEventListener("click",()=>addParticipant(true));
