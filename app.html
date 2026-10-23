@@ -51,19 +51,38 @@
     <label class="field" id="customOptionsWrap2" hidden>選択肢（| で区切る）<input id="customOptions2" placeholder="例：あり|なし|未定"></label>
    </div>
   </div>
-  <div class="form-actions"><button class="btn main" id="saveSettings">設定を保存</button></div>
+  <div class="panel config-preview">
+<div class="row"><h3>参加者登録への反映イメージ</h3><span class="tag" id="customSaveStatus" role="status">保存済み</span></div>
+<div id="customPreview" class="fields two"></div>
+</div>
+<div class="form-actions"><button class="btn main" id="saveSettings">設定を保存</button></div>
  </section>
  <section id="participantsPanel" class="panel" hidden>
-  <div class="row"><h3>参加者一覧 <span id="peopleCount" class="tag"></span></h3><div class="buttons"><button id="addPerson" class="btn main">＋ 個別登録</button><button id="exportRoster" class="btn">⇩ CSV</button></div></div>
-  <div class="panel filter"><h3>CSV一括登録</h3><div class="row"><input type="file" id="participantFile" accept=".csv,text/csv"><button id="importParticipants" class="btn main">取り込み内容を確認</button></div><p class="hint">CSV列の対応を確認してから登録します。職員番号が一致する既登録者の更新／スキップを選べます。</p></div>
-  <input class="search" id="personQuery" placeholder="氏名・職員番号・所属・参加者IDで検索" aria-label="参加者検索" style="margin-bottom:13px">
-  <div class="tablewrap"><table><thead><tr><th>ID</th><th>氏名</th><th>職員番号</th><th>所属</th><th>参加区分</th><th>操作</th></tr></thead><tbody id="participantRows"></tbody></table></div>
+  <div class="row"><h3>参加者一覧 <span id="peopleCount" class="tag"></span></h3><div class="buttons"><button id="addPerson" class="btn main">＋ 個別登録</button><button id="exportRoster" class="btn">⇩ 名簿CSV</button></div></div>
+  <div class="panel filter">
+<div class="row"><h3>参加者の一括登録</h3><button type="button" id="downloadTemplate" class="btn small">⇩ このイベントのCSVテンプレート</button></div>
+<div class="import-tabs" role="group" aria-label="登録方法">
+<button type="button" id="importTabPaste" class="btn main" data-import-mode="paste">Excelから貼り付け</button>
+<button type="button" id="importTabCsv" class="btn" data-import-mode="csv">CSVファイル</button>
+</div>
+<div id="pasteImportArea">
+<label class="field">Excelの表を見出し行からコピーして貼り付け
+<textarea id="participantPaste" rows="5" placeholder="氏名［タブ］職員番号［タブ］所属［タブ］グループ…" spellcheck="false"></textarea></label>
+<button type="button" id="previewPaste" class="btn main">貼り付け内容を確認</button>
+</div>
+<div id="csvImportArea" hidden>
+<div class="row"><input type="file" id="participantFile" accept=".csv,text/csv"><button id="importParticipants" class="btn main">CSV内容を確認</button></div>
+</div>
+<p class="hint">どちらも列対応・登録内容を確認してから保存します。職員番号の先頭ゼロは文字列として扱います。</p>
+</div>
+  <input class="search" id="personQuery" placeholder="氏名・職員番号・所属・グループ・参加者IDで検索" aria-label="参加者検索" style="margin-bottom:13px">
+  <div class="tablewrap"><table><thead><tr><th>ID</th><th>氏名</th><th>職員番号</th><th>所属</th><th>グループ</th><th>参加区分</th><th>操作</th></tr></thead><tbody id="participantRows"></tbody></table></div>
  </section>
  <section id="qrPanel" class="panel" hidden>
-  <h3>QR発行</h3><p class="hint">参加者にはイベント専用QRを発行します。午前・午後は同じQRを使用します。</p>
+  <h3>QR発行</h3><p class="hint">QRには職員番号だけを記録します。同じQRを他のイベントでも利用できます。</p><div id="qrEligibility" class="notice" role="status"></div>
   <div class="fields two"><label class="field">発行対象<select id="qrPerson"></select></label><div class="field"><span>個別発行</span><div class="buttons"><button class="btn main" id="showQR">QRを表示</button><button class="btn" id="downloadQR">⇩ PNG</button></div></div></div>
-  <div id="qrSample" style="text-align:center"><div id="qrCanvas" class="qr-container"></div><strong id="qrPersonName"></strong></div>
-  <div class="grid2" style="margin-top:18px"><div class="tile"><h3>✉ メール配布</h3><div class="hint">参加者別PNG・宛先CSVをひとつにまとめて出力</div><button id="exportQRZip" class="btn main">⇩ QR一括ZIP</button></div><div class="tile"><h3>▦ 紙配布（A4・10面）</h3><div class="hint">名刺サイズ／2列×5行</div><button id="printQRs" class="btn main">▧ 印刷プレビュー</button></div></div>
+  <div id="qrSample" style="text-align:center"><div id="qrCanvas" class="qr-container"></div><strong id="qrPersonName"></strong><div id="qrPersonMeta" class="hint"></div></div>
+  <div class="grid2" style="margin-top:18px"><div class="tile"><h3>QR一括配布</h3><div class="hint">職員番号のある参加者のPNGと対応CSVをZIPにまとめて出力</div><button id="exportQRZip" class="btn main">⇩ QR一括ZIP</button></div><div class="tile"><h3>▦ 紙配布（A4・10面）</h3><div class="hint">名刺サイズ／2列×5行</div><button id="printQRs" class="btn main">▧ 印刷プレビュー</button></div></div>
   <div id="printSheets" class="print-sheet"></div>
  </section>
  <section id="resultsPanel" class="panel" hidden><h3>受付集計</h3><div id="sessionStats" class="summary"></div><div class="panel roster-print-controls"><h3>紙の受付名簿</h3><div class="row"><label class="field">印刷する受付区分<select id="rosterSession"></select></label><button type="button" class="btn main" id="printRosterPrep">▤ 受付名簿を印刷</button></div><p class="hint">PC不調に備え、開催前に印刷してください。手書きチェック欄・当日追加用の空欄付き。</p></div><div class="buttons"><button class="btn main" id="exportResult">⇩ このイベントの区分別CSV</button><button class="btn" id="exportAudit">⇩ 受付変更履歴CSV</button><button class="btn" data-backup>⇩ 全イベントJSON</button></div></section>
