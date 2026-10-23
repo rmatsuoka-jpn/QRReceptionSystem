@@ -240,7 +240,68 @@ function renderQRSelect(){const e=current(),sel=$("qrPerson"),old=sel.value;sel.
 function renderOneQR(){const p=current().participants.find(p=>p.id===$("qrPerson").value);if(!p)return;qrRendered=p.id;const root=$("qrCanvas");root.replaceChildren();$("qrPersonName").textContent=p.name+" / "+p.id;if(typeof QRCode!=="function")return announce("QRコード生成ライブラリがありません。","error");try{new QRCode(root,{text:p.token,width:192,height:192,correctLevel:QRCode.CorrectLevel.M});}catch(err){announce("QR生成に失敗しました："+err.message,"error");}}
 function qrDataURL(root){const canvas=root.querySelector("canvas"),img=root.querySelector("img");if(canvas)return canvas.toDataURL("image/png");if(img?.src.startsWith("data:"))return img.src;return null;}
 function downloadOneQR(){const data=qrDataURL($("qrCanvas"));if(!data)return announce("QR画像が準備できていません。","warn");downloadLink(data,"QR_"+activeId+"_"+qrRendered+".png");}
-function printQR(){if(typeof QRCode!=="function")return announce("QRライブラリがありません。","error");const root=$("printSheets");root.replaceChildren();const e=current();let page=null,count=0;try{for(const p of e.participants.filter(p=>!p.removed)){if(count%10===0){page=document.createElement("div");page.className="print-page";root.append(page);}const card=document.createElement("div");card.className="print-card";const qr=document.createElement("div");new QRCode(qr,{text:p.token,width:136,height:136,correctLevel:QRCode.CorrectLevel.M});const data=qrDataURL(qr);if(!data)throw Error("QR画像の生成に失敗しました");const img=document.createElement("img");img.src=data;img.alt="受付用QR";const meta=document.createElement("span");const title=document.createElement("div");title.className="print-name";title.textContent=p.name;meta.append(title,document.createTextNode(p.id));card.append(img,meta);page.append(card);count++;}}catch(err){return announce("印刷用QRを生成できません："+err.message,"error");}if(!count)return announce("印刷対象者がいません。","warn");window.print();}
+function printQR(){if(typeof QRCode!=="function")return announce("QRライブラリがありません。","error");const root=$("printSheets");root.replaceChildren();const e=current();let page=null,count=0;try{for(const p of e.participants.filter(p=>!p.removed)){if(count%10===0){page=document.createElement("div");page.className="print-page";root.append(page);}const card=document.createElement("div");card.className="print-card";const qr=document.createElement("div");new QRCode(qr,{text:p.token,width:136,height:136,correctLevel:QRCode.CorrectLevel.M});const data=qrDataURL(qr);if(!data)throw Error("QR画像の生成に失敗しました");const img=document.createElement("img");img.src=data;img.alt="受付用QR";const meta=document.createElement("span");const title=document.createElement("div");title.className="print-name";title.textContent=p.name;meta.append(title,document.createTextNode(p.id));card.append(img,meta);page.append(card);count++;}}catch(err){return announce("印刷用QRを生成できません："+err.message,"error");}if(!count)return announce("印刷対象者がいません。","warn");document.body.dataset.printMode="qr";window.print();}
+
+const ROSTER_ROWS_PER_PAGE=20;
+const ROSTER_BLANK_ROWS=4;
+function printReceptionRoster(sessionID){
+ const e=current(),session=e?.sessions.find(s=>s.id===sessionID);
+ if(!e||!session)return announce("印刷する受付区分を選択してください。","warn");
+ // The paper list is independent of filtering/search and of the current digital check-in tab.
+ const participants=e.participants.filter(p=>!p.removed&&p.planned?.[session.id])
+  .sort((a,b)=>a.name.localeCompare(b.name,"ja")||String(a.staffId||"").localeCompare(String(b.staffId||""),"ja",{numeric:true})||a.id.localeCompare(b.id,"ja",{numeric:true}));
+ const rows=[...participants.map(p=>({person:p})),...Array.from({length:ROSTER_BLANK_ROWS},(_,i)=>({extra:i+1}))];
+ const pageCount=Math.ceil(rows.length/ROSTER_ROWS_PER_PAGE),root=$("receptionPrint");
+ root.replaceChildren();
+ const printTime=localDate(iso());
+ for(let pageNo=0;pageNo<pageCount;pageNo++){
+  const page=document.createElement("section");page.className="roster-print-page";
+  const heading=document.createElement("div");heading.className="roster-print-heading";
+  const title=document.createElement("h1");title.textContent="受付名簿（紙チェック用）";
+  const eventName=document.createElement("div");eventName.className="roster-print-event";eventName.textContent=e.name;
+  const details=document.createElement("div");details.className="roster-print-details";
+  details.textContent="開催日："+(e.date||"未設定")+"　｜　受付区分："+session.name+"　｜　参加予定："+participants.length+"名";
+  const data=document.createElement("div");data.className="roster-print-meta";
+  const printedChecked=participants.filter(p=>checked(p,session.id)).length;
+  data.textContent="印刷時点の受付済み："+printedChecked+"名　｜　印刷日時："+printTime+"　｜　"+(pageNo+1)+" / "+pageCount+"ページ";
+  heading.append(title,eventName,details,data);
+  page.append(heading);
+  const table=document.createElement("table");table.className="roster-print-table";
+  const colgroup=document.createElement("colgroup");
+  for(const width of ["12mm","18mm","23mm","40mm","33mm","26mm","38mm"]){
+   const col=document.createElement("col");col.style.width=width;colgroup.append(col);
+  }
+  table.append(colgroup);
+  const thead=document.createElement("thead"),trhead=document.createElement("tr");
+  for(const label of ["✓","参加者ID","職員番号","氏名","所属","印刷時受付","手書き時刻・備考"]){
+   const th=document.createElement("th");th.textContent=label;trhead.append(th);
+  }
+  thead.append(trhead);table.append(thead);
+  const tbody=document.createElement("tbody");
+  for(const item of rows.slice(pageNo*ROSTER_ROWS_PER_PAGE,(pageNo+1)*ROSTER_ROWS_PER_PAGE)){
+   const tr=document.createElement("tr");if(item.extra)tr.className="roster-extra-row";
+   const tdCheck=document.createElement("td");const box=document.createElement("span");box.className="roster-checkbox";box.setAttribute("aria-label","手書きチェック欄");tdCheck.append(box);tr.append(tdCheck);
+   const p=item.person;
+   const record=p?.checkins?.[session.id],isDone=p&&checked(p,session.id);
+   const values=p?[p.id,p.staffId||"—",p.name,p.department||"—",isDone?"済 "+localDate(record.lastAt||record.at).split(" ").pop().slice(0,5):"未",""] :["","","","","",""];
+   for(let ci=0;ci<values.length;ci++){
+    const td=document.createElement("td");
+    td.textContent=values[ci];
+    if(ci===2)td.className="roster-name-cell";
+    if(ci===4)td.className=isDone?"roster-existing-done":"roster-existing-pending";
+    tr.append(td);
+   }
+   tbody.append(tr);
+  }
+  table.append(tbody);page.append(table);
+  const footer=document.createElement("div");footer.className="roster-print-footer";
+  footer.textContent="□：紙の受付時にチェック／末尾の空行：飛び入り参加者の追記用　※印刷時点の控えです。紙の記録は復旧後に反映してください。";
+  page.append(footer);root.append(page);
+ }
+ document.body.dataset.printMode="roster";
+ root.hidden=false;
+ try{window.print();}catch(err){document.body.removeAttribute("data-print-mode");root.hidden=true;announce("印刷画面を開けませんでした："+err.message,"error");}
+}
 function csvCell(v){let x=String(v??"");if(/^[\s]*[=+\-@\t\r\n]/.test(x))x="'"+x;return '"'+x.replace(/"/g,'""')+'"';}
 function csvDownload(rows,filename){const text="\uFEFF"+rows.map(r=>r.map(csvCell).join(",")).join("\r\n")+"\r\n";downloadBlob(new Blob([text],{type:"text/csv;charset=utf-8"}),filename);}
 function downloadLink(url,filename){const a=document.createElement("a");a.href=url;a.download=filename;document.body.append(a);a.click();a.remove();}
@@ -301,7 +362,7 @@ function exportAudit(){
 function detailHeader(){return ["event_id","event_name","event_date","category","session_id","session_name","participant_id","staff_id","name","department","custom_1_label","custom_1_value","custom_2_label","custom_2_value","planned","status","checked_in_at","last_checkin_at","method"];}
 function detailRows(e,p){return e.sessions.map(s=>{const c=p.checkins[s.id],isChecked=checked(p,s.id);return [e.id,e.name,e.date,e.category,s.id,s.name,p.id,p.staffId,p.name,p.department,e.customLabels[0],p.customValues?.[0],e.customLabels[1],p.customValues?.[1],p.planned[s.id]?"1":"0",p.removed?"除外":isChecked?"受付済み":p.planned[s.id]?"未受付":"対象外",isChecked?localDate(c.at):"",isChecked?localDate(c.lastAt||c.at):"",isChecked?c.method:""];});}
 function eventDetailCSV(){const e=current();csvDownload([detailHeader(),...e.participants.flatMap(p=>detailRows(e,p))],"event_result_"+fileSafe(e.id)+".csv");}
-function renderResults(){const e=current();$("sessionStats").innerHTML=e.sessions.map(s=>{const eligible=e.participants.filter(p=>!p.removed&&p.planned[s.id]);return summaryMetric(s.name+"（受付 / 予定）",eligible.filter(p=>checked(p,s.id)).length+" / "+eligible.length);}).join("");}
+function renderResults(){const e=current();$("sessionStats").innerHTML=e.sessions.map(s=>{const eligible=e.participants.filter(p=>!p.removed&&p.planned[s.id]);return summaryMetric(s.name+"（受付 / 予定）",eligible.filter(p=>checked(p,s.id)).length+" / "+eligible.length);}).join("");const select=$("rosterSession"),previous=select.value;select.replaceChildren();for(const s of e.sessions)select.add(new Option(s.name,s.id));select.value=e.sessions.some(s=>s.id===previous)?previous:e.sessions[0].id;}
 function filteredCross(){const type=$("crossPeriod").value,year=+$("crossYear").value,cat=$("crossCategory").value,status=$("crossStatus").value,q=$("crossQuery").value.trim().toLowerCase();const records=[];for(const e of db.values()){if(cat!=="all"&&e.category!==cat)continue;if(type!=="all"){if(!Number.isInteger(year)||year<2000||year>2100||!e.date)continue;const a=type==="fiscal"?year+"-04-01":year+"-01-01",b=type==="fiscal"?(year+1)+"-04-01":(year+1)+"-01-01";if(e.date<a||e.date>=b)continue;}for(const p of e.participants.filter(p=>!p.removed)){const st=statusFor(e,p);if(status==="checked"&&st!=="受付済み"&&st!=="一部受付")continue;if(status==="partial"&&st!=="一部受付")continue;if(status==="pending"&&st!=="未受付")continue;if(q&&![e.name,e.id,p.id,p.name,p.staffId,p.department].join(" ").toLowerCase().includes(q))continue;records.push({e,p,status:st});}}return records.sort((a,b)=>b.e.date.localeCompare(a.e.date)||a.e.id.localeCompare(b.e.id)||a.p.id.localeCompare(b.p.id));}
 function renderCross(){const records=filteredCross(),tbody=$("crossRows");tbody.replaceChildren();for(const {e,p,status} of records){const tr=document.createElement("tr");for(const x of [e.id,e.date,e.name,p.id,p.staffId,p.name,p.department,status]){const td=document.createElement("td");td.textContent=x||"—";tr.append(td);}tbody.append(tr);}$("crossCount").textContent=records.length+"件";const people=new Set(records.filter(({p})=>p.staffId).map(({p})=>p.staffId));$("crossSummary").innerHTML=summaryMetric("イベント",new Set(records.map(({e})=>e.id)).size)+summaryMetric("参加記録",records.length)+summaryMetric("職員番号あり・実人数",people.size);}
 function exportCross(detail){const found=filteredCross();if(detail){csvDownload([detailHeader(),...found.flatMap(({e,p})=>detailRows(e,p))],"cross_sessions_"+stamp()+".csv");}else{const head=["event_id","event_name","event_date","category","participant_id","staff_id","name","department","planned_sessions","checked_sessions","status"];const rows=found.map(({e,p,status})=>[e.id,e.name,e.date,e.category,p.id,p.staffId,p.name,p.department,e.sessions.filter(s=>p.planned[s.id]).length,e.sessions.filter(s=>checked(p,s.id)).length,status]);csvDownload([head,...rows],"cross_participants_"+stamp()+".csv");}}
@@ -512,8 +573,9 @@ $("exportCross").onclick=()=>exportCross(false);$("exportCrossDetail").onclick=(
 $("saveSettings").onclick=saveSettings;$("addSession").onclick=addSession;for(let i=1;i<=2;i++)$("customType"+i).onchange=()=>toggleCustomOptions(i);$("addPerson").onclick=()=>openPerson(null,false);
 $("personQuery").oninput=renderParticipants;$("importParticipants").onclick=importParticipants;$("exportRoster").onclick=exportRoster;
 $("qrPerson").onchange=renderOneQR;$("showQR").onclick=renderOneQR;$("downloadQR").onclick=downloadOneQR;$("printQRs").onclick=printQR;$("exportQRZip").onclick=exportQRZip;
-$("exportResult").onclick=eventDetailCSV;$("exportAudit").onclick=exportAudit;$("checkinSession").onchange=()=>{showResult(null,"スキャン待機中","");renderReception();};
+$("exportResult").onclick=eventDetailCSV;$("exportAudit").onclick=exportAudit;$("printRosterPrep").onclick=()=>printReceptionRoster($("rosterSession").value);$("printRosterDay").onclick=()=>printReceptionRoster(curSession()?.id);$("checkinSession").onchange=()=>{showResult(null,"スキャン待機中","");renderReception();};
 $("walkinBtn").onclick=()=>openPerson(null,true);$("manualBtn").onclick=openManual;$("closeDialog").onclick=closeDialog;
 $("dialogBackdrop").addEventListener("click",e=>{if(e.target===$("dialogBackdrop"))closeDialog();});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("dialogBackdrop").hidden)closeDialog();});}
+window.addEventListener("afterprint",()=>{document.body.removeAttribute("data-print-mode");$("receptionPrint").hidden=true;});
 loadAll();delegate();render();
 })();
