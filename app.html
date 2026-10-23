@@ -40,7 +40,17 @@
  <section id="settingsPanel" class="panel">
   <h3>イベント設定</h3><div class="fields"><label class="field">イベント名<input id="editEventName" required></label><label class="field">開催日<input id="editEventDate" type="date"></label><label class="field">分類<select id="editEventCategory"><option value="training">研修</option><option value="briefing">説明会</option><option value="other">その他</option></select></label></div>
   <h3 style="margin-top:24px">受付区分</h3><div id="sessionEditor"></div><div class="buttons" style="margin-top:12px"><input id="newSessionName" class="search" style="max-width:240px" placeholder="新しい受付区分名"><button class="btn" id="addSession">＋ 区分追加</button></div>
-  <h3 style="margin-top:24px">任意項目（2つ）</h3><div class="fields two"><label class="field">任意項目1<input id="customLabel1"></label><label class="field">任意項目2<input id="customLabel2"></label></div>
+  <h3 style="margin-top:24px">任意項目（最大2つ）</h3>
+  <div class="fields two">
+   <div class="custom-config"><label class="field">項目名1<input id="customLabel1" placeholder="例：参加形式"></label>
+    <label class="field">入力方法<select id="customType1"><option value="text">自由入力</option><option value="bool">有・無</option><option value="select">選択肢</option></select></label>
+    <label class="field" id="customOptionsWrap1" hidden>選択肢（| で区切る）<input id="customOptions1" placeholder="例：対面|オンライン"></label>
+   </div>
+   <div class="custom-config"><label class="field">項目名2<input id="customLabel2" placeholder="例：PC持参"></label>
+    <label class="field">入力方法<select id="customType2"><option value="text">自由入力</option><option value="bool">有・無</option><option value="select">選択肢</option></select></label>
+    <label class="field" id="customOptionsWrap2" hidden>選択肢（| で区切る）<input id="customOptions2" placeholder="例：あり|なし|未定"></label>
+   </div>
+  </div>
   <div class="form-actions"><button class="btn main" id="saveSettings">設定を保存</button></div>
  </section>
  <section id="participantsPanel" class="panel" hidden>
