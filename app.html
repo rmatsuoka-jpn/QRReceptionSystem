@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>QR受付システム</title><link rel="stylesheet" href="./app.css">
+<script defer src="./vendor/html5-qrcode.min.js"></script><script defer src="./vendor/qrcode.min.js"></script><script defer src="./app.js"></script></head>
+<body><header><div class="bar"><h1>▦ QR受付システム</h1><div class="head-actions"><span>オフライン・1受付1PC</span><a class="help" href="./help.html">ⓘ ヘルプ・操作説明</a></div></div></header>
+<main class="wrap">
+<div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+<section id="homeView">
+ <div class="row title-row"><h2>総合管理</h2><span class="tag">このPCのイベント</span></div>
+ <div class="summary" id="globalSummary"></div>
+ <div class="tabs" id="homeTabs"><button data-home="events" class="active">▦ イベント</button><button data-home="cross">⌕ 横断検索</button><button data-home="data">▣ データ管理</button></div>
+ <section id="homeEvents">
+  <div class="row title-row"><h3>イベント一覧</h3><button id="newEvent" class="btn main">＋ 新規イベント</button></div>
+  <div class="panel filter"><div class="fields"><label class="field">イベント名<input id="eventQuery" placeholder="名前を検索"></label><label class="field">開催日（開始）<input type="date" id="dateFrom"></label><label class="field">開催日（終了）<input type="date" id="dateTo"></label><label class="field">並び替え<select id="sortKey"><option value="date">開催日</option><option value="id">イベントID</option></select></label><label class="field">順序<select id="sortOrder"><option value="desc">降順 ↓</option><option value="asc">昇順 ↑</option></select></label><div style="align-self:end"><button id="resetEvents" class="btn">↺ クリア</button></div></div></div>
+  <div class="row title-row"><div class="hint" id="eventCount"></div></div><div id="eventCards" class="cardlist"></div>
+ </section>
+ <section id="homeCross" hidden>
+  <div class="panel"><h3>横断参加者検索</h3><div class="fields"><label class="field">期間<select id="crossPeriod"><option value="fiscal">年度（4月〜翌3月）</option><option value="calendar">暦年</option><option value="all">全期間</option></select></label><label class="field">年<input id="crossYear" type="number" min="2000" max="2100" value="2026"></label><label class="field">イベント分類<select id="crossCategory"><option value="all">すべて</option><option value="training">研修</option><option value="briefing">説明会</option><option value="other">その他</option></select></label><label class="field">受付状況<select id="crossStatus"><option value="all">すべて</option><option value="checked">受付実績あり</option><option value="partial">一部受付</option><option value="pending">未受付</option></select></label><label class="field">氏名・番号・所属・イベント名<input id="crossQuery" placeholder="キーワード"></label></div></div>
+  <div id="crossSummary" class="summary"></div>
+  <div class="panel"><div class="row"><h3>参加者一覧 <span id="crossCount" class="tag"></span></h3><div class="buttons"><button id="exportCross" class="btn main">⇩ 参加者一覧CSV</button><button id="exportCrossDetail" class="btn">⇩ 区分別詳細CSV</button></div></div><div class="tablewrap"><table><thead><tr><th>イベントID</th><th>開催日</th><th>イベント名</th><th>参加者ID</th><th>職員番号</th><th>氏名</th><th>所属</th><th>受付状況</th></tr></thead><tbody id="crossRows"></tbody></table></div></div>
+ </section>
+ <section id="homeData" hidden>
+  <div class="grid2">
+   <div class="panel"><h3>⇩ 全イベントJSONバックアップ</h3><div id="backupCount" class="hint"></div><p class="hint">イベント設定・参加者名簿・QR識別子・受付履歴を保存</p><button class="btn main" data-backup>JSONを保存</button></div>
+   <div class="panel"><h3>↶ JSONから復元</h3><label class="field">バックアップファイルを選択<input type="file" accept=".json,application/json" id="restoreFile"></label><label class="field">重複イベントの扱い<select id="restoreMode"><option value="skip">既存のイベントを保持する</option><option value="replace">選択ファイルで上書きする</option></select></label><button class="btn" id="restoreBtn">ファイルを確認して復元</button></div>
+  </div><div class="alertline">JSONには個人情報とQR識別子が含まれます。庁内の保管ルールに従ってください。</div>
+ </section>
+</section>
+
+<section id="eventView" hidden>
+ <div class="topback"><button class="btn" id="backHome">← 総合管理へ</button></div>
+ <div class="row title-row"><div><h2 id="eventTitle"></h2><div class="hint" id="eventSubtitle"></div></div><button class="btn" data-backup>⇩ 全件JSON</button></div>
+ <div id="modeTabs" class="tabs"><button data-mode="prep" class="active">⚙ 事前準備</button><button data-mode="day">▣ 当日受付</button></div>
+ <div id="prepView" class="layout">
+ <nav class="sidebar" aria-label="事前準備メニュー"><button data-prep="settings" class="active">イベント設定</button><button data-prep="participants">参加者管理</button><button data-prep="qr">QR発行</button><button data-prep="results">結果・出力</button></nav>
+ <div>
+ <section id="settingsPanel" class="panel">
+  <h3>イベント設定</h3><div class="fields"><label class="field">イベント名<input id="editEventName" required></label><label class="field">開催日<input id="editEventDate" type="date"></label><label class="field">分類<select id="editEventCategory"><option value="training">研修</option><option value="briefing">説明会</option><option value="other">その他</option></select></label></div>
+  <h3 style="margin-top:24px">受付区分</h3><div id="sessionEditor"></div><div class="buttons" style="margin-top:12px"><input id="newSessionName" class="search" style="max-width:240px" placeholder="新しい受付区分名"><button class="btn" id="addSession">＋ 区分追加</button></div>
+  <h3 style="margin-top:24px">任意項目（2つ）</h3><div class="fields two"><label class="field">任意項目1<input id="customLabel1"></label><label class="field">任意項目2<input id="customLabel2"></label></div>
+  <div class="form-actions"><button class="btn main" id="saveSettings">設定を保存</button></div>
+ </section>
+ <section id="participantsPanel" class="panel" hidden>
+  <div class="row"><h3>参加者一覧 <span id="peopleCount" class="tag"></span></h3><div class="buttons"><button id="addPerson" class="btn main">＋ 個別登録</button><button id="exportRoster" class="btn">⇩ CSV</button></div></div>
+  <div class="panel filter"><h3>CSV一括登録</h3><div class="row"><input type="file" id="participantFile" accept=".csv,text/csv"><button id="importParticipants" class="btn main">CSVを取り込む</button></div><p class="hint">必須列：氏名。職員番号・所属・メール・区分名（参加予定）・任意項目に対応。職員番号が一致する既登録者はスキップします。</p></div>
+  <input class="search" id="personQuery" placeholder="氏名・職員番号・所属・参加者IDで検索" aria-label="参加者検索" style="margin-bottom:13px">
+  <div class="tablewrap"><table><thead><tr><th>ID</th><th>氏名</th><th>職員番号</th><th>所属</th><th>参加区分</th><th>操作</th></tr></thead><tbody id="participantRows"></tbody></table></div>
+ </section>
+ <section id="qrPanel" class="panel" hidden>
+  <h3>QR発行</h3><p class="hint">参加者にはイベント専用QRを発行します。午前・午後は同じQRを使用します。</p>
+  <div class="fields two"><label class="field">発行対象<select id="qrPerson"></select></label><div class="field"><span>個別発行</span><div class="buttons"><button class="btn main" id="showQR">QRを表示</button><button class="btn" id="downloadQR">⇩ PNG</button></div></div></div>
+  <div id="qrSample" style="text-align:center"><div id="qrCanvas" class="qr-container"></div><strong id="qrPersonName"></strong></div>
+  <div class="grid2" style="margin-top:18px"><div class="tile"><h3>✉ メール配布</h3><div class="hint">宛先対応表CSVと個別PNG画像を用意</div><button id="exportMails" class="btn">⇩ 宛先一覧CSV</button></div><div class="tile"><h3>▦ 紙配布（A4・10面）</h3><div class="hint">名刺サイズ／2列×5行</div><button id="printQRs" class="btn main">▧ 印刷プレビュー</button></div></div>
+  <div id="printSheets" class="print-sheet"></div>
+ </section>
+ <section id="resultsPanel" class="panel" hidden><h3>受付集計</h3><div id="sessionStats" class="summary"></div><div class="buttons"><button class="btn main" id="exportResult">⇩ このイベントの区分別CSV</button><button class="btn" data-backup>⇩ 全イベントJSON</button></div></section>
+ </div></div>
+
+ <section id="receptionView" class="reception" hidden>
+  <div class="day-session"><div class="row"><strong>受付区分</strong><span class="tag">現在選択中</span></div><select id="checkinSession"></select></div><div id="daySummary" class="summary"></div>
+  <div class="reception-grid">
+  <div><div class="panel"><h3>QR受付</h3><div class="camera"><div id="reader" class="reader"></div><div id="cameraHint" class="hint">カメラを選択してQRを読み取ってください。</div></div><div id="checkinResult" class="result" role="status" aria-live="polite">スキャン待機中</div></div>
+  <div class="panel"><h3>当日の参加者変更</h3><div class="grid2"><button id="walkinBtn" class="btn main">＋ 飛び入り登録</button><button id="manualBtn" class="btn">⌕ 名前から受付</button></div></div></div>
+  <div class="panel"><div class="pending-header"><div><h3 style="margin:0">未受付者 <span id="pendingSessionName" class="tag"></span></h3><small class="hint">事前登録者</small></div><strong id="pendingCount">0</strong></div><div class="pending-list" id="pendingRows"></div></div>
+  </div>
+ </section>
+</section>
+
+<div id="dialogBackdrop" class="dialog-backdrop" hidden><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
+ <div class="dialog-head"><h2 id="dialogTitle">参加者</h2><button class="btn small" id="closeDialog" aria-label="閉じる">✕</button></div>
+ <div id="dialogBody"></div>
+</div></div>
+</main><footer>QR受付システム　／　このPCのブラウザに保存　／　庁内運用</footer>
+</body></html>
