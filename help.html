@@ -29,9 +29,9 @@ dt{font-weight:700;margin-top:12px}dd{margin:2px 0 8px;color:#587184;font-size:.
 </style>
 </head>
 <body>
-<header><div class="head"><div class="brand">▦ QR受付システム　/　ヘルプ・操作説明</div><a href="./wireframe.html" class="back">← 総合管理画面へ戻る</a></div></header>
+<header><div class="head"><div class="brand">▦ QR受付システム　/　ヘルプ・操作説明</div><a href="./index.html" class="back">← 総合管理画面へ戻る</a></div></header>
 <main>
-<div class="intro"><div><h1>ヘルプ・操作説明</h1><p class="sub">総合管理から受付当日まで、画面ごとに使い方を確認できます。</p></div><span class="state">操作ワイヤーフレーム版</span></div>
+<div class="intro"><div><h1>ヘルプ・操作説明</h1><p class="sub">総合管理から受付当日まで、画面ごとに使い方を確認できます。</p></div><span class="state">初期実装版</span></div>
 <nav class="nav" aria-label="このページの目次">
 <a href="#manage">総合管理</a><a href="#prepare">事前準備</a><a href="#reception">当日受付</a><a href="#unexpected">当日の変更</a><a href="#data">データ保存・出力</a><a href="#faq">よくある操作</a>
 </nav>
@@ -86,7 +86,7 @@ dt{font-weight:700;margin-top:12px}dd{margin:2px 0 8px;color:#587184;font-size:.
 <div class="feature"><div class="icon">▣</div><h3>JSONバックアップ</h3><p>全イベントの名簿・区分・QR識別子・受付履歴を含む復元用ファイル。定期的に安全な場所へ保存してください。</p></div>
 <div class="feature"><div class="icon">▤</div><h3>CSV出力</h3><p>Excel分析用。参加者一覧はイベント×参加者、区分別詳細はイベント×参加者×区分で1行です。</p></div>
 </div>
-<div class="panel bad"><strong>保存場所の注意</strong><p class="mini">正式版ではデータを受付PCのブラウザ（localStorage）に保存します。ほかのPCと自動同期されず、閲覧データの削除などで失われる可能性があります。JSONバックアップを庁内ルールに従って管理してください。</p></div>
+<div class="panel bad"><strong>保存場所の注意</strong><p class="mini">現在の実装ではデータを受付PCのブラウザ（localStorage）に保存します。ほかのPCと自動同期されず、閲覧データの削除などで失われる可能性があります。JSONバックアップを庁内ルールに従って管理してください。</p></div>
 </section>
 <section id="faq">
 <h2>よくある操作</h2>
@@ -95,7 +95,7 @@ dt{font-weight:700;margin-top:12px}dd{margin:2px 0 8px;color:#587184;font-size:.
 <details><summary>事前登録者のうち誰がまだ来ていないか知りたいです</summary><p>当日受付モードの「未受付者」欄を確認してください。選択中の区分の対象者だけが表示され、受付済みになると自動的に消えます。</p></details>
 <details><summary>過去の参加記録を年間で集計したいです</summary><p>総合管理の「横断検索」で年度・イベント分類などを指定し、参加者一覧CSVを出力します。同じ職員の名寄せには職員番号を利用します。</p></details>
 </section>
-<div class="panel" style="background:#eef4f6;border-color:#dbe5eb"><strong>現在の実装状況</strong><p class="mini">このヘルプは完成予定の機能も含みます。現段階の wireframe.html は操作確認用で、カメラ・一括QR発行・CSV入出力・localStorageへの保存などは未接続です。画面に出る「出力」はファイルを生成しません。</p><a class="back" style="display:inline-block;color:#1a5b6b;border-color:#9dbecb" href="./wireframe.html">総合管理画面に戻る →</a></div>
+<div class="panel" style="background:#eef4f6;border-color:#dbe5eb"><strong>現在の実装状況</strong><p class="mini">総合管理・イベント設定・参加者登録・QR受付・JSONバックアップ／復元・CSV出力は初期実装済みです。メール配布用QRのZIP一括生成など一部機能は今後実装します。旧ワイヤーフレームは wireframe.html で確認できます。</p><a class="back" style="display:inline-block;color:#1a5b6b;border-color:#9dbecb" href="./index.html">総合管理画面に戻る →</a></div>
 </main>
 </body>
 </html>
