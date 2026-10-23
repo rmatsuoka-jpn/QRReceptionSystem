@@ -1,7 +1,7 @@
 /* QR受付システム: static offline browser app, v1 */
 (()=>{"use strict";
 const $=id=>document.getElementById(id), IX="QRReception:index:v1", PREFIX="QRReception:event:v1:";
-const SCHEMA=1, db=new Map();let order=[],activeId=null,view="home",homeTab="events",prepTab="settings",day=false,qrRendered="",scannerStarted=false,lastScan="",lastScanAt=0,dialogReturnFocus=null;
+const SCHEMA=1, db=new Map();let order=[],activeId=null,view="home",homeTab="events",prepTab="settings",day=false,qrRendered="",scannerStarted=false,lastScan="",lastScanAt=0,dialogReturnFocus=null,receptionTab="pending";
 const esc=x=>String(x??"").replace(/[&<>"']/g,s=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[s]));
 const clone=x=>JSON.parse(JSON.stringify(x));
 const catName=x=>({training:"研修",briefing:"説明会",other:"その他"}[x]||"その他");
@@ -26,7 +26,7 @@ function evCounts(e){let target=0,done=0;for(const p of e.participants.filter(p=
 function makeEvent(from){const id=eventId(),sessions=from?from.sessions.map(s=>({id:sessionId(),name:s.name})):[{id:sessionId(),name:"全体"}];return {id,name:from?from.name+"（複製）":"新規イベント",date:"",category:from?.category||"training",sessions,customLabels:from?.customLabels?.slice(0,2)||["",""],nextParticipant:1,participants:[],createdAt:iso()};}
 function addEvent(fromId){let e;try{e=makeEvent(fromId?db.get(fromId):null);}catch(err){announce(err.message,"error");return;}const name=prompt("イベント名を入力",e.name);if(name===null)return;if(!name.trim())return announce("イベント名は必須です。","warn");e.name=name.trim();try{localStorage.setItem(key(e.id),JSON.stringify(e));if(!writeIndex([...order,e.id])){localStorage.removeItem(key(e.id));return;}db.set(e.id,e);openEvent(e.id,false,"settings");announce("イベントを作成しました。","success");}catch(err){try{localStorage.removeItem(key(e.id));}catch{}announce("イベントを保存できません："+err.message,"error");}}
 function deleteEvent(id){const e=db.get(id);if(!e)return;if(!confirm("「"+e.name+"」を削除します。\n事前に全イベントJSONをバックアップしましたか？\n削除するとこのブラウザから名簿・受付履歴が消えます。"))return;if(!confirm("最終確認：イベント「"+e.name+"」を削除しますか？"))return;const next=order.filter(x=>x!==id);if(!writeIndex(next))return;try{localStorage.removeItem(key(id));db.delete(id);if(activeId===id){activeId=null;view="home";}render();announce("イベントを削除しました。","warn");}catch(err){writeIndex([...next,id]);announce("削除に失敗しました："+err.message,"error");}}
-function openEvent(id,goDay=false,tab="settings"){if(!db.has(id))return;activeId=id;view="event";day=goDay;prepTab=tab;render();}
+function openEvent(id,goDay=false,tab="settings"){if(!db.has(id))return;activeId=id;view="event";day=goDay;prepTab=tab;receptionTab="pending";render();}
 function openHome(tab="events"){view="home";homeTab=tab;render();}
 function summaryMetric(label,value){return '<div class="metric"><span>'+esc(label)+'</span><strong>'+esc(value)+'</strong></div>';}
 function renderHome(){const ev=[...db.values()];$("globalSummary").innerHTML=summaryMetric("イベント",ev.length)+summaryMetric("参加登録（延べ）",ev.reduce((n,e)=>n+e.participants.filter(p=>!p.removed).length,0))+summaryMetric("受付済み（区分別）",ev.reduce((n,e)=>n+evCounts(e).done,0));
@@ -61,7 +61,64 @@ function checkInByToken(code){const e=current(),s=curSession(),p=e.participants.
 function checkIn(id,method,allowPlan){const e=current(),s=curSession();let result=null;const person=e.participants.find(p=>p.id===id);if(!person||person.removed){showResult(person,"受付できません","error");return false;}if(checked(person,s.id)){const c=person.checkins[s.id];showResult(person,"受付済み（重複）","warn",s.name,c.lastAt||c.at);return false;}if(!person.planned[s.id]&&!allowPlan){showResult(person,"この区分は参加対象外です","warn",s.name);return false;}
 const ok=mutate(next=>{const p=next.participants.find(p=>p.id===id),at=iso();if(allowPlan)p.planned[s.id]=true;const c=p.checkins[s.id];if(c){c.active=true;c.lastAt=at;c.method=method;(c.history||(c.history=[])).push({type:"recheck",at,method});}else p.checkins[s.id]={at,lastAt:at,method,active:true,history:[]};result={person:p,at};});if(!ok){showResult(person,"保存に失敗しました","error");return false;}showResult(result.person,"受付完了","success",s.name,result.at);return true;}
 function showResult(person,txt,level="warn",session="",at=""){const d=$("checkinResult");d.className="result "+level;d.replaceChildren();const head=document.createElement("div");head.className="outcome";head.textContent=txt;d.append(head);if(person){const name=document.createElement("div");name.className="person-name";name.textContent=person.name;d.append(name);const meta=document.createElement("div");meta.className="person-meta";meta.textContent=[person.department,session,at?localDate(at):""].filter(Boolean).join("　/　");d.append(meta);}}
-function renderReception(){const e=current(),sel=$("checkinSession"),existing=sel.value;sel.replaceChildren();for(const s of e.sessions)sel.add(new Option(s.name,s.id));sel.value=e.sessions.some(s=>s.id===existing)?existing:e.sessions[0].id;const s=curSession(),people=e.participants.filter(p=>!p.removed&&p.planned[s.id]),done=people.filter(p=>checked(p,s.id)),pending=people.filter(p=>!checked(p,s.id)&&p.source!=="walkin");$("daySummary").innerHTML=summaryMetric("参加対象",people.length)+summaryMetric("受付済み",done.length)+summaryMetric("未受付（事前登録）",pending.length);$("pendingSessionName").textContent=s.name;$("pendingCount").textContent=pending.length+"名";const list=$("pendingRows");list.replaceChildren();list.classList.toggle("empty",!pending.length);if(!pending.length)list.textContent="✓　事前登録者の未受付なし";for(const p of pending){const row=document.createElement("div");row.className="pending-person";const text=document.createElement("div"),title=document.createElement("b"),sub=document.createElement("small");title.textContent=p.name;sub.textContent=p.department||"所属未登録";text.append(title,sub);const id=document.createElement("span");id.className="code";id.textContent="#"+p.id;row.append(text,id);list.append(row);}if(!scannerStarted)startScanner();}
+function showReceptionTab(tab){
+ receptionTab=tab==="checked"?"checked":"pending";
+ $("pendingRows").hidden=receptionTab!=="pending";
+ $("checkedRows").hidden=receptionTab!=="checked";
+ for(const type of ["pending","checked"]){
+  const button=$(type==="pending"?"tabPending":"tabChecked");
+  const active=receptionTab===type;
+  button.classList.toggle("active",active);
+  button.setAttribute("aria-selected",String(active));
+  button.tabIndex=active?0:-1;
+ }
+}
+function renderReception(){
+ const e=current(),sel=$("checkinSession"),existing=sel.value;
+ sel.replaceChildren();
+ for(const s of e.sessions)sel.add(new Option(s.name,s.id));
+ sel.value=e.sessions.some(s=>s.id===existing)?existing:e.sessions[0].id;
+ const s=curSession();
+ const people=e.participants.filter(p=>!p.removed&&p.planned[s.id]);
+ // A changed attendance plan must not hide an existing valid check-in.
+ const attended=e.participants.filter(p=>!p.removed&&checked(p,s.id)).sort((a,b)=>{
+  const time=p=>p.checkins[s.id].lastAt||p.checkins[s.id].at||"";
+  return time(b).localeCompare(time(a))||a.name.localeCompare(b.name,"ja");
+ });
+ const pending=people.filter(p=>!checked(p,s.id)&&p.source!=="walkin").sort((a,b)=>a.name.localeCompare(b.name,"ja"));
+ $("daySummary").innerHTML=summaryMetric("参加対象",people.length)+summaryMetric("受付済み",attended.length)+summaryMetric("未受付（事前登録）",pending.length);
+ $("pendingSessionName").textContent=s.name;
+ $("pendingCount").textContent=String(pending.length);
+ $("checkedCount").textContent=String(attended.length);
+ const waiting=$("pendingRows"),arrived=$("checkedRows");
+ waiting.replaceChildren();arrived.replaceChildren();
+ waiting.classList.toggle("empty",!pending.length);arrived.classList.toggle("empty",!attended.length);
+ if(!pending.length)waiting.textContent="✓　事前登録者の未受付なし";
+ for(const p of pending){
+  const row=document.createElement("div");row.className="pending-person";
+  const text=document.createElement("div"),title=document.createElement("b"),sub=document.createElement("small");
+  title.textContent=p.name;sub.textContent=p.department||"所属未登録";text.append(title,sub);
+  const id=document.createElement("span");id.className="code";id.textContent="#"+p.id;
+  row.append(text,id);waiting.append(row);
+ }
+ if(!attended.length)arrived.textContent="まだ受付済みの参加者はいません。";
+ for(const p of attended){
+  const row=document.createElement("div");row.className="pending-person";
+  const text=document.createElement("div"),title=document.createElement("b"),sub=document.createElement("small"),detail=document.createElement("div");
+  title.textContent=p.name;sub.textContent=p.department||"所属未登録";
+  detail.className="attendance-detail";
+  const method=document.createElement("span");method.className="attendance-method"+(p.source==="walkin"?" walkin":"");
+  const record=p.checkins[s.id];
+  method.textContent=p.source==="walkin"?"当日登録":record.method==="manual"?"手動受付":"QR受付";
+  const clock=document.createElement("span");clock.className="checkin-time";
+  clock.textContent=localDate(record.lastAt||record.at);
+  detail.append(method,clock);text.append(title,sub,detail);
+  const id=document.createElement("span");id.className="code";id.textContent="#"+p.id;
+  row.append(text,id);arrived.append(row);
+ }
+ showReceptionTab(receptionTab);
+ if(!scannerStarted)startScanner();
+}
 function startScanner(){scannerStarted=true;if(typeof Html5QrcodeScanner!=="function"){$("cameraHint").textContent="QR読み取りライブラリが見つかりません。vendor/を確認してください。";return;}try{const scanner=new Html5QrcodeScanner("reader",{fps:10,qrbox:{width:230,height:230},rememberLastUsedCamera:true},false);scanner.render(text=>{const code=String(text).trim(),now=Date.now();if(code===lastScan&&now-lastScanAt<1500)return;lastScan=code;lastScanAt=now;if(!day||view!=="event")return;checkInByToken(code);},()=>{});}catch(err){$("cameraHint").textContent="カメラを開始できません："+err.message;}}
 function renderQRSelect(){const e=current(),sel=$("qrPerson"),old=sel.value;sel.replaceChildren();for(const p of e.participants.filter(p=>!p.removed))sel.add(new Option(p.id+" / "+p.name,p.id));if([...sel.options].some(x=>x.value===old))sel.value=old;if(!sel.options.length){$("qrCanvas").replaceChildren();$("qrPersonName").textContent="参加者を先に登録してください。";}else renderOneQR();}
 function renderOneQR(){const p=current().participants.find(p=>p.id===$("qrPerson").value);if(!p)return;qrRendered=p.id;const root=$("qrCanvas");root.replaceChildren();$("qrPersonName").textContent=p.name+" / "+p.id;if(typeof QRCode!=="function")return announce("QRコード生成ライブラリがありません。","error");try{new QRCode(root,{text:p.token,width:192,height:192,correctLevel:QRCode.CorrectLevel.M});}catch(err){announce("QR生成に失敗しました："+err.message,"error");}}
@@ -85,6 +142,49 @@ function filteredCross(){const type=$("crossPeriod").value,year=+$("crossYear").
 function renderCross(){const records=filteredCross(),tbody=$("crossRows");tbody.replaceChildren();for(const {e,p,status} of records){const tr=document.createElement("tr");for(const x of [e.id,e.date,e.name,p.id,p.staffId,p.name,p.department,status]){const td=document.createElement("td");td.textContent=x||"—";tr.append(td);}tbody.append(tr);}$("crossCount").textContent=records.length+"件";const people=new Set(records.filter(({p})=>p.staffId).map(({p})=>p.staffId));$("crossSummary").innerHTML=summaryMetric("イベント",new Set(records.map(({e})=>e.id)).size)+summaryMetric("参加記録",records.length)+summaryMetric("職員番号あり・実人数",people.size);}
 function exportCross(detail){const found=filteredCross();if(detail){csvDownload([detailHeader(),...found.flatMap(({e,p})=>detailRows(e,p))],"cross_sessions_"+stamp()+".csv");}else{const head=["event_id","event_name","event_date","category","participant_id","staff_id","name","department","planned_sessions","checked_sessions","status"];const rows=found.map(({e,p,status})=>[e.id,e.name,e.date,e.category,p.id,p.staffId,p.name,p.department,e.sessions.filter(s=>p.planned[s.id]).length,e.sessions.filter(s=>checked(p,s.id)).length,status]);csvDownload([head,...rows],"cross_participants_"+stamp()+".csv");}}
 function backup(){const payload={schema_version:SCHEMA,exported_at:iso(),events:[...order].filter(x=>db.has(x)).map(x=>clone(db.get(x)))};downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:"application/json;charset=utf-8"}),"QRReception_backup_"+stamp()+".json");announce(payload.events.length+"件のJSONダウンロードを開始しました。ファイルが保存されたことを確認してください。","success");}
+
+// Removes only the current application namespace. Do not touch browser-wide or legacy prototype data.
+function deleteAllStoredData(){
+ const entries=[];
+ try{
+  for(let i=0;i<localStorage.length;i++){
+   const k=localStorage.key(i);
+   if(k===IX||k?.startsWith(PREFIX))entries.push([k,localStorage.getItem(k)]);
+  }
+ }catch(err){announce("削除対象を確認できません："+err.message,"error");return;}
+ try{
+  for(const [k] of entries)localStorage.removeItem(k);
+ }catch(err){
+  let restored=true;
+  for(const [k,v] of entries){
+   try{if(v!==null)localStorage.setItem(k,v);}catch{restored=false;}
+  }
+  announce("データの削除に失敗しました。"+(restored?"元のデータは復旧しました。":"一部復旧できない可能性があります。JSONから復元してください。")+" "+err.message,"error");
+  return;
+ }
+ db.clear();order=[];activeId=null;view="home";homeTab="events";day=false;receptionTab="pending";
+ closeDialog();render();
+ announce("このアプリの全イベント・参加者・受付履歴を削除しました。","success");
+}
+function openDeleteAllDialog(){
+ const count=db.size,participants=[...db.values()].reduce((n,e)=>n+e.participants.length,0);
+ const content=document.createElement("div");
+ content.innerHTML='<div class="delete-confirm"><strong>取り消せない操作です</strong>このブラウザに保存された全'+count+'イベント・参加者'+participants+'名分の情報と受付履歴を削除します。<br>先にJSONバックアップを保存してください。</div>'+
+ '<div class="buttons" style="margin-bottom:18px"><button type="button" class="btn" id="backupBeforeDelete">⇩ 先にJSONバックアップ</button></div>'+
+ '<label class="field">確認のため「全削除」と入力してください<input type="text" id="deletePhrase" autocomplete="off" placeholder="全削除"></label>'+
+ '<div class="delete-dialog-buttons"><button type="button" class="btn" id="cancelDeleteAll">キャンセル</button><button type="button" class="btn danger" id="confirmDeleteAll" disabled>すべて削除する</button></div>';
+ openDialog("全データ削除",content);
+ $("backupBeforeDelete").onclick=backup;
+ $("cancelDeleteAll").onclick=closeDialog;
+ $("deletePhrase").addEventListener("input",()=>{$("confirmDeleteAll").disabled=$("deletePhrase").value.trim()!=="全削除";});
+ $("confirmDeleteAll").onclick=()=>{
+  if($("deletePhrase").value.trim()!=="全削除")return;
+  if(!confirm("最終確認：このブラウザのQR受付システムの全イベントと受付履歴を削除します。実行しますか？"))return;
+  deleteAllStoredData();
+ };
+ $("deletePhrase").focus();
+}
+
 async function restore(){const f=$("restoreFile").files[0];if(!f)return announce("復元するJSONファイルを選択してください。","warn");let data;try{data=JSON.parse(await f.text());if(data.schema_version!==SCHEMA||!Array.isArray(data.events))throw Error("未対応のバックアップ形式です");const seen=new Set();for(const e of data.events){validateEvent(e);if(seen.has(e.id))throw Error("イベントIDが重複しています");seen.add(e.id);}}catch(err){return announce("JSONの検証に失敗しました："+err.message,"error");}
 const mode=$("restoreMode").value,existing=data.events.filter(e=>db.has(e.id)).length,records=data.events.filter(e=>!db.has(e.id)||mode==="replace");if(!records.length)return announce("追加するイベントがありません（既存は保持）。","warn");if(!confirm(data.events.length+"件のバックアップを読み込みます。\n新規・更新："+records.length+"件／既存との重複："+existing+"件\n方式："+(mode==="skip"?"既存を保持":"重複するイベントを上書き")+"\n実行しますか？"))return;if(mode==="replace"&&existing&&!confirm("既存イベントをバックアップ側のデータで上書きします。現在の受付記録が失われる可能性があります。本当に実行しますか？"))return;
 const previous=records.map(e=>[e.id,localStorage.getItem(key(e.id))]),newIds=[...order,...records.map(e=>e.id).filter(id=>!order.includes(id))];try{for(const e of records)localStorage.setItem(key(e.id),JSON.stringify(e));localStorage.setItem(IX,JSON.stringify({version:SCHEMA,ids:newIds}));for(const e of records)db.set(e.id,e);order=newIds;render();announce(records.length+"件を復元しました。","success");}catch(err){for(const [id,old] of previous){try{if(old===null)localStorage.removeItem(key(id));else localStorage.setItem(key(id),old);}catch{}}announce("復元に失敗しました。可能な限り元のデータに戻しました："+err.message,"error");}}
@@ -103,6 +203,7 @@ if(b.dataset.home){homeTab=b.dataset.home;render();return;}
 if(b.dataset.mode){day=b.dataset.mode==="day";render();return;}
 if(b.dataset.prep){prepTab=b.dataset.prep;render();return;}
 if(b.dataset.backup!==undefined){backup();return;}
+if(b.dataset.receptionTab){showReceptionTab(b.dataset.receptionTab);return;}
 if(b.dataset.manualPerson){manualCheck(b.dataset.manualPerson);return;}
 if(b.dataset.action){const id=b.dataset.id;switch(b.dataset.action){case "prep":return openEvent(id,false);case "day":return openEvent(id,true);case "clone":return addEvent(id);case "delete":return deleteEvent(id);case "edit-person":return openPerson(b.dataset.person,false);case "remove-session":return removeSession(b.dataset.session);}return;}
 });
@@ -110,7 +211,7 @@ $("newEvent").onclick=()=>addEvent();$("backHome").onclick=()=>openHome();$("res
 for(const id of ["eventQuery","dateFrom","dateTo","sortKey","sortOrder"])$(id).addEventListener(id==="eventQuery"?"input":"change",renderEventList);
 for(const id of ["crossPeriod","crossYear","crossCategory","crossStatus","crossQuery"])$(id).addEventListener(["crossYear","crossQuery"].includes(id)?"input":"change",renderCross);
 $("crossPeriod").onchange=()=>{$("crossYear").disabled=$("crossPeriod").value==="all";renderCross();};
-$("exportCross").onclick=()=>exportCross(false);$("exportCrossDetail").onclick=()=>exportCross(true);$("restoreBtn").onclick=restore;
+$("exportCross").onclick=()=>exportCross(false);$("exportCrossDetail").onclick=()=>exportCross(true);$("restoreBtn").onclick=restore;$("deleteAllData").onclick=openDeleteAllDialog;
 $("saveSettings").onclick=saveSettings;$("addSession").onclick=addSession;$("addPerson").onclick=()=>openPerson(null,false);
 $("personQuery").oninput=renderParticipants;$("importParticipants").onclick=importParticipants;$("exportRoster").onclick=exportRoster;
 $("qrPerson").onchange=renderOneQR;$("showQR").onclick=renderOneQR;$("downloadQR").onclick=downloadOneQR;$("printQRs").onclick=printQR;$("exportMails").onclick=exportEmails;
