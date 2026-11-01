@@ -282,3 +282,23 @@ body.day-mode .notice{position:fixed;left:50%;bottom:18px;transform:translateX(-
 .rx-pop>summary .tag.warn{background:#fde7c8;color:#8a4f10}
 .rx-pop>summary .tag:not(.warn){background:#dcf3e6;color:#1f6b45}
 .rx-summary .metric span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+
+/* 当日受付: 手動受付ボタンを約1.5倍の高さに拡大 */
+.rx-action{min-height:96px;padding:18px 20px}
+.rx-action-ico{width:48px;height:48px;font-size:1.4rem}
+.rx-action b{font-size:1.08rem}
+.rx-action small{font-size:.82rem}
+
+/* 「名前から受付」の一覧だけ拡大。他のダイアログの高さには影響させない。 */
+.dialog:has(#manualRows){max-width:920px}
+.dialog:has(#manualRows) #manualQuery{font-size:1.05rem;padding:12px 14px}
+.dialog:has(#manualRows) .manual-tablewrap{min-height:min(360px,48vh);max-height:min(60vh,480px);margin-top:14px}
+.dialog:has(#manualRows) .manual-table{width:100%;min-width:730px}
+.manual-table th{position:sticky;top:0;z-index:1;padding:12px 10px;background:#eaf1f5;font-size:.95rem}
+.manual-table th:has(.manual-sort){padding:0}
+.manual-table .manual-sort{width:100%;display:flex;align-items:center;gap:6px;text-align:left;border:0;background:transparent;color:#254b60;font-size:.95rem;font-weight:800;padding:12px 10px;cursor:pointer}
+.manual-table .manual-sort:hover{background:#dbeaec}
+.manual-table .manual-sort-arrow{font-size:.83rem;color:#0a707a}
+.manual-table td{padding:8px 10px;font-size:1rem;line-height:1.35}
+.manual-table .btn.small{font-size:.95rem;padding:8px 13px}
