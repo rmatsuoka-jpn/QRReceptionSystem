@@ -116,12 +116,12 @@
 | --- | --- |
 | `index.html` | アプリ入口（`app.html` へ遷移） |
 | `app.html`・`app.css`・`app.js` | 実際に保存・操作するアプリ |
-| `app-support.js` | オフラインでのZIP生成・CSV文字コード／列処理補助 |
+| `app-support.js` | 参加者取り込み用のCSV／TSV解析・文字コード判定・列対応の補助（ZIP生成は2026-11-02にJSZipへ移行） |
 | `help.html` | ヘルプ・操作説明 |
 | `wireframe.html` | 旧デザイン検証用（データ保存はしない） |
 | `scanner-prototype.html` | 従来のQR読み取り検証版（独立した保存領域） |
 | `issue.html` | 単票QR発行検証版（本アプリの名簿とは連動しない） |
-| `vendor/` | QRコード読取・生成用ライブラリ（各ライセンス同梱） |
+| `vendor/` | QRコード読取・生成（html5-qrcode 2.3.8・qrcodejs 1.0.0）とZIP／Excel作成（JSZip 3.10.1）のライブラリ。npm公式配布物と同一、各ライセンス同梱 |
 | `docs/基本方針.md` | 設計上の決定事項・今後の拡張方針 |
 
 既存の試作品を残すため、新しいアプリ用に `app.*` を追加しています。
