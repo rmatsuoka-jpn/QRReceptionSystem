@@ -63,6 +63,30 @@ function parseTSV(text){
  if(field||row.length){row.push(field);if(row.some(x=>x.trim()))out.push(row);}
  return out;
 }
+/* データの先頭の論理行を解析し、引用符内のカンマ・改行を除外して区切り文字を自動判定。 */
+function detectPasteDelimiter(text){
+ const input=String(text??"").replace(/^\uFEFF/,"");let quoted=false,tabs=0,commas=0;
+ for(let i=0;i<input.length;i++){
+  const ch=input[i];
+  if(ch==='"'){
+   if(quoted&&input[i+1]==='"'){i++;continue;}
+   quoted=!quoted;continue;
+  }
+  if(!quoted){
+   if(ch==="\t")tabs++;
+   else if(ch===",")commas++;
+   else if(ch==="\r"||ch==="\n")break;
+  }
+ }
+ if(tabs&&commas&&tabs===commas)throw Error("タブ区切りとカンマ区切りの判定ができません。列見出しを確認してください");
+ return tabs>=commas?"tab":"comma";
+}
+function parsePastedTable(text){
+ const delimiter=detectPasteDelimiter(text);
+ const rows=delimiter==="tab"?parseTSV(text):parseCSV(text);
+ if(!rows.length)throw Error("貼り付けられた表データがありません");
+ return rows;
+}
 function decodeCSV(buffer){
  const arr=buffer instanceof Uint8Array?buffer:new Uint8Array(buffer);
  if(arr[0]===0xFF&&arr[1]===0xFE)return new TextDecoder("utf-16le").decode(arr);
@@ -74,5 +98,5 @@ function decodeCSV(buffer){
 const yes=/^(○|〇|◯|1|true|はい|有|参加|対象|yes)$/i;
 const no=/^(×|✕|0|false|いいえ|無|不参加|対象外|no|)$/i;
 function participation(value){const v=String(value??"").trim();if(yes.test(v))return true;if(no.test(v))return false;throw Error("参加予定は○／×、1／0などで入力してください（値："+v.slice(0,30)+"）");}
-root.QRSupport={zip,pngBytes,detectColumn,parseCSV,parseTSV,decodeCSV,participation,crc32};
+root.QRSupport={zip,pngBytes,detectColumn,parseCSV,parseTSV,parsePastedTable,detectPasteDelimiter,decodeCSV,participation,crc32};
 })(globalThis);
