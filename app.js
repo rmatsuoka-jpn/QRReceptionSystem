@@ -254,8 +254,50 @@ function renderPersonHistory(p){
   root.append(card);
  }
 }
-function openManual(){const panel=document.createElement("div");panel.innerHTML='<input id="manualQuery" class="search" placeholder="氏名・職員番号・所属・参加者IDを検索" autofocus><div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>ID</th><th>氏名</th><th>所属</th><th>状況</th><th>受付</th></tr></thead><tbody id="manualRows"></tbody></table></div>';openDialog("名前から受付・変更",panel);$("manualQuery").addEventListener("input",renderManual);renderManual();$("manualQuery").focus();}
-function renderManual(){const q=$("manualQuery").value.toLowerCase().trim(),e=current(),s=curSession(),tbody=$("manualRows");tbody.replaceChildren();for(const p of e.participants.filter(p=>!p.removed&&[p.name,p.staffId,p.department,p.group,p.id].join(" ").toLowerCase().includes(q)).slice(0,100)){const tr=document.createElement("tr");const td=document.createElement("td");td.innerHTML='<button class="btn small" data-manual-person="'+esc(p.id)+'">選択</button>';for(const v of [p.id,p.name,p.department||"—",checked(p,s.id)?"受付済み":p.planned[s.id]?"未受付":"対象外"]){const x=document.createElement("td");x.textContent=v;tr.append(x);}tr.append(td);tbody.append(tr);}}
+/* 手動受付: 検索を保ったまま見出しで昇順／降順に並び替え。 */
+const MANUAL_SORT_COLUMNS=[["id","ID"],["name","氏名"],["staffId","職員番号"],["department","所属"]];
+let manualSortField="id",manualSortDirection=1;
+function openManual(){
+ manualSortField="id";manualSortDirection=1;
+ const panel=document.createElement("div");
+ const headings=MANUAL_SORT_COLUMNS.map(([field,label])=>'<th scope="col" data-manual-sort-column="'+field+'" aria-sort="none"><button type="button" class="manual-sort" data-manual-sort="'+field+'">'+label+' <span class="manual-sort-arrow" aria-hidden="true">↕</span></button></th>').join("");
+ panel.innerHTML='<input id="manualQuery" class="search" aria-label="参加者を検索" placeholder="氏名・職員番号・所属・参加者IDを検索" autofocus>'+
+  '<div class="tablewrap manual-tablewrap"><table class="manual-table" aria-label="名前から受付の参加者一覧"><thead><tr>'+headings+
+  '<th scope="col">状況</th><th scope="col">受付</th></tr></thead><tbody id="manualRows"></tbody></table></div>';
+ openDialog("名前から受付・変更",panel);
+ $("manualQuery").addEventListener("input",renderManual);
+ renderManual();
+ $("manualQuery").focus();
+}
+function changeManualSort(field){
+ if(!MANUAL_SORT_COLUMNS.some(([key])=>key===field))return;
+ if(manualSortField===field)manualSortDirection*=-1;
+ else{manualSortField=field;manualSortDirection=1;}
+ renderManual();
+}
+function renderManual(){
+ const q=$("manualQuery").value.toLowerCase().trim(),e=current(),s=curSession(),tbody=$("manualRows");
+ const people=e.participants.filter(p=>!p.removed&&[p.name,p.staffId,p.department,p.group,p.id].join(" ").toLowerCase().includes(q))
+  .sort((a,b)=>{
+   const av=String(a[manualSortField]??""),bv=String(b[manualSortField]??"");
+   return av.localeCompare(bv,"ja",{numeric:true,sensitivity:"base"})*manualSortDirection||a.id.localeCompare(b.id,"ja",{numeric:true});
+  }).slice(0,100);
+ tbody.replaceChildren();
+ for(const p of people){
+  const tr=document.createElement("tr");
+  for(const v of [p.id,p.name,p.staffId||"—",p.department||"—",checked(p,s.id)?"受付済み":p.planned[s.id]?"未受付":"対象外"]){
+   const td=document.createElement("td");td.textContent=v;tr.append(td);
+  }
+  const td=document.createElement("td"),button=document.createElement("button");
+  button.type="button";button.className="btn small";button.dataset.manualPerson=p.id;button.textContent="選択";
+  td.append(button);tr.append(td);tbody.append(tr);
+ }
+ for(const th of document.querySelectorAll(".manual-table th[data-manual-sort-column]")){
+  const selected=th.dataset.manualSortColumn===manualSortField;
+  th.setAttribute("aria-sort",selected?(manualSortDirection===1?"ascending":"descending"):"none");
+  th.querySelector(".manual-sort-arrow").textContent=selected?(manualSortDirection===1?"▲":"▼"):"↕";
+ }
+}
 function manualCheck(id){const e=current(),p=e.participants.find(x=>x.id===id),s=curSession();if(!p)return;if(checked(p,s.id))return openPerson(id,true);if(!p.planned[s.id]&&!confirm(p.name+" さんを「"+s.name+"」の参加対象にして受付しますか？"))return;const res=checkIn(id,"manual",true);if(res){closeDialog();}}
 function checkInByToken(code){
  const staffId=normStaff(code);
@@ -820,6 +862,7 @@ if(b.dataset.prep){prepTab=b.dataset.prep;announce("");render();return;}
 if(b.dataset.backup!==undefined){backup();return;}
 if(b.dataset.newEvent!==undefined){addEvent();return;}
 if(b.dataset.receptionTab){showReceptionTab(b.dataset.receptionTab);return;}
+if(b.dataset.manualSort){changeManualSort(b.dataset.manualSort);return;}
 if(b.dataset.manualPerson){manualCheck(b.dataset.manualPerson);return;}
 if(b.dataset.action){const id=b.dataset.id;switch(b.dataset.action){case "prep":return openEvent(id,false);case "day":return openEvent(id,true);case "clone":return addEvent(id);case "delete":return deleteEvent(id);case "edit-person":return openPerson(b.dataset.person,false);case "remove-session":return removeSession(b.dataset.session);}return;}
 });
