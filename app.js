@@ -978,6 +978,14 @@ function openDialog(title,body){dialogReturnFocus=document.activeElement;$("dial
 function closeDialog(){$("dialogBackdrop").hidden=true;$("dialogBody").replaceChildren();dialogReturnFocus?.focus?.();}
 function render(){const home=view==="home";document.body.classList.toggle("day-mode",!home&&day);if((home||!day)&&CAM.running)stopCamera();$("homeView").hidden=!home;$("eventView").hidden=home;if(home)renderHome();else renderEvent();renderBackupStatus();}
 function delegate(){document.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+if(b.dataset.outputHelp!==undefined){
+ const pop=b.closest(".out-export-help"),shouldOpen=!pop.classList.contains("is-open");
+ for(const x of document.querySelectorAll("#resultsPanel .out-export-help.is-open")){
+  x.classList.remove("is-open");x.querySelector(".out-info-trigger").setAttribute("aria-expanded","false");
+ }
+ if(shouldOpen){pop.classList.add("is-open");b.setAttribute("aria-expanded","true");}
+ return;
+}
 if(b.dataset.home){homeTab=b.dataset.home;announce("");render();return;}
 if(b.dataset.mode){day=b.dataset.mode==="day";announce("");render();return;}
 if(b.dataset.prep){prepTab=b.dataset.prep;announce("");render();return;}
@@ -1005,7 +1013,12 @@ $("qrPerson").onchange=renderOneQR;
  for(const tab of document.querySelectorAll("[data-qr-mode]"))tab.onclick=()=>switchQrMode(tab.dataset.qrMode);
  $("downloadQR").onclick=downloadOneQR;$("printSingleQR").onclick=printSingleQR;$("printQRs").onclick=printQR;$("exportQRZip").onclick=exportQRZip;
 $("exportResult").onclick=eventDetailCSV;$("exportAudit").onclick=exportAudit;$("printRosterPrep").onclick=()=>printReceptionRoster($("rosterSession").value);
-document.addEventListener("click",ev=>{for(const help of document.querySelectorAll("#resultsPanel .out-export-help[open]"))if(!help.contains(ev.target))help.open=false;});$("printRosterDay").onclick=()=>printReceptionRoster(curSession()?.id);$("checkinSession").onchange=()=>{showResult(null,"QRコードをかざしてください","");renderReception();};
+document.addEventListener("click",ev=>{
+ for(const help of document.querySelectorAll("#resultsPanel .out-export-help.is-open")){
+  if(help.contains(ev.target))continue;
+  help.classList.remove("is-open");help.querySelector(".out-info-trigger").setAttribute("aria-expanded","false");
+ }
+});$("printRosterDay").onclick=()=>printReceptionRoster(curSession()?.id);$("checkinSession").onchange=()=>{showResult(null,"QRコードをかざしてください","");renderReception();};
 $("cameraStart").onclick=startCamera;$("cameraSnapshot").onclick=saveCameraFrame;$("cameraStop").onclick=stopCamera;$("cameraSelect").onchange=async()=>{if(CAM.running){await stopCamera();}startCamera();};
 if(window.ResizeObserver){const ro=new ResizeObserver(()=>fitReader());ro.observe($("readerViewport"));ro.observe($("reader"));}
 $("mirrorToggle").checked=meta.mirror!==false;$("reader").classList.toggle("mirror",meta.mirror!==false);$("mirrorToggle").onchange=()=>{meta.mirror=$("mirrorToggle").checked;saveMeta();$("reader").classList.toggle("mirror",meta.mirror);};
