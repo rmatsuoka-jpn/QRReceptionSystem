@@ -66,31 +66,72 @@
 </div>
 <div class="form-actions step-nav"><button class="btn" id="saveSettings">設定を保存</button><button class="btn main" id="saveSettingsNext">保存して次へ：② 参加者登録 →</button></div>
  </section>
- <section id="participantsPanel" class="panel" hidden>
-  <div class="row"><h3>参加者一覧 <span id="peopleCount" class="tag"></span></h3><div class="buttons"><button id="addPerson" class="btn main">＋ 1人ずつ登録</button></div></div>
-  <div class="panel filter">
-<h3>参加者の一括登録</h3>
-<div class="template-box"><div><strong>① 記入用のひな形をダウンロード</strong><div class="hint">2行目の「（例）」の行は消さなくても取り込まれません。Excel形式は職員番号の列が文字列に設定済みで、先頭の0が消えません。</div></div><div class="buttons"><button type="button" id="downloadTemplateXlsx" class="btn main small">⇩ ひな形（Excel形式・おすすめ）</button><button type="button" id="downloadTemplate" class="btn small">⇩ ひな形（CSV形式）</button></div></div>
-<p class="hint" style="margin:12px 0 4px"><strong>② 記入した名簿を取り込む</strong></p>
-<div class="import-tabs" role="group" aria-label="登録方法">
-<button type="button" id="importTabPaste" class="btn main" data-import-mode="paste">Excelから貼り付け</button>
-<button type="button" id="importTabCsv" class="btn" data-import-mode="csv">CSVファイル</button>
-</div>
-<div id="pasteImportArea">
-<label class="field">Excelの表を見出し行からコピーして貼り付け
-<textarea id="participantPaste" rows="5" placeholder="氏名［タブ］職員番号［タブ］所属［タブ］グループ…" spellcheck="false"></textarea></label>
-<button type="button" id="previewPaste" class="btn main">貼り付け内容を確認</button>
-</div>
-<div id="csvImportArea" hidden>
-<div class="row"><input type="file" id="participantFile" accept=".csv,text/csv"><button id="importParticipants" class="btn main">CSV内容を確認</button></div>
-</div>
-<p class="hint">どちらも列対応・登録内容を確認してから保存します。職員番号の先頭ゼロは文字列として扱います。</p>
-</div>
-  <input class="search" id="personQuery" placeholder="氏名・職員番号・所属・グループ・参加者IDで検索" aria-label="参加者検索" style="margin-bottom:13px">
-  <div class="tablewrap"><table><thead><tr><th>ID</th><th>氏名</th><th>職員番号</th><th>所属</th><th>グループ</th><th>参加区分</th><th>操作</th></tr></thead><tbody id="participantRows"></tbody></table></div>
-  <div class="export-row"><span class="hint">登録済みの名簿を、Excelでの集計・保管用に書き出します（見出しは集計用の項目名です）。</span><button id="exportRoster" class="btn small">⇩ 登録済み名簿を出力（集計用CSV）</button></div>
-  <div class="step-nav"><button type="button" class="btn" data-prep="settings">← ① イベント設定</button><button type="button" class="btn main" data-prep="qr">次へ：③ QR発行 →</button></div>
+ <section id="participantsPanel" class="panel pt-panel" hidden>
+ <div class="pt-heading">
+  <div class="pt-heading-main"><div class="pt-heading-icon"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6M17 14a5 5 0 0 1 4 5"/></svg></div><div><h3>参加者登録</h3><p>参加者の登録・名簿の取り込みを行います。</p></div></div>
+  <div class="pt-summary" role="status" aria-live="polite">
+   <div class="pt-stat"><span>登録人数</span><strong id="ptTotalCount">0<small>名</small></strong></div>
+   <div class="pt-stat"><span>職員番号あり</span><strong id="ptStaffCount">0<small>名</small></strong></div>
+   <div class="pt-stat pt-stat-warn"><span>職員番号なし</span><strong id="ptMissingCount">0<small>名</small></strong></div>
+  </div>
+ </div>
+ <div class="pt-entry-grid">
+  <details id="participantImportDetails" class="pt-import-card" open>
+   <summary class="pt-import-heading"><span class="pt-import-title"><span aria-hidden="true">▤</span> 名簿の一括登録</span><span class="pt-collapse-hint">開く／閉じる <span class="pt-chevron" aria-hidden="true">⌄</span></span></summary>
+   <div class="pt-import-content">
+    <div class="pt-template-line">
+     <strong>ひな形：</strong>
+     <button type="button" id="downloadTemplateXlsx" class="btn small pt-template-primary">⇩ Excel形式 <span class="pt-rec">推奨</span></button>
+     <button type="button" id="downloadTemplate" class="btn small">⇩ CSV形式</button>
+     <details class="pt-help"><summary title="ひな形のヘルプ" aria-label="ひな形のヘルプ">ⓘ</summary><div class="pt-tooltip">Excel形式は職員番号列を文字列に設定済みです。先頭ゼロを保てます。CSV形式をExcelで開くときも職員番号を文字列として読み込んでください。2行目の「（例）」の行は取り込み時に自動で除外します。</div></details>
+    </div>
+    <div class="pt-import-tabs" role="tablist" aria-label="名簿の取り込み方法">
+     <button type="button" id="importTabPaste" class="active" role="tab" aria-selected="true" aria-controls="pasteImportArea" data-import-mode="paste">表データを貼り付け</button>
+     <button type="button" id="importTabCsv" role="tab" aria-selected="false" aria-controls="csvImportArea" data-import-mode="csv">CSVファイルを選択</button>
+     <details class="pt-help"><summary title="取り込み方法のヘルプ" aria-label="取り込み方法のヘルプ">ⓘ</summary><div class="pt-tooltip">貼り付けはタブ区切り（Excelからコピー）とカンマ区切り（CSV）の両方に対応します。列の見出し行も含めて貼り付けてください。登録前に列の対応と件数を確認できます。</div></details>
+    </div>
+    <div id="pasteImportArea" class="pt-import-tab-body" role="tabpanel" aria-labelledby="importTabPaste">
+     <label class="pt-textarea-label" for="participantPaste">表データ（見出し行から貼り付け）</label>
+     <textarea id="participantPaste" rows="4" placeholder="氏名　職員番号　所属　グループ　参加区分…" spellcheck="false"></textarea>
+     <div class="pt-import-footer"><span>タブ・カンマ区切りを自動判定</span><button type="button" id="previewPaste" class="btn main">取り込み内容を確認 →</button></div>
+    </div>
+    <div id="csvImportArea" class="pt-import-tab-body" role="tabpanel" aria-labelledby="importTabCsv" hidden>
+     <label class="pt-textarea-label" for="participantFile">CSVファイル（.csv）</label>
+     <input type="file" id="participantFile" accept=".csv,text/csv">
+     <div class="pt-import-footer"><span>UTF-8 / Shift_JIS / UTF-16LEに対応</span><button type="button" id="importParticipants" class="btn main">CSV内容を確認 →</button></div>
+    </div>
+   </div>
+  </details>
+  <section class="pt-single-card" aria-labelledby="ptSingleTitle">
+   <div class="pt-single-heading"><h4 id="ptSingleTitle">＋ 1人ずつ登録</h4><details class="pt-help"><summary title="1人ずつ登録のヘルプ" aria-label="1人ずつ登録のヘルプ">ⓘ</summary><div class="pt-tooltip">氏名・職員番号・所属・グループ・任意項目1・2と、受付区分ごとの参加予定を登録できます。イベントで設定した任意項目は既存の登録画面に表示されます。</div></details></div>
+   <p>少人数の追加や個別の修正に利用します。</p>
+   <button type="button" id="addPerson" class="btn main pt-add-btn">＋ 1人ずつ登録</button>
+  </section>
+ </div>
+ <section class="pt-list-card" aria-labelledby="ptListTitle">
+  <div class="pt-list-header">
+   <div class="pt-list-name"><h4 id="ptListTitle">参加者一覧</h4><span id="peopleCount" class="tag">0名</span></div>
+   <div class="pt-list-tools">
+    <input type="search" class="search" id="personQuery" placeholder="氏名・職員番号・所属・グループ・参加者IDで検索" aria-label="参加者を検索">
+    <label for="personSessionFilter">参加区分</label><select id="personSessionFilter" aria-label="参加区分で絞り込み"><option value="all">すべて</option></select>
+   </div>
+  </div>
+  <div class="tablewrap pt-tablewrap" id="ptTableViewport" tabindex="0" aria-label="参加者一覧（表内スクロール）">
+   <table><thead><tr><th scope="col">ID</th><th scope="col">氏名</th><th scope="col">職員番号</th><th scope="col">所属</th><th scope="col">グループ</th><th scope="col">参加区分</th><th scope="col">操作</th></tr></thead><tbody id="participantRows"></tbody></table>
+  </div>
+  <div class="pt-pagebar">
+   <span id="ptPageInfo" aria-live="polite">0件</span>
+   <div class="pt-page-navigation">
+    <button type="button" class="btn small" id="ptPagePrev">‹ 前へ</button>
+    <span id="ptPageButtons" class="pt-page-buttons" aria-label="ページ番号"></span>
+    <button type="button" class="btn small" id="ptPageNext">次へ ›</button>
+   </div>
+   <label class="pt-page-size">表示件数<select id="ptPageSize"><option value="25">25件</option><option value="50">50件</option><option value="100">100件</option></select></label>
+  </div>
+  <div class="pt-export-footer"><span>登録済みの名簿を集計用CSVで保存</span><details class="pt-help"><summary title="登録済み名簿の出力のヘルプ" aria-label="登録済み名簿の出力のヘルプ">ⓘ</summary><div class="pt-tooltip">現在のイベントに登録された参加者をExcelで集計・保管するためのCSVです。元の登録用ひな形とは列が異なります。</div></details><button id="exportRoster" type="button" class="btn small">⇩ 登録済み名簿を出力（集計用CSV）</button></div>
  </section>
+ <div class="step-nav pt-step-nav"><button type="button" class="btn" data-prep="settings">← ① イベント設定</button><button type="button" class="btn main" data-prep="qr">次へ：③ QR発行 →</button></div>
+</section>
 <section id="qrPanel" class="panel qr-issue-panel" hidden>
    <div class="qr-issue-header">
     <div class="qr-title-area">
