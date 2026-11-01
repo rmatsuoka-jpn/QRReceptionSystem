@@ -76,10 +76,10 @@ function curSession(){const e=current();return e?.sessions.find(s=>s.id===$("che
 function checked(p,s){const c=p.checkins?.[s];return !!(c&&c.active!==false);}
 function statusFor(e,p){const planned=e.sessions.filter(s=>p.planned[s.id]);const done=planned.filter(s=>checked(p,s.id));if(!planned.length)return "対象外";if(!done.length)return "未受付";return done.length===planned.length?"受付済み":"一部受付";}
 function evCounts(e){let target=0,done=0;for(const p of e.participants.filter(p=>!p.removed)){for(const s of e.sessions){if(p.planned[s.id]){target++;if(checked(p,s.id))done++;}}}return {target,done,percent:target?Math.round(done/target*100):0};}
-function makeEvent(from){const id=eventId(),sessions=from?from.sessions.map(s=>({id:sessionId(),name:s.name})):[{id:sessionId(),name:"全体"}];return {id,name:from?from.name+"（複製）":"新規イベント",date:"",category:from?.category||"training",sessions,customLabels:from?.customLabels?.slice(0,2)||["",""],customTypes:from?.customTypes?.slice(0,2)||["text","text"],customOptions:from?.customOptions?.map(opts=>opts.slice())||[[],[]],nextParticipant:1,participants:[],createdAt:iso()};}
+function makeEvent(from){const id=eventId(),sessions=from?from.sessions.map(s=>({id:sessionId(),name:s.name})):[{id:sessionId(),name:"共通受付"}];return {id,name:from?from.name+"（複製）":"新規イベント",date:"",category:from?.category||"training",sessions,customLabels:from?.customLabels?.slice(0,2)||["",""],customTypes:from?.customTypes?.slice(0,2)||["text","text"],customOptions:from?.customOptions?.map(opts=>opts.slice())||[[],[]],nextParticipant:1,participants:[],createdAt:iso()};}
 function addEvent(fromId){let e;try{e=makeEvent(fromId?db.get(fromId):null);}catch(err){announce(err.message,"error");return;}
  const box=document.createElement("div");
- box.innerHTML='<p class="hint" style="margin-top:0">'+(fromId?"受付区分と任意項目の設定だけを引き継ぎます（名簿・受付結果はコピーしません）。":"あとから「① イベント設定」で変更できます。")+'</p><label class="field">イベント名（必須）<input id="newEventName"></label><label class="field">開催日<input id="newEventDate" type="date"></label><label class="field">分類<select id="newEventCategory"><option value="training">研修</option><option value="briefing">説明会</option><option value="other">その他</option></select></label><div class="delete-dialog-buttons"><button type="button" class="btn" id="newEventCancel">キャンセル</button><button type="button" class="btn main" id="newEventCreate">作成して準備を始める →</button></div>';
+ box.innerHTML='<p class="hint" style="margin-top:0">'+(fromId?"受付区分と追加の登録項目の設定だけを引き継ぎます（名簿・受付結果はコピーしません）。":"あとから「① イベント設定」で変更できます。")+'</p><label class="field">イベント名（必須）<input id="newEventName"></label><label class="field">開催日<input id="newEventDate" type="date"></label><label class="field">分類<select id="newEventCategory"><option value="training">研修</option><option value="briefing">説明会</option><option value="other">その他</option></select></label><div class="delete-dialog-buttons"><button type="button" class="btn" id="newEventCancel">キャンセル</button><button type="button" class="btn main" id="newEventCreate">作成して準備を始める →</button></div>';
  openDialog(fromId?"設定を複製して新規作成":"新規イベントの作成",box);
  $("newEventName").value=fromId?e.name:"";$("newEventCategory").value=e.category;$("newEventName").focus();
  $("newEventCancel").onclick=closeDialog;
@@ -116,9 +116,9 @@ function normalizeCustom(e,i,value){
  if(type==="bool"){
   if(["有","あり","1","true","○","はい","yes"].includes(v.toLowerCase()))return "有";
   if(["無","なし","0","false","×","いいえ","no"].includes(v.toLowerCase()))return "無";
-  throw Error((e.customLabels?.[i]||"任意項目"+(i+1))+" は「有」または「無」を選択してください");
+  throw Error((e.customLabels?.[i]||"追加項目"+(i+1))+" は「有」または「無」を選択してください");
  }
- if(type==="select"&&!getCustomOptions(e,i).includes(v))throw Error((e.customLabels?.[i]||"任意項目"+(i+1))+" の選択肢に「"+v+"」はありません");
+ if(type==="select"&&!getCustomOptions(e,i).includes(v))throw Error((e.customLabels?.[i]||"追加項目"+(i+1))+" の選択肢に「"+v+"」はありません");
  return v;
 }
 function toggleCustomOptions(i){$("customOptionsWrap"+i).hidden=$("customType"+i).value!=="select";}
@@ -132,22 +132,46 @@ function renderCustomPreview(){
  const status=$("customSaveStatus");status.textContent=saved?"保存済み":"未保存";status.className="tag"+(saved?"":" unsaved");
  for(let i=0;i<2;i++){
   const el=document.createElement("div");el.className="custom-preview-field";
-  const label=document.createElement("strong");label.textContent=labels[i]||"任意項目"+(i+1);
+  const label=document.createElement("strong");label.textContent=labels[i]||"追加項目"+(i+1);
   const field=document.createElement("div");field.className="fake-input";
-  field.textContent=types[i]==="bool"?"○ 有　／　○ 無":types[i]==="select"?(opts[i].join("　／　")||"選択肢を入力してください"):"自由入力";
+  field.textContent=types[i]==="bool"?"○ はい　／　○ いいえ":types[i]==="select"?(opts[i].join("　／　")||"選択肢を入力してください"):"自由入力";
   el.append(label,field);root.append(el);
  }
 }
+
+const SESSION_PRESETS=["共通受付","午前","午後","第1部","第2部","交流会"];
+const CUSTOM_PRESETS=[{name:"参加形式",type:"select",options:["対面","オンライン"]},{name:"PC持参",type:"bool",options:[]},{name:"昼食希望",type:"bool",options:[]},{name:"希望分科会",type:"text",options:[]},{name:"備考",type:"text",options:[]}];
+function pastEvents(){return [...order].reverse().filter(id=>id!==activeId).map(id=>db.get(id)).filter(Boolean);}
+function recentSessions(){const seen=new Set(SESSION_PRESETS),out=[];for(const e of pastEvents())for(const s of e.sessions){const v=s.name.trim();if(v&&!seen.has(v)){seen.add(v);out.push(v);if(out.length===5)return out;}}return out;}
+function recentCustom(){const seen=new Set(CUSTOM_PRESETS.map(p=>p.name)),out=[];for(const e of pastEvents())for(let i=0;i<2;i++){const name=(e.customLabels?.[i]||"").trim();if(name&&!seen.has(name)){seen.add(name);out.push({name,type:getCustomType(e,i),options:[...getCustomOptions(e,i)]});if(out.length===5)return out;}}return out;}
+function emptyPreset(id){const x=document.createElement("span");x.className="es-no-history";x.textContent="まだ履歴はありません";$(id).append(x);}
+function renderSessionPresets(){
+ const used=new Set([...document.querySelectorAll("#sessionEditor [data-session-name]")].map(x=>x.value.trim()));for(const s of current().sessions)used.add(s.name);
+ for(const [id,names] of [["sessionPresetButtons",SESSION_PRESETS],["sessionRecentButtons",recentSessions()]]){const root=$(id);root.replaceChildren();if(!names.length){emptyPreset(id);continue;}for(const name of names){const b=document.createElement("button");b.type="button";b.className="es-chip";b.textContent="＋ "+name;b.disabled=used.has(name);b.title=b.disabled?"登録済み":"このイベントに追加";b.onclick=()=>addSession(name);root.append(b);}}
+}
+function renderCustomPresets(){
+ const used=new Set([1,2].map(i=>$("customLabel"+i).value.trim()).filter(Boolean)),full=[1,2].every(i=>$("customLabel"+i).value.trim());
+ for(const [id,items] of [["customPresetButtons",CUSTOM_PRESETS],["customRecentButtons",recentCustom()]]){const root=$(id);root.replaceChildren();if(!items.length){emptyPreset(id);continue;}for(const p of items){const b=document.createElement("button");b.type="button";b.className="es-candidate";b.disabled=full||used.has(p.name);b.title=b.disabled?"設定済み、または空き枠がありません":"空欄に設定";const n=document.createElement("span");n.textContent="＋ "+p.name;const t=document.createElement("small");t.textContent=p.type==="bool"?"はい／いいえ":p.type==="select"?"選択式":"自由入力";b.append(n,t);b.onclick=()=>applyCustomPreset(p);root.append(b);}}
+}
+function applyCustomPreset(p){
+ if([1,2].some(i=>$("customLabel"+i).value.trim()===p.name))return announce("同じ追加項目が設定されています。","warn");
+ const i=[1,2].find(i=>!$("customLabel"+i).value.trim());if(!i)return announce("追加項目は最大2つです。クリアしてから選択してください。","warn");
+ $("customLabel"+i).value=p.name;$("customType"+i).value=["bool","select"].includes(p.type)?p.type:"text";$("customOptions"+i).value=(p.options||[]).join("|");toggleCustomOptions(i);renderCustomPreview();renderCustomPresets();announce("「"+p.name+"」を設定しました。保存すると確定します。","success");
+}
+function clearCustomPreset(i){$("customLabel"+i).value="";$("customType"+i).value="text";$("customOptions"+i).value="";toggleCustomOptions(i);renderCustomPreview();renderCustomPresets();}
+function settingsSnapshot(){return {n:$("editEventName").value,d:$("editEventDate").value,c:$("editEventCategory").value,ns:Object.fromEntries([...document.querySelectorAll("[data-session-name]")].map(x=>[x.dataset.sessionName,x.value])),add:$("newSessionName").value,custom:[1,2].map(i=>[$("customLabel"+i).value,$("customType"+i).value,$("customOptions"+i).value])};}
+function restoreSettingsSnapshot(s){
+ $("editEventName").value=s.n;$("editEventDate").value=s.d;$("editEventCategory").value=s.c;$("newSessionName").value=s.add;
+ for(const x of document.querySelectorAll("[data-session-name]"))if(Object.hasOwn(s.ns,x.dataset.sessionName))x.value=s.ns[x.dataset.sessionName];
+ for(let i=1;i<=2;i++){const [n,t,o]=s.custom[i-1];$("customLabel"+i).value=n;$("customType"+i).value=t;$("customOptions"+i).value=o;toggleCustomOptions(i);}
+ renderCustomPreview();renderSessionPresets();renderCustomPresets();
+}
 function renderSettings(){
  const e=current();$("editEventName").value=e.name;$("editEventDate").value=e.date||"";$("editEventCategory").value=e.category;
- for(let i=0;i<2;i++){
-  $("customLabel"+(i+1)).value=e.customLabels?.[i]||"";
-  $("customType"+(i+1)).value=getCustomType(e,i);
-  $("customOptions"+(i+1)).value=getCustomOptions(e,i).join("|");
-  toggleCustomOptions(i+1);
- }
- renderCustomPreview();
- const root=$("sessionEditor");root.replaceChildren();e.sessions.forEach((s,i)=>{const line=document.createElement("div");line.className="session-row";line.innerHTML='<span class="tag">'+(i+1)+'</span><input aria-label="受付区分名" class="search" value="'+esc(s.name)+'" data-session-name="'+esc(s.id)+'"><button class="btn danger small" data-action="remove-session" data-session="'+esc(s.id)+'">削除</button>';root.append(line);});
+ for(let i=0;i<2;i++){$("customLabel"+(i+1)).value=e.customLabels?.[i]||"";$("customType"+(i+1)).value=getCustomType(e,i);$("customOptions"+(i+1)).value=getCustomOptions(e,i).join("|");toggleCustomOptions(i+1);}
+ renderCustomPreview();const root=$("sessionEditor");root.replaceChildren();
+ e.sessions.forEach((s,i)=>{const line=document.createElement("div");line.className="session-row";line.innerHTML='<span class="tag">'+(i+1)+'</span><input aria-label="受付区分名" class="search" value="'+esc(s.name)+'" data-session-name="'+esc(s.id)+'"><button type="button" class="btn danger small" data-action="remove-session" data-session="'+esc(s.id)+'">削除</button>';root.append(line);});
+ renderSessionPresets();renderCustomPresets();
 }
 function saveSettings(){
  const name=$("editEventName").value.trim(),date=$("editEventDate").value;
@@ -163,8 +187,17 @@ function saveSettings(){
  })){announce("イベント設定を保存しました。","success");renderSteps();return true;}
  return false;
 }
-function addSession(){const name=$("newSessionName").value.trim();if(!name)return announce("受付区分名を入力してください。","warn");const ok=mutate(e=>{if(e.sessions.some(s=>s.name===name))throw Error("同じ名前の受付区分があります");const id=sessionId();e.sessions.push({id,name});for(const p of e.participants){p.planned[id]=false;}});if(ok){$("newSessionName").value="";announce("受付区分を追加しました。","success");}}
-function removeSession(id){const e=current(),s=e.sessions.find(x=>x.id===id);if(!s)return;if(e.sessions.length===1)return announce("受付区分は最低1つ必要です。","warn");if(e.participants.some(p=>p.checkins?.[id]))return announce("受付履歴がある区分は削除できません。","warn");if(!confirm("受付区分「"+s.name+"」を削除しますか？"))return;mutate(next=>{next.sessions=next.sessions.filter(x=>x.id!==id);for(const p of next.participants){delete p.planned[id];delete p.checkins[id];}});}
+function addSession(preset=null){
+ const name=(typeof preset==="string"?preset:$("newSessionName").value).trim();if(!name)return announce("受付区分名を入力してください。","warn");const snap=settingsSnapshot();
+ if(Object.values(snap.ns).some(v=>v.trim()===name))return announce("同じ名前の受付区分があります。","warn");
+ if(mutate(e=>{if(e.sessions.some(s=>s.name===name))throw Error("同じ名前の受付区分があります");const id=sessionId();e.sessions.push({id,name});for(const p of e.participants)p.planned[id]=false;})){snap.add="";restoreSettingsSnapshot(snap);announce("「"+name+"」を受付区分に追加しました。","success");}
+}
+function removeSession(id){
+ const e=current(),s=e.sessions.find(x=>x.id===id);if(!s)return;if(e.sessions.length===1)return announce("受付区分は最低1つ必要です。","warn");
+ if(e.participants.some(p=>p.checkins?.[id]))return announce("受付履歴がある区分は削除できません。","warn");
+ if(!confirm("受付区分「"+s.name+"」を削除しますか？"))return;const snap=settingsSnapshot();
+ if(mutate(next=>{next.sessions=next.sessions.filter(x=>x.id!==id);for(const p of next.participants){delete p.planned[id];delete p.checkins[id];}})){delete snap.ns[id];restoreSettingsSnapshot(snap);}
+}
 /* 一覧だけをページング。名簿データ自体は全件保持し、CSV出力も従来どおり全件。 */
 function setParticipantPage(page){
  participantPage=page;renderParticipants();$("ptTableViewport").scrollTop=0;
@@ -225,13 +258,13 @@ function savePersonFromForm(andCheck){const id=$("personId")?.value||"",name=$("
  });if(!ok)return;closeDialog();if(andCheck){showResult(checkResult.person,checkResult.duplicate?"受付済み（重複）":"受付完了",checkResult.duplicate?"warn":"success",curSession()?.name,checkResult.when);announce("参加者情報を保存しました。","success");}else announce("参加者情報を保存しました。","success");}
 
 function customFieldHTML(e,p,i){
- const label=esc(e.customLabels?.[i]||"任意項目"+(i+1)),value=p?.customValues?.[i]||"";
+ const label=esc(e.customLabels?.[i]||"追加項目"+(i+1)),value=p?.customValues?.[i]||"";
  const type=getCustomType(e,i),id="personCustom"+i;
  if(type==="text")return '<label class="field">'+label+'<input id="'+id+'" value="'+esc(value)+'"></label>';
  const choices=type==="bool"?["有","無"]:getCustomOptions(e,i);
  const values=["",...choices];
  if(value&&!values.includes(value))values.push(value);
- return '<label class="field">'+label+'<select id="'+id+'">'+values.map(v=>'<option value="'+esc(v)+'"'+(v===value?" selected":"")+'>'+esc(v||(type==="bool"?"未選択":"選択してください"))+'</option>').join("")+'</select></label>';
+ return '<label class="field">'+label+'<select id="'+id+'">'+values.map(v=>'<option value="'+esc(v)+'"'+(v===value?" selected":"")+'>'+esc(type==="bool"?(v==="有"?"はい":v==="無"?"いいえ":"未選択"):(v||"選択してください"))+'</option>').join("")+'</select></label>';
 }
 function openPerson(id=null,dayMode=day){
  const e=current(),p=id?e.participants.find(x=>x.id===id):null;
@@ -1003,7 +1036,7 @@ function setImportMode(mode){
 function showImportPreview(rows,source){
  csvPending={rows,eventId:activeId,source};
  const e=current(),headers=rows[0].map(x=>String(x).trim());
- const fields=CSV_FIELDS.map(([id,label,aliases])=>[id,id==="custom0"?(e.customLabels[0]||"任意項目1"):id==="custom1"?(e.customLabels[1]||"任意項目2"):label,id==="custom0"?[e.customLabels[0],"custom_1"]:id==="custom1"?[e.customLabels[1],"custom_2"]:aliases]);
+ const fields=CSV_FIELDS.map(([id,label,aliases])=>[id,id==="custom0"?(e.customLabels[0]||"追加項目1"):id==="custom1"?(e.customLabels[1]||"追加項目2"):label,id==="custom0"?[e.customLabels[0],"custom_1"]:id==="custom1"?[e.customLabels[1],"custom_2"]:aliases]);
  for(const s of e.sessions)fields.push(["session:"+s.id,"参加予定："+s.name,["受付区分："+s.name,"受付区分:"+s.name,s.name,"参加_"+s.name,s.name+"_参加"]]);
  const root=document.createElement("div");
  const labels=document.createElement("div");labels.className="fields two";
@@ -1065,7 +1098,7 @@ $("crossPeriod").onchange=()=>{$("crossYear").disabled=$("crossPeriod").value===
 $("exportCross").onclick=()=>exportCross(false);$("exportCrossDetail").onclick=()=>exportCross(true);$("restoreBtn").onclick=restore;$("deleteAllData").onclick=openDeleteAllDialog;
 $("saveSettings").onclick=saveSettings;$("saveSettingsNext").onclick=()=>{if(saveSettings()){prepTab="participants";render();}};
 for(const c of document.querySelectorAll("[data-day-check]"))c.onchange=saveDayCheck;$("dayCheck").addEventListener("toggle",()=>{if($("dayCheck").open)$("dayCheck").dataset.userOpened="1";});$("soundTest").onclick=()=>{primeAudio();if(meta.sound===false){$("soundToggle").checked=true;meta.sound=true;saveMeta();}setTimeout(()=>feedback("success"),80);setTimeout(()=>feedback("warn"),1500);setTimeout(()=>feedback("error"),2700);};
-$("soundVolume").value=meta.volume||"high";$("soundVolume").onchange=()=>{meta.volume=$("soundVolume").value;saveMeta();primeAudio();setTimeout(()=>feedback("success"),60);};$("addSession").onclick=addSession;for(let i=1;i<=2;i++){$("customType"+i).onchange=()=>{toggleCustomOptions(i);renderCustomPreview();};$("customLabel"+i).oninput=renderCustomPreview;$("customOptions"+i).oninput=renderCustomPreview;}$("addPerson").onclick=()=>openPerson(null,false);
+$("soundVolume").value=meta.volume||"high";$("soundVolume").onchange=()=>{meta.volume=$("soundVolume").value;saveMeta();primeAudio();setTimeout(()=>feedback("success"),60);};$("addSession").onclick=()=>addSession();$("sessionEditor").addEventListener("input",renderSessionPresets);for(let i=1;i<=2;i++){$("customType"+i).onchange=()=>{toggleCustomOptions(i);renderCustomPreview();renderCustomPresets();};$("customLabel"+i).oninput=()=>{renderCustomPreview();renderCustomPresets();};$("customOptions"+i).oninput=renderCustomPreview;}for(const b of document.querySelectorAll("[data-clear-custom]"))b.onclick=()=>clearCustomPreset(Number(b.dataset.clearCustom));document.addEventListener("click",ev=>{for(const tip of document.querySelectorAll("#settingsPanel .es-help[open]"))if(!tip.contains(ev.target))tip.open=false;});$("addPerson").onclick=()=>openPerson(null,false);
 document.addEventListener("click",ev=>{
  for(const tip of document.querySelectorAll("#participantsPanel .pt-help[open]")){
   if(!tip.contains(ev.target))tip.open=false;

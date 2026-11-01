@@ -590,3 +590,63 @@ body.day-mode .notice{position:fixed;left:50%;bottom:18px;transform:translateX(-
  #participantsPanel .pt-page-buttons .btn:not(.active){display:none}
  #participantsPanel .pt-export-footer>button{margin-left:0}
 }
+
+
+/* Event settings: independent section cards, with suggestions scoped to each setting. */
+#settingsPanel.es-panel{padding:0;border:0;background:transparent;box-shadow:none}
+#settingsPanel .es-page-heading{display:flex;align-items:center;gap:13px;margin:3px 0 18px}
+#settingsPanel .es-heading-icon{display:grid;place-items:center;flex:none;width:45px;height:45px;font-size:1.45rem;border-radius:12px;background:#dff2f0;color:#0a707a}
+#settingsPanel .es-page-heading h3{font-size:1.4rem;color:#193e50;margin:0 0 4px}
+#settingsPanel .es-page-heading p{color:#617d8a;font-size:.85rem;margin:0}
+#settingsPanel .es-card{background:#fff;border:1px solid #d9e6eb;border-radius:14px;padding:21px 23px;margin-bottom:15px;box-shadow:0 3px 12px rgba(26,65,75,.03);min-width:0}
+#settingsPanel .es-card-heading{display:flex;align-items:center;gap:7px;margin-bottom:17px}
+#settingsPanel .es-card-heading h4{font-size:1.08rem;color:#194658;margin:0;font-weight:850}
+#settingsPanel .es-required{display:inline-block;color:#ba4b43;background:#fff0ef;font-size:.68rem;border-radius:5px;padding:1px 5px}
+#settingsPanel .es-max-note{color:#667e8a;font-size:.78rem;font-weight:650;margin-left:6px}
+#settingsPanel .es-help{display:inline-block;position:relative;z-index:9}
+#settingsPanel .es-help summary{list-style:none;cursor:pointer;color:#0b7880;font-weight:900;width:24px;height:24px;display:grid;place-items:center;border-radius:50%;font-size:1rem}
+#settingsPanel .es-help summary::-webkit-details-marker{display:none}
+#settingsPanel .es-help summary:hover,#settingsPanel .es-help[open] summary{background:#dff2f0}
+#settingsPanel .es-tooltip{display:none;position:absolute;left:0;bottom:calc(100% + 8px);z-index:12;width:min(290px,75vw);background:#193747;color:#fff;border-radius:9px;padding:11px 13px;font-size:.8rem;line-height:1.65;box-shadow:0 8px 22px #102d3c30;font-weight:500}
+#settingsPanel .es-help:hover .es-tooltip,#settingsPanel .es-help:focus-within .es-tooltip,#settingsPanel .es-help[open] .es-tooltip{display:block}
+#settingsPanel .es-basic-fields{grid-template-columns:minmax(0,1.55fr) minmax(0,1fr) minmax(0,.9fr);align-items:end}
+#settingsPanel .es-split{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(220px,.9fr);gap:21px;align-items:start}
+#settingsPanel .es-main-area{min-width:0}
+#settingsPanel .es-preset-area{min-width:0;background:#f4faf9;border:1px solid #deeeeb;border-radius:11px;padding:16px 15px}
+#settingsPanel .es-area-label{font-size:.87rem;font-weight:850;color:#285567;margin:0 0 11px}
+#settingsPanel .es-recent-title{margin-top:18px}
+#settingsPanel .es-note-tag{display:inline-block;margin-left:5px;font-size:.67rem;padding:2px 6px;background:#dcefed;color:#207775;border-radius:5px;vertical-align:middle;font-weight:750}
+#settingsPanel .es-small-note{font-size:.77rem;line-height:1.55;color:#738996;margin:11px 0 0}
+#settingsPanel .es-chip-list{display:flex;gap:7px;flex-wrap:wrap}
+#settingsPanel .es-chip{border:1px solid #a9d7d2;background:#fff;border-radius:8px;padding:8px 10px;color:#166b70;font-size:.81rem;font-weight:750;cursor:pointer}
+#settingsPanel .es-chip:hover:not(:disabled),#settingsPanel .es-candidate:hover:not(:disabled){background:#e1f4f0;border-color:#4eaba5}
+#settingsPanel .es-chip:disabled,#settingsPanel .es-candidate:disabled{opacity:.45;cursor:not-allowed}
+#settingsPanel .es-no-history{font-size:.78rem;color:#84969d}
+#settingsPanel .es-session-list{display:flex;flex-direction:column;gap:7px}
+#settingsPanel .session-row{padding:0;border:0;gap:7px}
+#settingsPanel .session-row input{min-width:0;flex:1;width:auto;padding:9px 11px}
+#settingsPanel .session-row button{margin:0;flex:none;padding:9px 11px}
+#settingsPanel .session-row .tag{min-width:26px;text-align:center;flex:none}
+#settingsPanel .es-add-row{display:flex;gap:8px;max-width:440px;margin-top:12px}
+#settingsPanel .es-add-row .search{width:100%;min-width:0;max-width:none}
+#settingsPanel .es-add-row button{flex:none}
+#settingsPanel .es-section-intro{margin:-7px 0 18px;color:#637d8c;font-size:.82rem;line-height:1.6}
+#settingsPanel .es-custom-grid{display:flex;flex-direction:column;gap:11px}
+#settingsPanel .custom-config{border:1px solid #dfe9ed;border-radius:11px;padding:14px;background:#fbfdfd;display:grid;gap:10px}
+#settingsPanel .custom-config .field{font-size:.8rem}
+#settingsPanel .es-field-heading{display:flex;justify-content:space-between;align-items:center}
+#settingsPanel .es-field-heading strong{font-size:.87rem;color:#2f5969}
+#settingsPanel .es-clear{border:0;background:transparent;color:#0c7883;font-size:.78rem;cursor:pointer;font-weight:750;padding:5px}
+#settingsPanel .es-clear:hover{text-decoration:underline}
+#settingsPanel .es-candidate-list{display:flex;flex-direction:column;gap:6px}
+#settingsPanel .es-candidate{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#fff;border:1px solid #d2e5e4;border-radius:8px;padding:9px 10px;width:100%;text-align:left;cursor:pointer;color:#24576a;font-weight:750;font-size:.83rem}
+#settingsPanel .es-candidate small{font-size:.71rem;color:#718995;font-weight:600;white-space:nowrap}
+#settingsPanel .es-preview{margin:18px 0 0;background:#f6f9fa;border:1px solid #dce9ed;border-radius:10px;padding:15px}
+#settingsPanel .es-preview h4{margin:0;color:#36596a;font-size:.92rem}
+#settingsPanel .es-preview .fields{margin-top:12px}
+#settingsPanel .es-actions{justify-content:flex-end;background:#fff;border:1px solid #d9e6eb;border-radius:12px;padding:15px 18px;margin-top:0}
+#settingsPanel .es-chip:focus-visible,#settingsPanel .es-candidate:focus-visible,#settingsPanel .es-help summary:focus-visible,#settingsPanel .es-clear:focus-visible{outline:3px solid #e5a239;outline-offset:2px}
+@media(max-width:1050px){#settingsPanel .es-split{grid-template-columns:1fr}#settingsPanel .es-candidate-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:710px){#settingsPanel .es-basic-fields{grid-template-columns:1fr}#settingsPanel .es-card{padding:16px 13px}#settingsPanel .es-candidate-list{grid-template-columns:1fr}#settingsPanel .es-actions{flex-direction:column}#settingsPanel .es-actions .btn{width:100%}}
+
+#settingsPanel .es-label-line{display:flex;align-items:center;gap:6px}
