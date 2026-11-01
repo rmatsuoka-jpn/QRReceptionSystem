@@ -2,12 +2,13 @@
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>QR受付システム</title><link rel="stylesheet" href="./app.css">
 <script defer src="./vendor/html5-qrcode.min.js"></script><script defer src="./vendor/qrcode.min.js"></script><script defer src="./app-support.js"></script><script defer src="./app.js"></script></head>
-<body><header><div class="bar"><h1>▦ QR受付システム</h1><div class="head-actions"><span>オフライン・1受付1PC</span><a class="help" href="./help.html">ⓘ ヘルプ・操作説明</a></div></div></header>
+<body><header><div class="bar"><h1>▦ QR受付システム</h1><div class="head-actions"><button type="button" id="backupStatus" class="backup-status" data-backup hidden></button><span>オフライン・1受付1PC</span><a class="help" href="./help.html">ⓘ ヘルプ・操作説明</a></div></div></header>
 <main class="wrap">
 <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
 <section id="homeView">
  <div class="row title-row"><h2>総合管理</h2><span class="tag">このPCのイベント</span></div>
  <div class="summary" id="globalSummary"></div>
+ <div id="storageWarn" class="alertline" hidden></div>
  <div class="tabs" id="homeTabs"><button data-home="events" class="active">▦ イベント</button><button data-home="cross">⌕ 横断検索</button><button data-home="data">▣ データ管理</button></div>
  <section id="homeEvents">
   <div class="row title-row"><h3>イベント一覧</h3><button id="newEvent" class="btn main">＋ 新規イベント</button></div>
@@ -21,9 +22,9 @@
  </section>
  <section id="homeData" hidden>
   <div class="grid2">
-   <div class="panel"><h3>⇩ 全イベントJSONバックアップ</h3><div id="backupCount" class="hint"></div><p class="hint">イベント設定・参加者名簿・QR識別子・受付履歴を保存</p><button class="btn main" data-backup>JSONを保存</button></div>
+   <div class="panel"><h3>⇩ 全イベントJSONバックアップ</h3><div id="backupCount" class="hint"></div><div id="lastBackup" class="hint"></div><p class="hint">イベント設定・参加者名簿（職員番号を含む）・受付履歴を保存</p><div id="storageUsage" class="hint"></div><button class="btn main" data-backup>JSONを保存</button></div>
    <div class="panel"><h3>↶ JSONから復元</h3><label class="field">バックアップファイルを選択<input type="file" accept=".json,application/json" id="restoreFile"></label><label class="field">重複イベントの扱い<select id="restoreMode"><option value="skip">既存のイベントを保持する</option><option value="replace">選択ファイルで上書きする</option></select></label><button class="btn" id="restoreBtn">ファイルを確認して復元</button></div>
-  </div><div class="alertline">JSONには個人情報とQR識別子が含まれます。庁内の保管ルールに従ってください。</div>
+  </div><div class="alertline">JSONには氏名・職員番号などの個人情報と受付履歴が含まれます。庁内の保管ルールに従ってください。</div>
   <div class="panel danger-zone">
    <div class="row"><div><h3>データの一括削除</h3><p class="hint">このブラウザに保存された全イベント・参加者・受付履歴を削除します。</p></div><button id="deleteAllData" class="btn danger">すべてのデータを削除</button></div>
   </div>
@@ -89,7 +90,7 @@
  </div></div>
 
  <section id="receptionView" class="reception" hidden>
-  <div class="day-session"><div class="row"><strong>受付区分</strong><button type="button" class="btn small" id="printRosterDay">▤ 受付名簿を印刷</button></div><select id="checkinSession"></select></div><div id="daySummary" class="summary"></div>
+  <div class="day-session"><div class="row"><strong>受付区分</strong><div class="buttons"><label class="check sound-toggle"><input type="checkbox" id="soundToggle" checked> 受付音を鳴らす</label><button type="button" class="btn small" id="printRosterDay">▤ 受付名簿を印刷</button></div></div><select id="checkinSession"></select></div><div id="daySummary" class="summary"></div>
   <div class="reception-grid">
   <div><div class="panel"><h3>QR受付</h3><div class="camera"><div id="reader" class="reader"></div><div id="cameraHint" class="hint">カメラを選択してQRを読み取ってください。</div></div><div id="checkinResult" class="result" role="status" aria-live="polite">スキャン待機中</div></div>
   <div class="panel"><h3>当日の参加者変更</h3><div class="grid2"><button id="walkinBtn" class="btn main">＋ 飛び入り登録</button><button id="manualBtn" class="btn">⌕ 名前から受付</button></div></div></div>

@@ -91,3 +91,13 @@
  body[data-print-mode="qr"] .print-staff{font-size:11pt;letter-spacing:.03em;font-variant-numeric:tabular-nums}
  body[data-print-mode="qr"] .print-group{font-size:9.5pt;color:#333}
 }
+
+/* Backup reminder chip and reception feedback */
+.backup-status{border:1px solid #6fae8f;background:#e4f6eb;color:#1f6b45;border-radius:20px;padding:6px 12px;font-size:.8rem;font-weight:800}
+.backup-status.warn{border-color:#f0b35c;background:#fff1da;color:#8a4f10}
+.sound-toggle{margin:0;font-size:.85rem;font-weight:700;color:#2f5f63}
+.result .outcome{font-size:1.05rem}
+.result.flash{animation:resultFlash .9s ease-out}
+.result.success.flash{--flash:#55c48f}.result.warn.flash{--flash:#f0b35c}.result.error.flash{--flash:#e06b6e}
+@keyframes resultFlash{0%{box-shadow:0 0 0 6px var(--flash)}100%{box-shadow:0 0 0 0 transparent}}
+@media (prefers-reduced-motion:reduce){.result.flash{animation:none}}

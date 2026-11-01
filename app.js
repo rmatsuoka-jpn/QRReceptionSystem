@@ -1,6 +1,7 @@
 /* QR受付システム: static offline browser app, v1 */
 (()=>{"use strict";
-const $=id=>document.getElementById(id), IX="QRReception:index:v1", PREFIX="QRReception:event:v1:";
+const $=id=>document.getElementById(id), IX="QRReception:index:v1", PREFIX="QRReception:event:v1:", META="QRReception:meta:v1", STORAGE_BUDGET=5000000;
+let meta={},audioCtx=null;
 const SCHEMA=1, db=new Map();let order=[],activeId=null,view="home",homeTab="events",prepTab="settings",day=false,qrRendered="",scannerStarted=false,lastScan="",lastScanAt=0,dialogReturnFocus=null,receptionTab="pending";
 const esc=x=>String(x??"").replace(/[&<>"']/g,s=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[s]));
 const clone=x=>JSON.parse(JSON.stringify(x));
@@ -14,8 +15,26 @@ function announce(msg,type=""){const n=$("notice");n.textContent=msg;n.className
 function key(id){return PREFIX+id;}
 function loadAll(){try{const index=JSON.parse(localStorage.getItem(IX)||'{"ids":[]}');if(!Array.isArray(index.ids))throw Error("イベント一覧の形式が正しくありません");order=[...new Set(index.ids.filter(x=>typeof x==="string"))];const missing=[];for(const id of order){try{const raw=localStorage.getItem(key(id));if(!raw){missing.push(id);continue;}const event=JSON.parse(raw);validateEvent(event);if(event.id!==id)throw Error("イベントIDが一致しません");db.set(id,event);}catch(err){missing.push(id);}}if(missing.length)announce("一部の保存データを読み込めませんでした："+missing.join("、")+"。既存データは自動削除していません。","error");}catch(err){announce("保存済みデータを読み込めません："+err.message+"。復元用JSONがある場合は保管してください。","error");}}
 function validateEvent(e){if(!e||typeof e!=="object"||typeof e.id!=="string"||!/^EVT-[A-Za-z0-9-]+$/.test(e.id)||typeof e.name!=="string"||!e.name||!Array.isArray(e.sessions)||!e.sessions.length||!Array.isArray(e.participants)||!Number.isInteger(e.nextParticipant)||e.nextParticipant<1)throw Error("イベントの構造が正しくありません");const ss=new Set();for(const s of e.sessions){if(!s||typeof s.id!=="string"||typeof s.name!=="string"||!s.name||ss.has(s.id))throw Error("受付区分が不正です");ss.add(s.id);}const ids=new Set(),staffIds=new Set();for(const p of e.participants){if(!p||typeof p.id!=="string"||typeof p.name!=="string"||!p.name||!p.planned||!p.checkins||ids.has(p.id))throw Error("参加者情報が不正です");ids.add(p.id);if(!p.removed&&p.staffId){if(typeof p.staffId!=="string"||!/^[0-9]+$/.test(p.staffId)||staffIds.has(p.staffId))throw Error("職員番号が不正または重複しています");staffIds.add(p.staffId);}}}
-function writeEvent(e){validateEvent(e);try{localStorage.setItem(key(e.id),JSON.stringify(e));db.set(e.id,e);return true;}catch(err){announce("保存できませんでした。操作は確定していません："+err.message,"error");return false;}}
-function writeIndex(ids){try{localStorage.setItem(IX,JSON.stringify({version:SCHEMA,ids}));order=ids;return true;}catch(err){announce("イベント一覧を保存できません："+err.message,"error");return false;}}
+function writeEvent(e){validateEvent(e);try{localStorage.setItem(key(e.id),JSON.stringify(e));db.set(e.id,e);markChanged();return true;}catch(err){if(isQuota(err))return announce(QUOTA_MSG,"error"),false;announce("保存できませんでした。操作は確定していません："+err.message,"error");return false;}}
+function writeIndex(ids){try{localStorage.setItem(IX,JSON.stringify({version:SCHEMA,ids}));order=ids;markChanged();return true;}catch(err){if(isQuota(err))return announce(QUOTA_MSG,"error"),false;announce("イベント一覧を保存できません："+err.message,"error");return false;}}
+/* Backup reminder, storage usage and reception feedback (sound/flash). Meta is app-owned UI state, never event data. */
+const QUOTA_MSG="ブラウザの保存容量が上限に達したため保存できませんでした（操作は確定していません）。全イベントJSONをバックアップし、終了したイベントを削除してから再度操作してください。";
+function isQuota(err){return err&&(err.name==="QuotaExceededError"||err.name==="NS_ERROR_DOM_QUOTA_REACHED"||err.code===22||err.code===1014);}
+function loadMeta(){try{const m=JSON.parse(localStorage.getItem(META)||"{}");meta=m&&typeof m==="object"&&!Array.isArray(m)?m:{};}catch{meta={};}}
+function saveMeta(){try{localStorage.setItem(META,JSON.stringify(meta));}catch{}}
+function markChanged(){meta.lastChangeAt=iso();saveMeta();renderBackupStatus();}
+function needsBackup(){return db.size>0&&(!meta.lastBackupAt||(!!meta.lastChangeAt&&meta.lastChangeAt>meta.lastBackupAt));}
+function storageInfo(){let n=0;try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i)||"";n+=k.length+(localStorage.getItem(k)||"").length;}}catch{}return {kb:Math.ceil(n*2/1024),pct:Math.min(100,Math.round(n/STORAGE_BUDGET*100))};}
+function renderBackupStatus(){
+ const b=$("backupStatus"),need=needsBackup(),last=meta.lastBackupAt?localDate(meta.lastBackupAt):"";
+ if(b){b.hidden=!db.size;b.classList.toggle("warn",need);b.textContent=need?"⚠ 未バックアップの変更あり":"✓ バックアップ済み";b.title=(last?"最終バックアップ："+last:"まだバックアップしていません")+"\nクリックで全イベントJSONを保存します";}
+ const l=$("lastBackup");if(l){l.textContent=last?"最終バックアップ："+last+(need?"（その後に変更あり）":""):"まだバックアップしていません";l.className=need&&db.size?"notice warn":"hint";}
+ const st=storageInfo(),u=$("storageUsage");if(u)u.textContent="保存容量の目安：約"+st.pct+"%（"+st.kb.toLocaleString("ja-JP")+" KB）";
+ const w=$("storageWarn");if(w){w.hidden=st.pct<70;w.textContent="ブラウザの保存容量が約"+st.pct+"%に達しています。全イベントJSONをバックアップし、終了したイベントの削除を検討してください。";}
+}
+function primeAudio(){try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return;audioCtx||=new C();if(audioCtx.state==="suspended")audioCtx.resume();}catch{}}
+function tone(freq,start,dur,type="sine",vol=.25){const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(vol,start);g.gain.exponentialRampToValueAtTime(.0001,start+dur);o.connect(g).connect(audioCtx.destination);o.start(start);o.stop(start+dur+.05);}
+function feedback(level){if(meta.sound===false||!audioCtx||audioCtx.state!=="running")return;try{const t=audioCtx.currentTime+.01;if(level==="success")tone(1046,t,.18);else if(level==="warn"){tone(660,t,.12,"triangle",.3);tone(660,t+.2,.12,"triangle",.3);}else if(level==="error")tone(196,t,.5,"square",.12);}catch{}}
 function mutate(fn){const old=db.get(activeId);if(!old)return false;const next=clone(old);try{fn(next)}catch(err){announce(err.message,"error");return false;}if(!writeEvent(next))return false;render();return true;}
 function current(){return db.get(activeId);}
 function curSession(){const e=current();return e?.sessions.find(s=>s.id===$("checkinSession").value)||e?.sessions[0];}
@@ -198,7 +217,7 @@ function checkInByToken(code){
 }
 function checkIn(id,method,allowPlan){const e=current(),s=curSession();let result=null;const person=e.participants.find(p=>p.id===id);if(!person||person.removed){showResult(person,"受付できません","error");return false;}if(checked(person,s.id)){const c=person.checkins[s.id];showResult(person,"受付済み（重複）","warn",s.name,c.lastAt||c.at);return false;}if(!person.planned[s.id]&&!allowPlan){showResult(person,"この区分は参加対象外です","warn",s.name);const action=document.createElement("button");action.type="button";action.className="btn soft";action.style.marginTop="12px";action.textContent="この区分を参加対象に変更して受付";action.onclick=()=>{if(!confirm(person.name+" さんを「"+s.name+"」の参加対象に変更して受付しますか？"))return;checkIn(id,method,true);};$("checkinResult").append(action);return false;}
 const ok=mutate(next=>{const p=next.participants.find(p=>p.id===id),at=iso();if(allowPlan)p.planned[s.id]=true;const c=p.checkins[s.id];if(c){c.active=true;c.lastAt=at;c.method=method;(c.history||(c.history=[])).push({type:"recheck",at,method});}else p.checkins[s.id]={at,lastAt:at,method,initialMethod:method,active:true,history:[]};result={person:p,at};});if(!ok){showResult(person,"保存に失敗しました","error");return false;}showResult(result.person,"受付完了","success",s.name,result.at);return true;}
-function showResult(person,txt,level="warn",session="",at=""){const d=$("checkinResult");d.className="result "+level;d.replaceChildren();const head=document.createElement("div");head.className="outcome";head.textContent=txt;d.append(head);if(person){const name=document.createElement("div");name.className="person-name";name.textContent=person.name;d.append(name);const meta=document.createElement("div");meta.className="person-meta";meta.textContent=[person.department,person.group,session,at?localDate(at):""].filter(Boolean).join("　/　");d.append(meta);}}
+function showResult(person,txt,level="warn",session="",at=""){const d=$("checkinResult");d.className="result "+level;if(level){void d.offsetWidth;d.classList.add("flash");}d.replaceChildren();const head=document.createElement("div");head.className="outcome";head.textContent=({success:"✓ ",warn:"！ ",error:"✕ "}[level]||"")+txt;feedback(level);d.append(head);if(person){const name=document.createElement("div");name.className="person-name";name.textContent=person.name;d.append(name);const meta=document.createElement("div");meta.className="person-meta";meta.textContent=[person.department,person.group,session,at?localDate(at):""].filter(Boolean).join("　/　");d.append(meta);}}
 function showReceptionTab(tab){
  receptionTab=tab==="checked"?"checked":"pending";
  $("pendingRows").hidden=receptionTab!=="pending";
@@ -464,7 +483,7 @@ function renderResults(){const e=current();$("sessionStats").innerHTML=e.session
 function filteredCross(){const type=$("crossPeriod").value,year=+$("crossYear").value,cat=$("crossCategory").value,status=$("crossStatus").value,q=$("crossQuery").value.trim().toLowerCase();const records=[];for(const e of db.values()){if(cat!=="all"&&e.category!==cat)continue;if(type!=="all"){if(!Number.isInteger(year)||year<2000||year>2100||!e.date)continue;const a=type==="fiscal"?year+"-04-01":year+"-01-01",b=type==="fiscal"?(year+1)+"-04-01":(year+1)+"-01-01";if(e.date<a||e.date>=b)continue;}for(const p of e.participants.filter(p=>!p.removed)){const st=statusFor(e,p);if(status==="checked"&&st!=="受付済み"&&st!=="一部受付")continue;if(status==="partial"&&st!=="一部受付")continue;if(status==="pending"&&st!=="未受付")continue;if(q&&![e.name,e.id,p.id,p.name,p.staffId,p.department,p.group].join(" ").toLowerCase().includes(q))continue;records.push({e,p,status:st});}}return records.sort((a,b)=>b.e.date.localeCompare(a.e.date)||a.e.id.localeCompare(b.e.id)||a.p.id.localeCompare(b.p.id));}
 function renderCross(){const records=filteredCross(),tbody=$("crossRows");tbody.replaceChildren();for(const {e,p,status} of records){const tr=document.createElement("tr");for(const x of [e.id,e.date,e.name,p.id,p.staffId,p.name,p.department,p.group,status]){const td=document.createElement("td");td.textContent=x||"—";tr.append(td);}tbody.append(tr);}$("crossCount").textContent=records.length+"件";const people=new Set(records.filter(({p})=>p.staffId).map(({p})=>p.staffId));$("crossSummary").innerHTML=summaryMetric("イベント",new Set(records.map(({e})=>e.id)).size)+summaryMetric("参加記録",records.length)+summaryMetric("職員番号あり・実人数",people.size);}
 function exportCross(detail){const found=filteredCross();if(detail){csvDownload([detailHeader(),...found.flatMap(({e,p})=>detailRows(e,p))],"cross_sessions_"+stamp()+".csv");}else{const head=["event_id","event_name","event_date","category","participant_id","staff_id","name","department","group","planned_sessions","checked_sessions","status"];const rows=found.map(({e,p,status})=>[e.id,e.name,e.date,e.category,p.id,p.staffId,p.name,p.department,p.group||"",e.sessions.filter(s=>p.planned[s.id]).length,e.sessions.filter(s=>checked(p,s.id)).length,status]);csvDownload([head,...rows],"cross_participants_"+stamp()+".csv");}}
-function backup(){const payload={schema_version:SCHEMA,exported_at:iso(),events:[...order].filter(x=>db.has(x)).map(x=>clone(db.get(x)))};downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:"application/json;charset=utf-8"}),"QRReception_backup_"+stamp()+".json");announce(payload.events.length+"件のJSONダウンロードを開始しました。ファイルが保存されたことを確認してください。","success");}
+function backup(){const payload={schema_version:SCHEMA,exported_at:iso(),events:[...order].filter(x=>db.has(x)).map(x=>clone(db.get(x)))};downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:"application/json;charset=utf-8"}),"QRReception_backup_"+stamp()+".json");meta.lastBackupAt=iso();saveMeta();renderBackupStatus();announce(payload.events.length+"件のJSONダウンロードを開始しました。ファイルが保存されたことを確認してください。","success");}
 
 // Removes only the current application namespace. Do not touch browser-wide or legacy prototype data.
 function deleteAllStoredData(){
@@ -472,7 +491,7 @@ function deleteAllStoredData(){
  try{
   for(let i=0;i<localStorage.length;i++){
    const k=localStorage.key(i);
-   if(k===IX||k?.startsWith(PREFIX))entries.push([k,localStorage.getItem(k)]);
+   if(k===IX||k===META||k?.startsWith(PREFIX))entries.push([k,localStorage.getItem(k)]);
   }
  }catch(err){announce("削除対象を確認できません："+err.message,"error");return;}
  try{
@@ -485,7 +504,7 @@ function deleteAllStoredData(){
   announce("データの削除に失敗しました。"+(restored?"元のデータは復旧しました。":"一部復旧できない可能性があります。JSONから復元してください。")+" "+err.message,"error");
   return;
  }
- db.clear();order=[];activeId=null;view="home";homeTab="events";day=false;receptionTab="pending";
+ db.clear();order=[];meta={};activeId=null;view="home";homeTab="events";day=false;receptionTab="pending";
  closeDialog();render();
  announce("このアプリの全イベント・参加者・受付履歴を削除しました。","success");
 }
@@ -510,7 +529,7 @@ function openDeleteAllDialog(){
 
 async function restore(){const f=$("restoreFile").files[0];if(!f)return announce("復元するJSONファイルを選択してください。","warn");let data;try{data=JSON.parse(await f.text());if(data.schema_version!==SCHEMA||!Array.isArray(data.events))throw Error("未対応のバックアップ形式です");const seen=new Set();for(const e of data.events){validateEvent(e);if(seen.has(e.id))throw Error("イベントIDが重複しています");seen.add(e.id);}}catch(err){return announce("JSONの検証に失敗しました："+err.message,"error");}
 const mode=$("restoreMode").value,existing=data.events.filter(e=>db.has(e.id)).length,records=data.events.filter(e=>!db.has(e.id)||mode==="replace");if(!records.length)return announce("追加するイベントがありません（既存は保持）。","warn");if(!confirm(data.events.length+"件のバックアップを読み込みます。\n新規・更新："+records.length+"件／既存との重複："+existing+"件\n方式："+(mode==="skip"?"既存を保持":"重複するイベントを上書き")+"\n実行しますか？"))return;if(mode==="replace"&&existing&&!confirm("既存イベントをバックアップ側のデータで上書きします。現在の受付記録が失われる可能性があります。本当に実行しますか？"))return;
-const previous=records.map(e=>[e.id,localStorage.getItem(key(e.id))]),newIds=[...order,...records.map(e=>e.id).filter(id=>!order.includes(id))];try{for(const e of records)localStorage.setItem(key(e.id),JSON.stringify(e));localStorage.setItem(IX,JSON.stringify({version:SCHEMA,ids:newIds}));for(const e of records)db.set(e.id,e);order=newIds;render();announce(records.length+"件を復元しました。","success");}catch(err){for(const [id,old] of previous){try{if(old===null)localStorage.removeItem(key(id));else localStorage.setItem(key(id),old);}catch{}}announce("復元に失敗しました。可能な限り元のデータに戻しました："+err.message,"error");}}
+const previous=records.map(e=>[e.id,localStorage.getItem(key(e.id))]),newIds=[...order,...records.map(e=>e.id).filter(id=>!order.includes(id))];try{for(const e of records)localStorage.setItem(key(e.id),JSON.stringify(e));localStorage.setItem(IX,JSON.stringify({version:SCHEMA,ids:newIds}));for(const e of records)db.set(e.id,e);order=newIds;markChanged();render();announce(records.length+"件を復元しました。","success");}catch(err){for(const [id,old] of previous){try{if(old===null)localStorage.removeItem(key(id));else localStorage.setItem(key(id),old);}catch{}}announce("復元に失敗しました。可能な限り元のデータに戻しました："+err.message,"error");}}
 function csvParse(text){let i=0,inQuotes=false,field="",row=[],out=[];text=text.replace(/^\uFEFF/,"");while(i<text.length){const ch=text[i++];if(inQuotes){if(ch==='"'){if(text[i]==='"'){field+='"';i++;}else inQuotes=false;}else field+=ch;}else if(ch==='"'){inQuotes=true;}else if(ch===","){row.push(field);field="";}else if(ch==="\r"||ch==="\n"){if(ch==="\r"&&text[i]==="\n")i++;row.push(field);if(row.some(x=>x.trim()))out.push(row);field="";row=[];}else field+=ch;}if(inQuotes)throw Error("CSVの引用符が閉じられていません");if(field||row.length){row.push(field);if(row.some(x=>x.trim()))out.push(row);}return out;}
 
 const CSV_FIELDS=[
@@ -677,7 +696,7 @@ function showImportPreview(rows,source){
 }
 function openDialog(title,body){dialogReturnFocus=document.activeElement;$("dialogTitle").textContent=title;$("dialogBody").replaceChildren(body);$("dialogBackdrop").hidden=false;$("closeDialog").focus();}
 function closeDialog(){$("dialogBackdrop").hidden=true;$("dialogBody").replaceChildren();dialogReturnFocus?.focus?.();}
-function render(){const home=view==="home";$("homeView").hidden=!home;$("eventView").hidden=home;if(home)renderHome();else renderEvent();}
+function render(){const home=view==="home";$("homeView").hidden=!home;$("eventView").hidden=home;if(home)renderHome();else renderEvent();renderBackupStatus();}
 function delegate(){document.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
 if(b.dataset.home){homeTab=b.dataset.home;render();return;}
 if(b.dataset.mode){day=b.dataset.mode==="day";render();return;}
@@ -696,8 +715,10 @@ $("saveSettings").onclick=saveSettings;$("addSession").onclick=addSession;for(le
 $("personQuery").oninput=renderParticipants;$("importParticipants").onclick=importParticipants;$("exportRoster").onclick=exportRoster;$("downloadTemplate").onclick=downloadTemplate;$("previewPaste").onclick=importFromPaste;for(const btn of document.querySelectorAll("[data-import-mode]"))btn.onclick=()=>setImportMode(btn.dataset.importMode);
 $("qrPerson").onchange=renderOneQR;$("showQR").onclick=renderOneQR;$("downloadQR").onclick=downloadOneQR;$("printQRs").onclick=printQR;$("exportQRZip").onclick=exportQRZip;
 $("exportResult").onclick=eventDetailCSV;$("exportAudit").onclick=exportAudit;$("printRosterPrep").onclick=()=>printReceptionRoster($("rosterSession").value);$("printRosterDay").onclick=()=>printReceptionRoster(curSession()?.id);$("checkinSession").onchange=()=>{showResult(null,"スキャン待機中","");renderReception();};
+$("soundToggle").checked=meta.sound!==false;$("soundToggle").onchange=()=>{meta.sound=$("soundToggle").checked;saveMeta();if(meta.sound){primeAudio();setTimeout(()=>feedback("success"),60);}};
+document.addEventListener("pointerdown",primeAudio,{passive:true});document.addEventListener("keydown",primeAudio);
 $("walkinBtn").onclick=()=>openPerson(null,true);$("manualBtn").onclick=openManual;$("closeDialog").onclick=closeDialog;
 $("dialogBackdrop").addEventListener("click",e=>{if(e.target===$("dialogBackdrop"))closeDialog();});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("dialogBackdrop").hidden)closeDialog();});}
 window.addEventListener("afterprint",()=>{document.body.removeAttribute("data-print-mode");$("receptionPrint").hidden=true;});
-loadAll();delegate();render();
+loadMeta();loadAll();delegate();render();
 })();
