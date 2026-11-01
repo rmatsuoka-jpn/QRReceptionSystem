@@ -101,3 +101,33 @@
 .result.success.flash{--flash:#55c48f}.result.warn.flash{--flash:#f0b35c}.result.error.flash{--flash:#e06b6e}
 @keyframes resultFlash{0%{box-shadow:0 0 0 6px var(--flash)}100%{box-shadow:0 0 0 0 transparent}}
 @media (prefers-reduced-motion:reduce){.result.flash{animation:none}}
+
+/* Guided navigation: first-run guide, steps, next action, day-start check */
+.home-link{color:inherit;text-decoration:none}.home-link:hover{text-decoration:underline}
+.first-guide{border:2px solid #0a707a;background:#f2fbfa;padding:24px}
+.first-guide h3{font-size:1.25rem;color:#0b5f68}
+.first-guide p{margin:0 0 14px;line-height:1.7}
+.guide-steps{list-style:none;padding:0;margin:0 0 18px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.guide-steps li{background:#fff;border:1px solid #cfe3e4;border-radius:9px;padding:10px 12px}
+.guide-steps b{display:block;font-size:.9rem;color:#1d5363}.guide-steps small{color:#5f7a88;font-size:.78rem}
+.btn.big{font-size:1.05rem;padding:14px 22px}
+.crumbs{font-size:.83rem;color:#5d7686;margin-bottom:8px}.crumbs a{color:#0a6a74;font-weight:700}
+.tabs button small{display:block;font-size:.72rem;font-weight:600;color:#6c8494;margin-top:2px}
+.tabs button.active small{color:#3d7d84}
+.sidebar.steps button{display:flex;align-items:center;gap:10px;line-height:1.3}
+.step-no{flex:none;width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:#e3ebf0;color:#4d6a7c;font-weight:800;font-size:.85rem}
+.step-text small{display:block;font-size:.72rem;color:#6d8594;font-weight:600;margin-top:2px}
+.sidebar.steps button.done .step-no{background:#d9f1e4;color:#1f7a4c}
+.sidebar.steps button.next .step-no{background:#0a707a;color:#fff}
+.sidebar.steps button.next:not(.active){box-shadow:inset 0 0 0 2px #8cc9c4}
+.next-step{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#fff8e8;border:1px solid #efce8f;border-left:6px solid #e0a03a;border-radius:10px;padding:13px 16px;margin-bottom:16px;line-height:1.6}
+.next-step.done{background:#ebf8f0;border-color:#a9dcbf;border-left-color:#2f9a65}
+.next-step small{color:#7a6435}
+.next-label{display:inline-block;background:#e0a03a;color:#fff;font-size:.75rem;font-weight:800;border-radius:5px;padding:2px 7px;margin-right:8px}
+.step-nav{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:18px;padding-top:14px;border-top:1px solid #e3ecf0}
+.day-check{padding:14px 18px}
+.day-check summary{cursor:pointer;display:flex;align-items:center;gap:10px}
+.day-check-items{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 18px;margin-top:8px}
+.day-check .check{font-weight:600}
+@media(max-width:850px){.guide-steps{grid-template-columns:1fr 1fr}.day-check-items{grid-template-columns:1fr}}
+.topback{display:flex;align-items:center;gap:14px;flex-wrap:wrap}.topback .crumbs{margin:0}

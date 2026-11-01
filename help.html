@@ -33,7 +33,7 @@ dt{font-weight:700;margin-top:12px}dd{margin:2px 0 8px;color:#587184;font-size:.
 <main>
 <div class="intro"><div><h1>ヘルプ・操作説明</h1><p class="sub">総合管理から受付当日まで、画面ごとに使い方を確認できます。</p></div><span class="state">2026-11 運用版</span></div>
 <nav class="nav" aria-label="このページの目次">
-<a href="#manage">総合管理</a><a href="#prepare">事前準備</a><a href="#reception">当日受付</a><a href="#unexpected">当日の変更</a><a href="#data">データ保存・出力</a><a href="#faq">よくある操作</a>
+<a href="#start">はじめに</a><a href="#manage">総合管理</a><a href="#prepare">事前準備</a><a href="#reception">当日受付</a><a href="#unexpected">当日の変更</a><a href="#data">データ保存・出力</a><a href="#faq">よくある操作</a>
 </nav>
 <section id="manage">
 <h2>▦ 総合管理画面</h2>
@@ -43,15 +43,24 @@ dt{font-weight:700;margin-top:12px}dd{margin:2px 0 8px;color:#587184;font-size:.
 <div class="feature"><div class="icon">⇩</div><h3>データ管理</h3><p>開催済みを含む全イベントをまとめてJSONでバックアップし、復元する画面です。</p></div>
 </div>
 </section>
+<section id="start">
+<h2>▶ はじめに押す場所</h2>
+<div class="panel">
+<p class="mini"><strong>イベントがまだ無いとき：</strong>総合管理に表示される「はじめての方へ」の <strong>「＋ 最初のイベントを作成する」</strong> を押し、イベント名と開催日を入力します。</p>
+<p class="mini"><strong>作成した後：</strong>画面上部の黄色い <strong>「次にやること」</strong> に、次の作業と移動ボタンが表示されます。左の手順メニュー（①〜④）には、終わった手順に ✓ と登録人数などが表示されます。各画面の下にある「次へ →」でも順番に進めます。</p>
+<p class="mini"><strong>既存のイベント：</strong>一覧のカードに「次：② 参加者登録」などと表示されます。「⚙ 準備」を押すと、まだ終わっていない手順の画面が開きます。開催当日は「▣ 受付」を押します。</p>
+<p class="mini"><strong>迷ったら：</strong>画面左上の「QR受付システム」か、パンくず（総合管理 › イベント名 › …）の「総合管理」でトップに戻れます。</p>
+</div>
+</section>
 <section id="prepare">
 <h2>⚙ 事前準備モード</h2>
 <p class="mini">QR発行では、職員番号のある参加者の個別PNG・一括ZIP・A4 10面付け印刷を利用できます。紙のQRは読み取りやすい余白と大きさで印刷します。</p>
 <div class="panel">
 <div class="steps">
 <div class="step"><span class="n">STEP 01</span><strong>イベント設定</strong><small>名前・日付・分類・受付区分</small></div>
-<div class="step"><span class="n">STEP 02</span><strong>参加者登録</strong><small>CSV取込 または 個別追加</small></div>
+<div class="step"><span class="n">STEP 02</span><strong>参加者登録</strong><small>Excel貼り付け・CSV取込・個別追加</small></div>
 <div class="step"><span class="n">STEP 03</span><strong>QR発行</strong><small>PNG＋QR対応表CSV / A4・10面</small></div>
-<div class="step"><span class="n">STEP 04</span><strong>当日受付へ</strong><small>QRを読み取り、出欠を確認</small></div>
+<div class="step"><span class="n">STEP 04</span><strong>紙名簿・出力</strong><small>非常用の紙名簿を印刷 → 当日受付へ</small></div>
 </div>
 </div>
 <div class="panel"><h3>CSV取込・名簿更新</h3><p class="mini">イベント別のCSVテンプレートをダウンロードできます。CSVファイルの取込、またはExcelの表をタブ区切りで貼り付ける方法を選び、氏名・職員番号・所属・グループ・区分の列対応を確認します。プレビューで登録件数を確認してから確定します。既存者を更新しても参加者IDと受付履歴は維持されます。QRの中身は現在の職員番号を使います。</p></div>
@@ -69,6 +78,7 @@ dt{font-weight:700;margin-top:12px}dd{margin:2px 0 8px;color:#587184;font-size:.
 <div class="stat"><strong>② QRを読む</strong><small>カメラで受付</small></div>
 <div class="stat"><strong>③ 結果を確認</strong><small>氏名を大きく表示</small></div>
 </div>
+<p class="mini"><strong>受付開始前の確認：</strong>当日受付画面の上に「受付区分・カメラ・受付音・紙名簿」の4項目があります。すべてチェックすると「✓ 準備OK」になって折りたたまれます（その日のうちは状態を保持します）。カメラは「カメラを起動する」→「読み取り開始」の順に押します。</p>
 <p class="mini">選択中の区分ごとに受付を記録します。すでに受け付けたQRは二重登録せず、初回時刻を表示します。</p>
 <p class="mini"><strong>受付音：</strong>受付完了は「ピッ」1回、受付済み（重複）・参加対象外は「ピピッ」2回、名簿にない番号などのエラーは低い「ブー」。結果欄の先頭にも ✓／！／✕ が付きます。受付区分の右にある「受付音を鳴らす」でON/OFFできます（画面を一度クリックした後から鳴ります）。</p>
 </div>
