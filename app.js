@@ -1056,13 +1056,37 @@ async function importParticipants(){
  }catch(err){return announce("CSVを読み込めません："+err.message,"error");}
  showImportPreview(rows,"csv");
 }
+/* 貼り付けデータの区切り文字（タブ／カンマ）を、先頭の論理行で判定する。引用符内のカンマ・改行は数えない。
+   ZIP作成などの補助（app-support.js）とは役割が異なるため、画面側の処理としてここに置く。 */
+function detectPasteDelimiter(text){
+ const input=String(text??"").replace(/^\uFEFF/,"");let quoted=false,tabs=0,commas=0;
+ for(let i=0;i<input.length;i++){
+  const ch=input[i];
+  if(ch==='"'){
+   if(quoted&&input[i+1]==='"'){i++;continue;}
+   quoted=!quoted;continue;
+  }
+  if(!quoted){
+   if(ch==="\t")tabs++;
+   else if(ch===",")commas++;
+   else if(ch==="\r"||ch==="\n")break;
+  }
+ }
+ if(tabs&&commas&&tabs===commas)throw Error("タブ区切りとカンマ区切りの判定ができません。列見出しを確認してください");
+ return tabs>=commas?"tab":"comma";
+}
+function parsePastedTable(text){
+ const rows=detectPasteDelimiter(text)==="tab"?globalThis.QRSupport.parseTSV(text):globalThis.QRSupport.parseCSV(text);
+ if(!rows.length)throw Error("貼り付けられた表データがありません");
+ return rows;
+}
 function importFromPaste(){
  const input=$("participantPaste").value;
  if(!input.trim())return announce("Excelの表やCSVデータを見出し行から貼り付けてください。","warn");
  if(input.length>5*1024*1024)return announce("貼り付け内容が多すぎます。分割してください。","warn");
  let rows;try{
   if(!globalThis.QRSupport)throw Error("CSV処理ライブラリがありません");
-  rows=globalThis.QRSupport.parsePastedTable(input);
+  rows=parsePastedTable(input);
   if(rows.length<2)throw Error("見出し行とデータ行が必要です");
   if(rows.length>10001)throw Error("10,000行以下に分割してください");
   if(rows[0].length>100)throw Error("列数が多すぎます");
