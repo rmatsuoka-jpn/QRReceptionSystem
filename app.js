@@ -116,9 +116,9 @@ function normalizeCustom(e,i,value){
  if(type==="bool"){
   if(["有","あり","1","true","○","はい","yes"].includes(v.toLowerCase()))return "有";
   if(["無","なし","0","false","×","いいえ","no"].includes(v.toLowerCase()))return "無";
-  throw Error((e.customLabels?.[i]||"任意項目"+(i+1))+" は「有」または「無」を選択してください");
+  throw Error((e.customLabels?.[i]||"追加項目"+(i+1))+" は「有」または「無」を選択してください");
  }
- if(type==="select"&&!getCustomOptions(e,i).includes(v))throw Error((e.customLabels?.[i]||"任意項目"+(i+1))+" の選択肢に「"+v+"」はありません");
+ if(type==="select"&&!getCustomOptions(e,i).includes(v))throw Error((e.customLabels?.[i]||"追加項目"+(i+1))+" の選択肢に「"+v+"」はありません");
  return v;
 }
 function toggleCustomOptions(i){$("customOptionsWrap"+i).hidden=$("customType"+i).value!=="select";}
@@ -258,7 +258,7 @@ function savePersonFromForm(andCheck){const id=$("personId")?.value||"",name=$("
  });if(!ok)return;closeDialog();if(andCheck){showResult(checkResult.person,checkResult.duplicate?"受付済み（重複）":"受付完了",checkResult.duplicate?"warn":"success",curSession()?.name,checkResult.when);announce("参加者情報を保存しました。","success");}else announce("参加者情報を保存しました。","success");}
 
 function customFieldHTML(e,p,i){
- const label=esc(e.customLabels?.[i]||"任意項目"+(i+1)),value=p?.customValues?.[i]||"";
+ const label=esc(e.customLabels?.[i]||"追加項目"+(i+1)),value=p?.customValues?.[i]||"";
  const type=getCustomType(e,i),id="personCustom"+i;
  if(type==="text")return '<label class="field">'+label+'<input id="'+id+'" value="'+esc(value)+'"></label>';
  const choices=type==="bool"?["有","無"]:getCustomOptions(e,i);
@@ -1036,7 +1036,7 @@ function setImportMode(mode){
 function showImportPreview(rows,source){
  csvPending={rows,eventId:activeId,source};
  const e=current(),headers=rows[0].map(x=>String(x).trim());
- const fields=CSV_FIELDS.map(([id,label,aliases])=>[id,id==="custom0"?(e.customLabels[0]||"任意項目1"):id==="custom1"?(e.customLabels[1]||"任意項目2"):label,id==="custom0"?[e.customLabels[0],"custom_1"]:id==="custom1"?[e.customLabels[1],"custom_2"]:aliases]);
+ const fields=CSV_FIELDS.map(([id,label,aliases])=>[id,id==="custom0"?(e.customLabels[0]||"追加項目1"):id==="custom1"?(e.customLabels[1]||"追加項目2"):label,id==="custom0"?[e.customLabels[0],"custom_1"]:id==="custom1"?[e.customLabels[1],"custom_2"]:aliases]);
  for(const s of e.sessions)fields.push(["session:"+s.id,"参加予定："+s.name,["受付区分："+s.name,"受付区分:"+s.name,s.name,"参加_"+s.name,s.name+"_参加"]]);
  const root=document.createElement("div");
  const labels=document.createElement("div");labels.className="fields two";
