@@ -17,8 +17,9 @@
    <ol class="guide-steps"><li><b>① イベント設定</b><small>開催日・受付区分</small></li><li><b>② 参加者登録</b><small>Excelから貼り付け</small></li><li><b>③ QR発行</b><small>印刷またはPNG配布</small></li><li><b>④ 紙名簿・出力</b><small>非常用名簿を印刷</small></li><li><b>当日：▣ 受付</b><small>QRを読み取る</small></li></ol>
    <button type="button" class="btn main big" data-new-event>＋ 最初のイベントを作成する</button>
   </div>
+  <div id="todayEvents" class="panel today-panel" hidden><h3>本日のイベント <span class="tag" id="todayLabel"></span></h3><div id="todayRows"></div></div>
   <div class="row title-row"><div><h3 style="margin:0">イベント一覧</h3><div class="hint" id="listGuide">事前準備は各イベントの「⚙ 準備」、開催当日は「▣ 受付」を押します。</div></div><button id="newEvent" class="btn main">＋ 新規イベント</button></div>
-  <div class="panel filter"><div class="fields"><label class="field">イベント名<input id="eventQuery" placeholder="名前を検索"></label><label class="field">開催日（開始）<input type="date" id="dateFrom"></label><label class="field">開催日（終了）<input type="date" id="dateTo"></label><label class="field">並び替え<select id="sortKey"><option value="date">開催日</option><option value="id">イベントID</option></select></label><label class="field">順序<select id="sortOrder"><option value="desc">降順 ↓</option><option value="asc">昇順 ↑</option></select></label><div style="align-self:end"><button id="resetEvents" class="btn">↺ クリア</button></div></div></div>
+  <div class="panel filter"><div class="fields"><label class="field">イベント名<input id="eventQuery" placeholder="名前を検索"></label><label class="field">開催日（開始）<input type="date" id="dateFrom"></label><label class="field">開催日（終了）<input type="date" id="dateTo"></label><label class="field">並び替え<select id="sortKey"><option value="date">開催日</option><option value="id">イベントID</option></select></label><label class="field">順序<select id="sortOrder"><option value="desc">降順 ↓</option><option value="asc">昇順 ↑</option></select></label><div style="align-self:end" class="buttons"><button type="button" id="filterToday" class="btn">今日</button><button type="button" id="filterUpcoming" class="btn">今日以降</button><button id="resetEvents" class="btn">↺ クリア</button></div></div></div>
   <div class="row title-row"><div class="hint" id="eventCount"></div></div><div id="eventCards" class="cardlist"></div>
  </section>
  <section id="homeCross" hidden>
@@ -66,9 +67,11 @@
 <div class="form-actions step-nav"><button class="btn" id="saveSettings">設定を保存</button><button class="btn main" id="saveSettingsNext">保存して次へ：② 参加者登録 →</button></div>
  </section>
  <section id="participantsPanel" class="panel" hidden>
-  <div class="row"><h3>参加者一覧 <span id="peopleCount" class="tag"></span></h3><div class="buttons"><button id="addPerson" class="btn main">＋ 個別登録</button><button id="exportRoster" class="btn">⇩ 名簿CSV</button></div></div>
+  <div class="row"><h3>参加者一覧 <span id="peopleCount" class="tag"></span></h3><div class="buttons"><button id="addPerson" class="btn main">＋ 1人ずつ登録</button></div></div>
   <div class="panel filter">
-<div class="row"><h3>参加者の一括登録</h3><button type="button" id="downloadTemplate" class="btn small">⇩ このイベントのCSVテンプレート</button></div>
+<h3>参加者の一括登録</h3>
+<div class="template-box"><div><strong>① 記入用のひな形をダウンロード</strong><div class="hint">2行目の「（例）」の行は消さなくても取り込まれません。Excel形式は職員番号の列が文字列に設定済みで、先頭の0が消えません。</div></div><div class="buttons"><button type="button" id="downloadTemplateXlsx" class="btn main small">⇩ ひな形（Excel形式・おすすめ）</button><button type="button" id="downloadTemplate" class="btn small">⇩ ひな形（CSV形式）</button></div></div>
+<p class="hint" style="margin:12px 0 4px"><strong>② 記入した名簿を取り込む</strong></p>
 <div class="import-tabs" role="group" aria-label="登録方法">
 <button type="button" id="importTabPaste" class="btn main" data-import-mode="paste">Excelから貼り付け</button>
 <button type="button" id="importTabCsv" class="btn" data-import-mode="csv">CSVファイル</button>
@@ -85,6 +88,7 @@
 </div>
   <input class="search" id="personQuery" placeholder="氏名・職員番号・所属・グループ・参加者IDで検索" aria-label="参加者検索" style="margin-bottom:13px">
   <div class="tablewrap"><table><thead><tr><th>ID</th><th>氏名</th><th>職員番号</th><th>所属</th><th>グループ</th><th>参加区分</th><th>操作</th></tr></thead><tbody id="participantRows"></tbody></table></div>
+  <div class="export-row"><span class="hint">登録済みの名簿を、Excelでの集計・保管用に書き出します（見出しは集計用の項目名です）。</span><button id="exportRoster" class="btn small">⇩ 登録済み名簿を出力（集計用CSV）</button></div>
   <div class="step-nav"><button type="button" class="btn" data-prep="settings">← ① イベント設定</button><button type="button" class="btn main" data-prep="qr">次へ：③ QR発行 →</button></div>
  </section>
  <section id="qrPanel" class="panel" hidden>
@@ -103,11 +107,11 @@
    <div class="day-check-items">
     <label class="check"><input type="checkbox" data-day-check="session"> 受付区分が正しい（現在：<b id="dayCheckSession"></b>）</label>
     <label class="check"><input type="checkbox" data-day-check="camera"> 下の「▶ カメラを起動」を押し、テスト用QRで読み取れた</label>
-    <label class="check"><input type="checkbox" data-day-check="sound"> 受付音が聞こえる <button type="button" class="btn small" id="soundTest">♪ 音を試す</button></label>
+    <label class="check"><input type="checkbox" data-day-check="sound"> PCの音量を上げ、受付音が聞こえる <button type="button" class="btn small" id="soundTest">♪ 3種類の音を試す</button></label>
     <label class="check"><input type="checkbox" data-day-check="paper"> 紙の受付名簿を手元に用意した（PC不調時用）</label>
    </div>
   </details>
-  <div class="day-session"><div class="row"><strong>受付区分</strong><div class="buttons"><label class="check sound-toggle"><input type="checkbox" id="soundToggle" checked> 受付音を鳴らす</label><button type="button" class="btn small" id="printRosterDay">▤ 受付名簿を印刷</button></div></div><select id="checkinSession"></select></div><div id="daySummary" class="summary"></div>
+  <div class="day-session"><div class="row"><strong>受付区分</strong><div class="buttons"><label class="check sound-toggle"><input type="checkbox" id="soundToggle" checked> 受付音を鳴らす</label><label class="check sound-toggle">音量<select id="soundVolume" aria-label="受付音の音量"><option value="high">大</option><option value="mid">中</option><option value="low">小</option></select></label><button type="button" class="btn small" id="printRosterDay">▤ 受付名簿を印刷</button></div></div><select id="checkinSession"></select></div><div id="daySummary" class="summary"></div>
   <div class="reception-grid">
   <div><div class="panel"><h3>QR受付</h3><div class="camera"><div class="camera-controls"><select id="cameraSelect" aria-label="使用するカメラ" hidden></select><button type="button" id="cameraStart" class="btn main">▶ カメラを起動</button><button type="button" id="cameraStop" class="btn" hidden>■ 停止</button></div><div id="readerViewport" class="reader-viewport"><div id="reader" class="reader"></div></div><div id="cameraHint" class="hint">「▶ カメラを起動」を押すと読み取りを始めます（初回はカメラの許可を求められます）。</div><label class="check mirror-toggle"><input type="checkbox" id="mirrorToggle" checked> 映像を鏡のように表示（PC内蔵・正面向きカメラ向け）</label></div><div id="checkinResult" class="result" role="status" aria-live="polite">スキャン待機中</div></div>
   <div class="panel"><h3>当日の参加者変更</h3><div class="grid2"><button id="walkinBtn" class="btn main">＋ 飛び入り登録</button><button id="manualBtn" class="btn">⌕ 名前から受付</button></div></div></div>
