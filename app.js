@@ -361,7 +361,8 @@ function renderReception(){
   const time=p=>p.checkins[s.id].lastAt||p.checkins[s.id].at||"";
   return time(b).localeCompare(time(a))||a.name.localeCompare(b.name,"ja");
  });
- const pending=people.filter(p=>!checked(p,s.id)&&p.source!=="walkin").sort((a,b)=>a.name.localeCompare(b.name,"ja"));
+ // 受付取消した当日登録者も「未受付」に戻し、右側から再受付できるようにする。
+ const pending=people.filter(p=>!checked(p,s.id)&&(p.source!=="walkin"||p.checkins?.[s.id]?.active===false)).sort((a,b)=>a.name.localeCompare(b.name,"ja"));
  const walkins=attended.filter(p=>p.source==="walkin").length,base=Math.max(people.length,attended.length);
  $("daySummary").innerHTML=summaryMetric("参加対象",people.length)+summaryMetric("未受付",pending.length)+summaryMetric("当日登録",walkins);
  $("rxProgressText").textContent=attended.length+" / "+people.length;
