@@ -131,3 +131,6 @@
 .day-check .check{font-weight:600}
 @media(max-width:850px){.guide-steps{grid-template-columns:1fr 1fr}.day-check-items{grid-template-columns:1fr}}
 .topback{display:flex;align-items:center;gap:14px;flex-wrap:wrap}.topback .crumbs{margin:0}
+/* Mirror only the on-screen preview; decoding still uses the raw camera frames. */
+#reader.mirror video{transform:scaleX(-1)}
+.mirror-toggle{justify-content:center;font-size:.8rem;color:#4f6a7a;font-weight:600}

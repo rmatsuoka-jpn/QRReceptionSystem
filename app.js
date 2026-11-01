@@ -322,7 +322,11 @@ function startScanner(){
    fps:12,
    qrbox:(viewWidth,viewHeight)=>{const side=Math.max(140,Math.floor(Math.min(viewWidth,viewHeight)*0.8));return {width:side,height:side};},
    rememberLastUsedCamera:true,
-   aspectRatio:1.3333333
+   aspectRatio:1.3333333,
+   // Staff QR cards are QR only: skipping the other 15 barcode formats cuts per-frame decode work by ~30-45%.
+   ...(typeof Html5QrcodeSupportedFormats!=="undefined"?{formatsToSupport:[Html5QrcodeSupportedFormats.QR_CODE]}:{}),
+   // Use the browser's native detector where available (macOS/ChromeOS/Android); Windows falls back to the JS decoder.
+   experimentalFeatures:{useBarCodeDetectorIfSupported:true}
   },false);
   scanner.render(text=>{
    const code=String(text).trim(),now=Date.now();
@@ -332,7 +336,7 @@ function startScanner(){
    checkInByToken(code);
   },()=>{});
   const reader=$("reader");translateScanner(reader);new MutationObserver(()=>translateScanner(reader)).observe(reader,{subtree:true,childList:true,characterData:true});
-  $("cameraHint").textContent="「カメラを起動する」→「読み取り開始」を押し、QRを枠内にかざしてください。紙は平らにします。";
+  $("cameraHint").textContent="「カメラを起動する」→「読み取り開始」を押してください。QRはカメラから20〜40cm離し、紙を平らにして枠内で止めます（近づけすぎるとピントが合わず遅くなります）。";
  }catch(err){$("cameraHint").textContent="カメラを開始できません："+err.message;}
 }
 function eligibleQrPeople(e){return e.participants.filter(p=>!p.removed&&/^[0-9]+$/.test(p.staffId||""));}
@@ -756,6 +760,7 @@ for(const c of document.querySelectorAll("[data-day-check]"))c.onchange=saveDayC
 $("personQuery").oninput=renderParticipants;$("importParticipants").onclick=importParticipants;$("exportRoster").onclick=exportRoster;$("downloadTemplate").onclick=downloadTemplate;$("previewPaste").onclick=importFromPaste;for(const btn of document.querySelectorAll("[data-import-mode]"))btn.onclick=()=>setImportMode(btn.dataset.importMode);
 $("qrPerson").onchange=renderOneQR;$("showQR").onclick=renderOneQR;$("downloadQR").onclick=downloadOneQR;$("printQRs").onclick=printQR;$("exportQRZip").onclick=exportQRZip;
 $("exportResult").onclick=eventDetailCSV;$("exportAudit").onclick=exportAudit;$("printRosterPrep").onclick=()=>printReceptionRoster($("rosterSession").value);$("printRosterDay").onclick=()=>printReceptionRoster(curSession()?.id);$("checkinSession").onchange=()=>{showResult(null,"スキャン待機中","");renderReception();};
+$("mirrorToggle").checked=meta.mirror!==false;$("reader").classList.toggle("mirror",meta.mirror!==false);$("mirrorToggle").onchange=()=>{meta.mirror=$("mirrorToggle").checked;saveMeta();$("reader").classList.toggle("mirror",meta.mirror);};
 $("soundToggle").checked=meta.sound!==false;$("soundToggle").onchange=()=>{meta.sound=$("soundToggle").checked;saveMeta();if(meta.sound){primeAudio();setTimeout(()=>feedback("success"),60);}};
 document.addEventListener("pointerdown",primeAudio,{passive:true});document.addEventListener("keydown",primeAudio);
 $("walkinBtn").onclick=()=>openPerson(null,true);$("manualBtn").onclick=openManual;$("closeDialog").onclick=closeDialog;
