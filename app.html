@@ -40,15 +40,15 @@
    <div id="eventCards" class="hm-cards"></div>
   </div>
  </section>
- <section id="homeCross" hidden>
+ <section id="homeCross" class="hm-cross" hidden>
   <div class="panel"><h3>横断参加者検索</h3><div class="fields"><label class="field">期間<select id="crossPeriod"><option value="fiscal">年度（4月〜翌3月）</option><option value="calendar">暦年</option><option value="all">全期間</option></select></label><label class="field">年<input id="crossYear" type="number" min="2000" max="2100" value="2026"></label><label class="field">イベント分類<select id="crossCategory"><option value="all">すべて</option><option value="training">研修</option><option value="briefing">説明会</option><option value="other">その他</option></select></label><label class="field">受付状況<select id="crossStatus"><option value="all">すべて</option><option value="checked">受付実績あり</option><option value="partial">一部受付</option><option value="pending">未受付</option></select></label><label class="field">氏名・番号・所属・グループ・イベント名<input id="crossQuery" placeholder="キーワード"></label></div></div>
   <div id="crossSummary" class="summary"></div>
   <div class="panel"><div class="row"><h3>参加者一覧 <span id="crossCount" class="tag"></span></h3><div class="buttons"><button id="exportCross" class="btn main">⇩ 参加者一覧CSV</button><button id="exportCrossDetail" class="btn">⇩ 区分別詳細CSV</button></div></div><div class="tablewrap"><table><thead><tr><th>イベントID</th><th>開催日</th><th>イベント名</th><th>参加者ID</th><th>職員番号</th><th>氏名</th><th>所属</th><th>グループ</th><th>受付状況</th></tr></thead><tbody id="crossRows"></tbody></table></div></div>
  </section>
- <section id="homeData" hidden>
+ <section id="homeData" class="hm-data" hidden>
   <div class="grid2">
-   <div class="panel"><h3>⇩ 全イベントJSONバックアップ</h3><div id="backupCount" class="hint"></div><div id="lastBackup" class="hint"></div><p class="hint">イベント設定・参加者名簿（職員番号を含む）・受付履歴を保存</p><div id="storageUsage" class="hint"></div><button class="btn main" data-backup>JSONを保存</button></div>
-   <div class="panel"><h3>↶ JSONから復元</h3><label class="field">バックアップファイルを選択<input type="file" accept=".json,application/json" id="restoreFile"></label><label class="field">重複イベントの扱い<select id="restoreMode"><option value="skip">既存のイベントを保持する</option><option value="replace">選択ファイルで上書きする</option></select></label><button class="btn" id="restoreBtn">ファイルを確認して復元</button></div>
+   <div class="panel dm-card dm-backup"><h3><span class="dm-ico">⇩</span>全イベントJSONバックアップ</h3><div id="backupCount" class="hint"></div><div id="lastBackup" class="hint"></div><p class="hint">イベント設定・参加者名簿（職員番号を含む）・受付履歴を保存</p><div id="storageUsage" class="hint"></div><button class="btn main" data-backup>JSONを保存</button></div>
+   <div class="panel dm-card"><h3><span class="dm-ico">↶</span>JSONから復元</h3><div class="field">バックアップファイル<div class="file-pick"><label class="btn file-pick-btn">📂 ファイルを選択<input type="file" accept=".json,application/json" id="restoreFile" class="visually-hidden"></label><span id="restoreFileName" class="file-pick-name">選択されていません</span></div></div><label class="field">重複イベントの扱い<select id="restoreMode"><option value="skip">既存のイベントを保持する</option><option value="replace">選択ファイルで上書きする</option></select></label><button class="btn main" id="restoreBtn">ファイルを確認して復元</button></div>
   </div><div class="alertline">JSONには氏名・職員番号などの個人情報と受付履歴が含まれます。庁内の保管ルールに従ってください。</div>
   <div class="panel danger-zone">
    <div class="row"><div><h3>データの一括削除</h3><p class="hint">このブラウザに保存された全イベント・参加者・受付履歴を削除します。</p></div><button id="deleteAllData" class="btn danger">すべてのデータを削除</button></div>
@@ -57,9 +57,15 @@
 </section>
 
 <section id="eventView" hidden>
- <div class="topback"><button class="btn" id="backHome">← 総合管理へ</button><nav class="crumbs" aria-label="現在の位置"><a href="./app.html" id="crumbHome">総合管理</a> › <span id="crumbEvent"></span> › <span id="crumbMode"></span></nav></div>
- <div class="row title-row"><div><h2 id="eventTitle"></h2><div class="hint" id="eventSubtitle"></div></div></div>
- <div id="modeTabs" class="tabs"><button data-mode="prep" class="active">⚙ 事前準備<small>設定・名簿・QR発行</small></button><button data-mode="day">▣ 当日受付<small>開催当日にQRを読み取る</small></button></div>
+ <div class="ev-bar">
+  <button type="button" class="ev-back" id="backHome" title="総合管理へ戻る" aria-label="総合管理へ戻る">←</button>
+  <div class="ev-title">
+   <nav class="ev-crumbs" aria-label="現在の位置"><a href="./app.html" id="crumbHome">総合管理</a> › <span id="crumbMode"></span><span id="crumbEvent" hidden></span></nav>
+   <h2 id="eventTitle"></h2>
+   <div class="ev-sub" id="eventSubtitle"></div>
+  </div>
+  <div id="modeTabs" class="ev-seg" role="tablist" aria-label="画面の切り替え"><button data-mode="prep" class="active">⚙ 事前準備</button><button data-mode="day">▣ 当日受付</button></div>
+ </div>
  <div id="prepView" class="layout">
  <nav class="sidebar steps" aria-label="事前準備の手順" id="prepSteps"><button data-prep="settings" class="active">イベント設定</button><button data-prep="participants">参加者登録</button><button data-prep="qr">QR発行</button><button data-prep="results">紙名簿・出力</button></nav>
  <div>
