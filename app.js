@@ -104,7 +104,7 @@ const list=[...db.values()].filter(e=>(!q||e.name.toLocaleLowerCase("ja-JP").inc
 $("eventCount").textContent=list.length+" / "+db.size+"件を表示";
 for(const e of list){const x=evCounts(e),card=document.createElement("article");card.className="event-card";card.innerHTML='<div><span class="date-pill">'+esc(e.date||"日付未設定")+'</span><span class="category-pill">'+esc(catName(e.category))+'</span><h3>'+esc(e.name)+'</h3><div class="code">'+esc(e.id)+'</div></div><div><div class="row status"><span>受付進捗</span><strong>'+x.done+" / "+x.target+'</strong></div><div class="progress"><div style="width:'+x.percent+'%"></div></div></div><div class="event-controls"><div class="status">'+e.participants.filter(p=>!p.removed).length+'名 登録　・　'+e.sessions.length+'区分　'+nextBadge(e)+'</div><div class="buttons"><button class="btn small" data-action="prep" data-id="'+esc(e.id)+'">⚙ 準備</button><button class="btn main small" data-action="day" data-id="'+esc(e.id)+'">▣ 受付</button><button class="btn small" data-action="clone" data-id="'+esc(e.id)+'">⧉ 複製</button><button class="btn danger small" data-action="delete" data-id="'+esc(e.id)+'">削除</button></div></div>';root.append(card);}
 if(!list.length){const p=document.createElement("div");p.className="panel";p.textContent="該当するイベントはありません。「＋ 新規イベント」から登録できます。";root.append(p);}}
-function renderEvent(){const e=current();if(!e)return openHome();$("eventTitle").textContent=e.name;$("eventSubtitle").textContent=(e.date||"開催日未設定")+"　／　"+e.id+"　／　"+catName(e.category);$("crumbEvent").textContent=e.name;$("crumbMode").textContent=day?"当日受付":"事前準備";$("prepView").hidden=day;$("receptionView").hidden=!day;for(const mode of ["prep","day"])document.querySelector('[data-mode="'+mode+'"]').classList.toggle("active",(mode==="day")===day);if(day){renderReception();return;}
+function renderEvent(){const e=current();if(!e)return openHome();$("eventTitle").textContent=e.name;$("eventSubtitle").textContent=(e.date||"開催日未設定")+"　／　"+e.id+"　／　"+catName(e.category);$("crumbEvent").textContent=e.name;$("rxEventName").textContent=e.name;$("crumbMode").textContent=day?"当日受付":"事前準備";$("prepView").hidden=day;$("receptionView").hidden=!day;for(const mode of ["prep","day"])document.querySelector('[data-mode="'+mode+'"]').classList.toggle("active",(mode==="day")===day);if(day){renderReception();return;}
 for(const name of ["settings","participants","qr","results"]){$(name+"Panel").hidden=name!==prepTab;document.querySelector('[data-prep="'+name+'"]').classList.toggle("active",name===prepTab);}
 if(prepTab==="settings")renderSettings();if(prepTab==="participants")renderParticipants();if(prepTab==="qr")renderQRSelect();if(prepTab==="results")renderResults();renderSteps();window.scrollTo?.({top:0});}
 function getCustomType(e,i){return e.customTypes?.[i]||"text";}
@@ -292,7 +292,10 @@ function renderReception(){
   return time(b).localeCompare(time(a))||a.name.localeCompare(b.name,"ja");
  });
  const pending=people.filter(p=>!checked(p,s.id)&&p.source!=="walkin").sort((a,b)=>a.name.localeCompare(b.name,"ja"));
- $("daySummary").innerHTML=summaryMetric("参加対象",people.length)+summaryMetric("受付済み",attended.length)+summaryMetric("未受付（事前登録）",pending.length);
+ const walkins=attended.filter(p=>p.source==="walkin").length,base=Math.max(people.length,attended.length);
+ $("daySummary").innerHTML=summaryMetric("参加対象",people.length)+summaryMetric("未受付",pending.length)+summaryMetric("当日登録",walkins);
+ $("rxProgressText").textContent=attended.length+" / "+people.length;
+ $("rxProgressBar").style.width=(base?Math.round(attended.length/base*100):0)+"%";
  $("pendingSessionName").textContent=s.name;
  $("pendingCount").textContent=String(pending.length);
  $("checkedCount").textContent=String(attended.length);
@@ -336,7 +339,7 @@ async function nativeQrSupported(){if(CAM.native!==null)return CAM.native;try{CA
 function camRate(){clearInterval(CAM.timer);CAM.frames=0;let last=Date.now();CAM.timer=setInterval(()=>{if(!CAM.running){clearInterval(CAM.timer);return;}const now=Date.now(),rate=Math.round(CAM.frames*1000/(now-last));CAM.frames=0;last=now;const el=$("camStats");if(el)el.textContent="解析 "+rate+"回/秒・"+(CAM.native?"内蔵検出":"JS解析");},1000);}
 function saveCameraFrame(){const v=document.querySelector("#reader video");if(!v||!v.videoWidth)return announce("カメラが起動していません。","warn");const c=document.createElement("canvas");c.width=v.videoWidth;c.height=v.videoHeight;c.getContext("2d").drawImage(v,0,0);downloadLink(c.toDataURL("image/png"),"camera_frame_"+stamp()+".png");announce("カメラ映像の1コマを保存しました（調査用）。人物が写っている場合は取り扱いに注意してください。","success");}
 function camHint(t,level=""){const h=$("cameraHint");h.textContent=t;h.className="hint"+(level?" cam-"+level:"");}
-function camUI(){$("cameraStart").hidden=CAM.running;$("cameraStop").hidden=!CAM.running;$("camDiag").hidden=!CAM.running;$("cameraStart").disabled=CAM.busy;$("cameraSelect").disabled=CAM.busy;}
+function camUI(){$("cameraStart").hidden=CAM.running;$("cameraStop").hidden=!CAM.running;$("camDiag").hidden=!CAM.running;$("cameraStart").disabled=CAM.busy;$("cameraSelect").disabled=CAM.busy;$("receptionView").classList.toggle("cam-on",CAM.running);$("receptionView").classList.toggle("cam-busy",CAM.busy);}
 function fitReader(){const vp=$("readerViewport"),r=$("reader");if(!CAM.running){r.style.transform="";vp.style.height="";return;}const k=Math.min(1,vp.clientWidth/CAM.width),off=Math.max(0,(vp.clientWidth-CAM.width*k)/2);r.style.transform="translateX("+off+"px) scale("+k+")";vp.style.height=Math.ceil(r.offsetHeight*k)+"px";}
 function camError(err){const n=err?.name||"",m=String(err?.message||err||"");
  if(!window.isSecureContext&&!navigator.mediaDevices)return "このページではカメラを使用できません（HTTPS等が必要な環境です）。紙名簿や「名前から受付」を利用してください。";
@@ -346,7 +349,7 @@ function camError(err){const n=err?.name||"",m=String(err?.message||err||"");
  if(n==="NotReadableError"||/NotReadable|Could not start video source/i.test(m))return "カメラを開始できません。Teams・Zoomなど他のアプリがカメラを使っていないか確認してください。";
  return "カメラを開始できません："+m;}
 async function loadCameras(){const cams=await Html5Qrcode.getCameras(),sel=$("cameraSelect");sel.replaceChildren();cams.forEach((c,i)=>sel.add(new Option(c.label||"カメラ "+(i+1),c.id)));if(!cams.length)throw {name:"NotFoundError"};if(cams.some(c=>c.id===meta.cameraId))sel.value=meta.cameraId;sel.hidden=cams.length<2;}
-function onScan(text){const code=String(text).trim(),now=Date.now();if(code===lastScan&&now-lastScanAt<1500)return;lastScan=code;lastScanAt=now;if(!day||view!=="event")return;checkInByToken(code);}
+function onScan(text){const code=String(text).trim(),now=Date.now();if(code===lastScan&&now-lastScanAt<3000){lastScanAt=now;return;}lastScan=code;lastScanAt=now;if(!day||view!=="event")return;checkInByToken(code);}
 async function startCamera(){
  if(CAM.busy||CAM.running)return;
  if(typeof Html5Qrcode!=="function")return camHint("QR読み取りライブラリが見つかりません。vendor/ を確認してください。","error");
@@ -374,11 +377,11 @@ async function startCamera(){
   const st=CAM.qr.getRunningTrackSettings?.()||{};
   meta.cameraId=st.deviceId||id||"";saveMeta();
   if(st.deviceId&&[...$("cameraSelect").options].some(o=>o.value===st.deviceId))$("cameraSelect").value=st.deviceId;
-  camHint("読み取り中（"+(st.width||"?")+"×"+(st.height||"?")+"）。QRをカメラから20〜40cm離し、枠内で止めてください。"+((st.width||0)&&st.width<1000?" ※このカメラは低解像度のため、少し近づける必要があります。":"")+(used>0?" （標準設定で起動できなかったため、互換モードで起動しました）":""),"ok");
+  camHint("読み取り中　QRを20〜40cm離してかざす"+((st.width||0)&&st.width<1000?"（低解像度カメラのため少し近づける）":"")+(used>0?" （標準設定で起動できなかったため、互換モードで起動しました）":""),"ok");
  }catch(err){CAM.running=false;camHint(camError(err),"error");try{if(CAM.qr?.isScanning)await CAM.qr.stop();}catch{}}
  finally{CAM.busy=false;camUI();setTimeout(fitReader,50);}
 }
-async function stopCamera(){if(!CAM.running||CAM.busy)return;CAM.busy=true;try{await CAM.qr.stop();}catch{}CAM.running=false;CAM.busy=false;camUI();fitReader();camHint("カメラを停止しました。「▶ カメラを起動」で再開します。");}
+async function stopCamera(){if(!CAM.running||CAM.busy)return;CAM.busy=true;try{await CAM.qr.stop();}catch{}CAM.running=false;CAM.busy=false;camUI();fitReader();camHint("カメラ停止中");}
 function eligibleQrPeople(e){return e.participants.filter(p=>!p.removed&&validStaff(p.staffId));}
 function renderQRSelect(){
  const e=current(),sel=$("qrPerson"),old=sel.value,people=eligibleQrPeople(e),other=e.participants.filter(p=>!p.removed).length-people.length;
@@ -809,7 +812,7 @@ function showImportPreview(rows,source){
 }
 function openDialog(title,body){dialogReturnFocus=document.activeElement;$("dialogTitle").textContent=title;$("dialogBody").replaceChildren(body);$("dialogBackdrop").hidden=false;$("closeDialog").focus();}
 function closeDialog(){$("dialogBackdrop").hidden=true;$("dialogBody").replaceChildren();dialogReturnFocus?.focus?.();}
-function render(){const home=view==="home";if((home||!day)&&CAM.running)stopCamera();$("homeView").hidden=!home;$("eventView").hidden=home;if(home)renderHome();else renderEvent();renderBackupStatus();}
+function render(){const home=view==="home";document.body.classList.toggle("day-mode",!home&&day);if((home||!day)&&CAM.running)stopCamera();$("homeView").hidden=!home;$("eventView").hidden=home;if(home)renderHome();else renderEvent();renderBackupStatus();}
 function delegate(){document.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
 if(b.dataset.home){homeTab=b.dataset.home;announce("");render();return;}
 if(b.dataset.mode){day=b.dataset.mode==="day";announce("");render();return;}
@@ -820,7 +823,7 @@ if(b.dataset.receptionTab){showReceptionTab(b.dataset.receptionTab);return;}
 if(b.dataset.manualPerson){manualCheck(b.dataset.manualPerson);return;}
 if(b.dataset.action){const id=b.dataset.id;switch(b.dataset.action){case "prep":return openEvent(id,false);case "day":return openEvent(id,true);case "clone":return addEvent(id);case "delete":return deleteEvent(id);case "edit-person":return openPerson(b.dataset.person,false);case "remove-session":return removeSession(b.dataset.session);}return;}
 });
-$("newEvent").onclick=()=>addEvent();$("backHome").onclick=()=>openHome();$("resetEvents").onclick=()=>{for(const id of ["eventQuery","dateFrom","dateTo"])$(id).value="";renderEventList();};
+$("newEvent").onclick=()=>addEvent();$("backHome").onclick=()=>openHome();$("rxBack").onclick=()=>openHome();document.addEventListener("click",ev=>{const d=$("dayCheck");if(d.open&&!d.contains(ev.target))d.open=false;});$("resetEvents").onclick=()=>{for(const id of ["eventQuery","dateFrom","dateTo"])$(id).value="";renderEventList();};
 $("filterToday").onclick=()=>{$("dateFrom").value=$("dateTo").value=todayStr();renderEventList();};$("filterUpcoming").onclick=()=>{$("dateFrom").value=todayStr();$("dateTo").value="";$("sortOrder").value="asc";renderEventList();};
 for(const id of ["eventQuery","dateFrom","dateTo","sortKey","sortOrder"])$(id).addEventListener(id==="eventQuery"?"input":"change",renderEventList);
 for(const id of ["crossPeriod","crossYear","crossCategory","crossStatus","crossQuery"])$(id).addEventListener(["crossYear","crossQuery"].includes(id)?"input":"change",renderCross);
@@ -831,7 +834,7 @@ for(const c of document.querySelectorAll("[data-day-check]"))c.onchange=saveDayC
 $("soundVolume").value=meta.volume||"high";$("soundVolume").onchange=()=>{meta.volume=$("soundVolume").value;saveMeta();primeAudio();setTimeout(()=>feedback("success"),60);};$("addSession").onclick=addSession;for(let i=1;i<=2;i++){$("customType"+i).onchange=()=>{toggleCustomOptions(i);renderCustomPreview();};$("customLabel"+i).oninput=renderCustomPreview;$("customOptions"+i).oninput=renderCustomPreview;}$("addPerson").onclick=()=>openPerson(null,false);
 $("personQuery").oninput=renderParticipants;$("importParticipants").onclick=importParticipants;$("exportRoster").onclick=exportRoster;$("downloadTemplate").onclick=downloadTemplate;$("downloadTemplateXlsx").onclick=downloadTemplateXlsx;$("previewPaste").onclick=importFromPaste;for(const btn of document.querySelectorAll("[data-import-mode]"))btn.onclick=()=>setImportMode(btn.dataset.importMode);
 $("qrPerson").onchange=renderOneQR;$("showQR").onclick=renderOneQR;$("downloadQR").onclick=downloadOneQR;$("printQRs").onclick=printQR;$("exportQRZip").onclick=exportQRZip;
-$("exportResult").onclick=eventDetailCSV;$("exportAudit").onclick=exportAudit;$("printRosterPrep").onclick=()=>printReceptionRoster($("rosterSession").value);$("printRosterDay").onclick=()=>printReceptionRoster(curSession()?.id);$("checkinSession").onchange=()=>{showResult(null,"スキャン待機中","");renderReception();};
+$("exportResult").onclick=eventDetailCSV;$("exportAudit").onclick=exportAudit;$("printRosterPrep").onclick=()=>printReceptionRoster($("rosterSession").value);$("printRosterDay").onclick=()=>printReceptionRoster(curSession()?.id);$("checkinSession").onchange=()=>{showResult(null,"QRコードをかざしてください","");renderReception();};
 $("cameraStart").onclick=startCamera;$("cameraSnapshot").onclick=saveCameraFrame;$("cameraStop").onclick=stopCamera;$("cameraSelect").onchange=async()=>{if(CAM.running){await stopCamera();}startCamera();};
 if(window.ResizeObserver){const ro=new ResizeObserver(()=>fitReader());ro.observe($("readerViewport"));ro.observe($("reader"));}
 $("mirrorToggle").checked=meta.mirror!==false;$("reader").classList.toggle("mirror",meta.mirror!==false);$("mirrorToggle").onchange=()=>{meta.mirror=$("mirrorToggle").checked;saveMeta();$("reader").classList.toggle("mirror",meta.mirror);};
