@@ -330,9 +330,13 @@ function renderReception(){
    The library decodes the qrbox at its on-screen CSS size, so the reader is laid out at the camera's native width
    and only visually scaled down. That keeps the decode canvas at full camera resolution (HD when available),
    which lets fixed-focus laptop cameras read cards held 30-40cm away instead of only very close and blurry. */
-const CAM={qr:null,running:false,busy:false,width:1280};
+const CAM={qr:null,running:false,busy:false,width:1280,frames:0,native:null,timer:null};
+// Only use the browser's built-in detector when it really lists qr_code; otherwise the JS decoder (ZXing) is used.
+async function nativeQrSupported(){if(CAM.native!==null)return CAM.native;try{CAM.native=!!(window.BarcodeDetector&&(await BarcodeDetector.getSupportedFormats()).includes("qr_code"));}catch{CAM.native=false;}return CAM.native;}
+function camRate(){clearInterval(CAM.timer);CAM.frames=0;let last=Date.now();CAM.timer=setInterval(()=>{if(!CAM.running){clearInterval(CAM.timer);return;}const now=Date.now(),rate=Math.round(CAM.frames*1000/(now-last));CAM.frames=0;last=now;const el=$("camStats");if(el)el.textContent="解析 "+rate+"回/秒・"+(CAM.native?"内蔵検出":"JS解析");},1000);}
+function saveCameraFrame(){const v=document.querySelector("#reader video");if(!v||!v.videoWidth)return announce("カメラが起動していません。","warn");const c=document.createElement("canvas");c.width=v.videoWidth;c.height=v.videoHeight;c.getContext("2d").drawImage(v,0,0);downloadLink(c.toDataURL("image/png"),"camera_frame_"+stamp()+".png");announce("カメラ映像の1コマを保存しました（調査用）。人物が写っている場合は取り扱いに注意してください。","success");}
 function camHint(t,level=""){const h=$("cameraHint");h.textContent=t;h.className="hint"+(level?" cam-"+level:"");}
-function camUI(){$("cameraStart").hidden=CAM.running;$("cameraStop").hidden=!CAM.running;$("cameraStart").disabled=CAM.busy;$("cameraSelect").disabled=CAM.busy;}
+function camUI(){$("cameraStart").hidden=CAM.running;$("cameraStop").hidden=!CAM.running;$("camDiag").hidden=!CAM.running;$("cameraStart").disabled=CAM.busy;$("cameraSelect").disabled=CAM.busy;}
 function fitReader(){const vp=$("readerViewport"),r=$("reader");if(!CAM.running){r.style.transform="";vp.style.height="";return;}const k=Math.min(1,vp.clientWidth/CAM.width),off=Math.max(0,(vp.clientWidth-CAM.width*k)/2);r.style.transform="translateX("+off+"px) scale("+k+")";vp.style.height=Math.ceil(r.offsetHeight*k)+"px";}
 function camError(err){const n=err?.name||"",m=String(err?.message||err||"");
  if(!window.isSecureContext&&!navigator.mediaDevices)return "このページではカメラを使用できません（HTTPS等が必要な環境です）。紙名簿や「名前から受付」を利用してください。";
@@ -350,7 +354,8 @@ async function startCamera(){
  try{
   if(!$("cameraSelect").options.length)await loadCameras();
   const id=$("cameraSelect").value;
-  CAM.qr||=new Html5Qrcode("reader",{verbose:false,useBarCodeDetectorIfSupported:true,...(typeof Html5QrcodeSupportedFormats!=="undefined"?{formatsToSupport:[Html5QrcodeSupportedFormats.QR_CODE]}:{})});
+  const native=await nativeQrSupported();
+  CAM.qr||=new Html5Qrcode("reader",{verbose:false,useBarCodeDetectorIfSupported:native,...(typeof Html5QrcodeSupportedFormats!=="undefined"?{formatsToSupport:[Html5QrcodeSupportedFormats.QR_CODE]}:{})});
   // Some PC cameras/drivers reject a constraint set (OverconstrainedError), e.g. a stale device id or
   // resolution handling. Try from best to most permissive; HD is only a preference (ideal), never required.
   const hd={width:{ideal:1280},height:{ideal:720}},attempts=[
@@ -361,11 +366,11 @@ async function startCamera(){
   let lastErr=null,used=-1;
   for(let i=0;i<attempts.length;i++){
    const a=attempts[i];$("reader").style.width=CAM.width+"px";
-   try{await CAM.qr.start(a.camera,{fps:12,qrbox:(w,h)=>{const side=Math.max(160,Math.floor(Math.min(w,h)*0.6));return {width:side,height:side};},...(a.video?{videoConstraints:a.video}:{})},onScan,()=>{});used=i;break;}
+   try{await CAM.qr.start(a.camera,{fps:12,qrbox:(w,h)=>{const side=Math.max(160,Math.floor(Math.min(w,h)*0.6));return {width:side,height:side};},...(a.video?{videoConstraints:a.video}:{})},t=>{CAM.frames++;onScan(t);},()=>{CAM.frames++;});used=i;break;}
    catch(err){lastErr=err;if(/NotAllowed|Permission/i.test(String(err?.name||err?.message||err)))break;try{if(CAM.qr.isScanning)await CAM.qr.stop();}catch{}await new Promise(r=>setTimeout(r,250));}
   }
   if(used<0)throw lastErr;
-  CAM.running=true;
+  CAM.running=true;camRate();
   const st=CAM.qr.getRunningTrackSettings?.()||{};
   meta.cameraId=st.deviceId||id||"";saveMeta();
   if(st.deviceId&&[...$("cameraSelect").options].some(o=>o.value===st.deviceId))$("cameraSelect").value=st.deviceId;
@@ -389,7 +394,9 @@ function renderOneQR(){
  $("qrPersonName").textContent=p.name;
  $("qrPersonMeta").textContent=p.staffId+(p.group?"　／　"+p.group:"");
  if(typeof QRCode!=="function")return announce("QRコード生成ライブラリがありません。","error");
- try{new QRCode(root,{text:p.staffId,width:360,height:360,correctLevel:QRCode.CorrectLevel.M});}
+ try{const tmp=document.createElement("div");new QRCode(tmp,{text:p.staffId,width:360,height:360,correctLevel:QRCode.CorrectLevel.M});
+  // Show the same quiet-zone image as the PNG download (qrDataURL adds the white margin).
+  const data=qrDataURL(tmp);if(!data)throw Error("画像を作成できません");const img=document.createElement("img");img.src=data;img.alt="QRコード（"+p.staffId+"）";root.replaceChildren(img);}
  catch(err){announce("QR生成に失敗しました："+err.message,"error");}
 }
 function qrDataURL(root){
@@ -825,7 +832,7 @@ $("soundVolume").value=meta.volume||"high";$("soundVolume").onchange=()=>{meta.v
 $("personQuery").oninput=renderParticipants;$("importParticipants").onclick=importParticipants;$("exportRoster").onclick=exportRoster;$("downloadTemplate").onclick=downloadTemplate;$("downloadTemplateXlsx").onclick=downloadTemplateXlsx;$("previewPaste").onclick=importFromPaste;for(const btn of document.querySelectorAll("[data-import-mode]"))btn.onclick=()=>setImportMode(btn.dataset.importMode);
 $("qrPerson").onchange=renderOneQR;$("showQR").onclick=renderOneQR;$("downloadQR").onclick=downloadOneQR;$("printQRs").onclick=printQR;$("exportQRZip").onclick=exportQRZip;
 $("exportResult").onclick=eventDetailCSV;$("exportAudit").onclick=exportAudit;$("printRosterPrep").onclick=()=>printReceptionRoster($("rosterSession").value);$("printRosterDay").onclick=()=>printReceptionRoster(curSession()?.id);$("checkinSession").onchange=()=>{showResult(null,"スキャン待機中","");renderReception();};
-$("cameraStart").onclick=startCamera;$("cameraStop").onclick=stopCamera;$("cameraSelect").onchange=async()=>{if(CAM.running){await stopCamera();}startCamera();};
+$("cameraStart").onclick=startCamera;$("cameraSnapshot").onclick=saveCameraFrame;$("cameraStop").onclick=stopCamera;$("cameraSelect").onchange=async()=>{if(CAM.running){await stopCamera();}startCamera();};
 if(window.ResizeObserver){const ro=new ResizeObserver(()=>fitReader());ro.observe($("readerViewport"));ro.observe($("reader"));}
 $("mirrorToggle").checked=meta.mirror!==false;$("reader").classList.toggle("mirror",meta.mirror!==false);$("mirrorToggle").onchange=()=>{meta.mirror=$("mirrorToggle").checked;saveMeta();$("reader").classList.toggle("mirror",meta.mirror);};
 $("soundToggle").checked=meta.sound!==false;$("soundToggle").onchange=()=>{meta.sound=$("soundToggle").checked;saveMeta();if(meta.sound){primeAudio();setTimeout(()=>feedback("success"),60);}};

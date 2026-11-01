@@ -149,3 +149,5 @@
 .today-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 0;border-top:1px solid #d6e9ea}
 .today-row:first-child{border-top:0}.today-row strong{font-size:1.1rem}
 .sound-toggle select{padding:4px 6px;border:1px solid #b7cbd6;border-radius:6px;margin-left:4px}
+.cam-diag{display:flex;justify-content:center;gap:12px;font-size:.75rem;color:#6d8594;margin-top:4px}.linkbtn{border:0;background:none;color:#0a6a74;text-decoration:underline;font-size:.75rem;padding:0;cursor:pointer}
+#qrCanvas img{width:100%;max-width:360px;image-rendering:pixelated}
