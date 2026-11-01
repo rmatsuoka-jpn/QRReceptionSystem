@@ -31,16 +31,25 @@ dt{font-weight:700;margin-top:12px}dd{margin:2px 0 8px;color:#587184;font-size:.
 <body>
 <header><div class="head"><div class="brand">▦ QR受付システム　/　ヘルプ・操作説明</div><a href="./index.html" class="back">← 総合管理画面へ戻る</a></div></header>
 <main>
-<div class="intro"><div><h1>ヘルプ・操作説明</h1><p class="sub">総合管理から受付当日まで、画面ごとに使い方を確認できます。</p></div><span class="state">初期実装版</span></div>
+<div class="intro"><div><h1>ヘルプ・操作説明</h1><p class="sub">総合管理から受付当日まで、画面ごとに使い方を確認できます。</p></div><span class="state">2026-11 運用版</span></div>
 <nav class="nav" aria-label="このページの目次">
-<a href="#manage">総合管理</a><a href="#prepare">事前準備</a><a href="#reception">当日受付</a><a href="#unexpected">当日の変更</a><a href="#data">データ保存・出力</a><a href="#faq">よくある操作</a>
+<a href="#start">はじめに</a><a href="#manage">総合管理</a><a href="#prepare">事前準備</a><a href="#reception">当日受付</a><a href="#unexpected">当日の変更</a><a href="#data">データ保存・出力</a><a href="#faq">よくある操作</a>
 </nav>
 <section id="manage">
 <h2>▦ 総合管理画面</h2>
 <div class="grid">
-<div class="feature"><div class="icon">▦</div><h3>イベント管理</h3><p>開催日・イベントID順に並び替え。日付範囲・イベント名で絞り込み。新規作成、設定の複製、削除ができます。</p></div>
+<div class="feature"><div class="icon">▦</div><h3>イベント管理</h3><p>開催日・イベントID順に並び替え。日付範囲・イベント名で絞り込み（［今日］［今日以降］ボタンあり）。開催日が今日のイベントは一覧の上に「本日のイベント」として表示され、［▣ 受付を開始］ですぐ受付画面に入れます。</p></div>
 <div class="feature"><div class="icon">⌕</div><h3>横断検索</h3><p>年度・暦年・全期間、研修などの分類、氏名・所属・受付状況から参加記録を絞り込みます。</p></div>
 <div class="feature"><div class="icon">⇩</div><h3>データ管理</h3><p>開催済みを含む全イベントをまとめてJSONでバックアップし、復元する画面です。</p></div>
+</div>
+</section>
+<section id="start">
+<h2>▶ はじめに押す場所</h2>
+<div class="panel">
+<p class="mini"><strong>イベントがまだ無いとき：</strong>総合管理に表示される「はじめての方へ」の <strong>「＋ 最初のイベントを作成する」</strong> を押し、イベント名と開催日を入力します。</p>
+<p class="mini"><strong>作成した後：</strong>画面上部の黄色い <strong>「次にやること」</strong> に、次の作業と移動ボタンが表示されます。左の手順メニュー（①〜④）には、終わった手順に ✓ と登録人数などが表示されます。各画面の下にある「次へ →」でも順番に進めます。</p>
+<p class="mini"><strong>既存のイベント：</strong>一覧のカードに「次：② 参加者登録」などと表示されます。「⚙ 準備」を押すと、まだ終わっていない手順の画面が開きます。開催当日は「▣ 受付」を押します。</p>
+<p class="mini"><strong>迷ったら：</strong>画面左上の「QR受付システム」か、パンくず（総合管理 › イベント名 › …）の「総合管理」でトップに戻れます。</p>
 </div>
 </section>
 <section id="prepare">
@@ -49,12 +58,12 @@ dt{font-weight:700;margin-top:12px}dd{margin:2px 0 8px;color:#587184;font-size:.
 <div class="panel">
 <div class="steps">
 <div class="step"><span class="n">STEP 01</span><strong>イベント設定</strong><small>名前・日付・分類・受付区分</small></div>
-<div class="step"><span class="n">STEP 02</span><strong>参加者登録</strong><small>CSV取込 または 個別追加</small></div>
+<div class="step"><span class="n">STEP 02</span><strong>参加者登録</strong><small>Excel貼り付け・CSV取込・個別追加</small></div>
 <div class="step"><span class="n">STEP 03</span><strong>QR発行</strong><small>PNG＋QR対応表CSV / A4・10面</small></div>
-<div class="step"><span class="n">STEP 04</span><strong>当日受付へ</strong><small>QRを読み取り、出欠を確認</small></div>
+<div class="step"><span class="n">STEP 04</span><strong>紙名簿・出力</strong><small>非常用の紙名簿を印刷 → 当日受付へ</small></div>
 </div>
 </div>
-<div class="panel"><h3>CSV取込・名簿更新</h3><p class="mini">イベント別のCSVテンプレートをダウンロードできます。CSVファイルの取込、またはExcelの表をタブ区切りで貼り付ける方法を選び、氏名・職員番号・所属・グループ・区分の列対応を確認します。プレビューで登録件数を確認してから確定します。既存者を更新しても参加者IDと受付履歴は維持されます。QRの中身は現在の職員番号を使います。</p></div>
+<div class="panel"><h3>参加者の一括登録（ひな形・貼り付け・CSV）</h3><p class="mini"><strong>① ひな形：</strong>「ひな形（Excel形式・おすすめ）」は職員番号の列が文字列に設定済みで、先頭の0が消えません。2行目の「（例）」で始まる行は、消さなくても取り込まれません。受付区分が複数あるイベントでは「受付区分：午前」などの列に参加する区分へ ○ を入れます（1区分のイベントは列がなく、全員が参加対象です）。<br><strong>② 取り込み：</strong>記入した表を見出しごとコピーして「Excelから貼り付け」に貼り付けるか、CSVファイルを選びます。氏名・職員番号・所属・グループ・区分の列対応を確認します。どの区分にも ○ がない人がいると確認画面に警告が出ます。<br><strong>職員番号：</strong>半角英数字（例：00123、u70003）。ハイフンは使えません。全角で入力しても半角に直し、大文字・小文字は区別しません。<br><strong>「登録済み名簿を出力（集計用CSV）」</strong>は取り込み用ではなく、Excelでの集計・保管用です。プレビューで登録件数を確認してから確定します。既存者を更新しても参加者IDと受付履歴は維持されます。QRの中身は現在の職員番号を使います。</p></div>
 <div class="panel"><h3>任意項目</h3><p class="mini">イベント設定で最大2項目を自由入力・有無・選択肢から設定できます。入力内容のプレビューと「保存済み／未保存」を確認して保存してください。グループは任意項目とは別の標準項目です。</p></div>
 <div class="panel">
 <h3>受付区分について</h3>
@@ -69,7 +78,13 @@ dt{font-weight:700;margin-top:12px}dd{margin:2px 0 8px;color:#587184;font-size:.
 <div class="stat"><strong>② QRを読む</strong><small>カメラで受付</small></div>
 <div class="stat"><strong>③ 結果を確認</strong><small>氏名を大きく表示</small></div>
 </div>
-<p class="mini">選択中の区分ごとに受付を記録します。すでに受け付けたQRは二重登録せず、初回時刻を表示する設計です。</p>
+<p class="mini"><strong>受付開始前の確認：</strong>当日受付画面の上に「受付区分・カメラ・受付音・紙名簿」の4項目があります。すべてチェックすると「✓ 準備OK」になって折りたたまれます（その日のうちは状態を保持します）。カメラは「▶ カメラを起動」を押すと読み取りを始めます（2回目以降は当日受付を開くと自動で起動し、事前準備に戻ると停止します）。</p>
+<p class="mini">選択中の区分ごとに受付を記録します。すでに受け付けたQRは二重登録せず、初回時刻を表示します。</p>
+<p class="mini"><strong>受付音：</strong>受付完了は「ピンポーン」、受付済み（重複）・参加対象外は「ピピピッ」、名簿にない番号などのエラーは「ブーッ、ブーッ」。結果欄の先頭にも ✓／！／✕ が付きます。受付区分の右で ON/OFF と音量（大・中・小）を切り替えられます。受付開始前の確認の「♪ 3種類の音を試す」で、完了→重複→エラーの順に聞き比べられます（画面を一度クリックした後から鳴ります）。アプリの音量はPC本体の音量が上限なので、当日はPCの音量を上げてください。</p>
+</div>
+<div class="panel">
+<h3>QRが読み取りにくいとき</h3>
+<p class="mini"><strong>距離：</strong>カメラから20〜40cm離し、枠内で1秒ほど止めます。PC内蔵カメラはピントが固定のものが多く、<strong>近づけすぎるとぼやけて遅くなります</strong>。<br><strong>光：</strong>窓を背にした逆光や、ラミネート・光沢紙の照り返しを避けます。紙は平らにします。<br><strong>映像の向き：</strong>「映像を鏡のように表示」をONにすると、カードを動かした方向に映像も動くので枠に合わせやすくなります（下向きの書画カメラなどではOFF）。<br><strong>スマホ画面のQR：</strong>画面の明るさを上げてもらいます。</p>
 </div>
 <div class="panel">
 <h3>▤ 紙の受付名簿（PC不調時）</h3>
@@ -92,10 +107,11 @@ dt{font-weight:700;margin-top:12px}dd{margin:2px 0 8px;color:#587184;font-size:.
 <section id="data">
 <h2>⇩ 出力と保存</h2>
 <div class="grid two">
-<div class="feature"><div class="icon">▣</div><h3>JSONバックアップ</h3><p>全イベントの名簿・区分・QR識別子・受付履歴を含む復元用ファイル。定期的に安全な場所へ保存してください。</p></div>
+<div class="feature"><div class="icon">▣</div><h3>JSONバックアップ</h3><p>全イベントの名簿（職員番号を含む）・区分・受付履歴を含む復元用ファイル。画面右上が「⚠ 未バックアップの変更あり」のときは、押して保存してください。</p></div>
 <div class="feature"><div class="icon">▤</div><h3>CSV出力</h3><p>Excel分析用。参加者一覧はイベント×参加者、区分別詳細はイベント×参加者×区分で1行です。</p></div>
 </div>
 <div class="panel"><h3>データの一括削除</h3><p class="mini">総合管理 → データ管理の「すべてのデータを削除」から、このアプリの全イベント・名簿・受付履歴を消去できます。先にJSONバックアップを保存し、確認画面の指示に従ってください。元には戻せません。</p></div>
+<div class="panel"><h3>バックアップ状態と保存容量</h3><p class="mini">画面右上に「✓ バックアップ済み」または「⚠ 未バックアップの変更あり」を表示します。押すと全イベントJSONを保存します。データ管理画面では最終バックアップ日時と保存容量の目安を確認できます。容量が70%を超えると総合管理に警告が出るので、バックアップ後に終了したイベントの削除を検討してください。</p></div>
 <div class="panel bad"><strong>保存場所の注意</strong><p class="mini">現在の実装ではデータを受付PCのブラウザ（localStorage）に保存します。ほかのPCと自動同期されず、閲覧データの削除などで失われる可能性があります。JSONバックアップを庁内ルールに従って管理してください。</p></div>
 </section>
 <section id="faq">
@@ -105,7 +121,7 @@ dt{font-weight:700;margin-top:12px}dd{margin:2px 0 8px;color:#587184;font-size:.
 <details><summary>事前登録者のうち誰がまだ来ていないか知りたいです</summary><p>当日受付モードの「未受付者」欄を確認してください。選択中の区分の対象者だけが表示され、受付済みになると自動的に消えます。</p></details>
 <details><summary>過去の参加記録を年間で集計したいです</summary><p>総合管理の「横断検索」で年度・イベント分類などを指定し、参加者一覧CSVを出力します。同じ職員の名寄せには職員番号を利用します。</p></details>
 </section>
-<div class="panel" style="background:#eef4f6;border-color:#dbe5eb"><strong>現在の実装状況</strong><p class="mini">イベント設定・CSV列対応／既存者更新・QRの一括ZIP発行・当日受付・履歴確認・JSONバックアップ／復元に対応しています。追加した機能は実ブラウザでの検証を完了していません。旧ワイヤーフレームは wireframe.html で確認できます。</p><a class="back" style="display:inline-block;color:#1a5b6b;border-color:#9dbecb" href="./index.html">総合管理画面に戻る →</a></div>
+<div class="panel" style="background:#eef4f6;border-color:#dbe5eb"><strong>現在の実装状況</strong><p class="mini">イベント設定・CSV列対応／既存者更新・QRの一括ZIP発行・当日受付・履歴確認・JSONバックアップ／復元に対応しています。2026-11 にバックアップ状態の表示・保存容量の目安・受付音を追加しました。旧ワイヤーフレームは wireframe.html で確認できます。</p><a class="back" style="display:inline-block;color:#1a5b6b;border-color:#9dbecb" href="./index.html">総合管理画面に戻る →</a></div>
 </main>
 </body>
 </html>

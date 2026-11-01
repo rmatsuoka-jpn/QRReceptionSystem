@@ -4,14 +4,15 @@ const encoder=new TextEncoder();
 function crc32(data){let crc=0xFFFFFFFF;for(const b of data){crc^=b;for(let j=0;j<8;j++)crc=crc&1?(crc>>>1)^0xEDB88320:crc>>>1;}return(crc^0xFFFFFFFF)>>>0;}
 function u16(out,n){out.push(n&255,(n>>>8)&255);}
 function u32(out,n){out.push(n&255,(n>>>8)&255,(n>>>16)&255,(n>>>24)&255);}
-function zip(files){
+function zip(files,opts={}){
  if(!Array.isArray(files)||!files.length)throw Error("ZIPに保存するファイルがありません。");
  const records=[],end=[],seen=new Set();
  let offset=0;
  const parts=[],time=new Date(),dosTime=(time.getHours()<<11)|(time.getMinutes()<<5)|(time.getSeconds()>>>1);
  const dosDate=((time.getFullYear()-1980)<<9)|((time.getMonth()+1)<<5)|time.getDate();
  for(const file of files){
-  if(!file||typeof file.name!=="string"||file.name.includes("/")||file.name.includes("\\")||file.name==="."||file.name===".."||seen.has(file.name))throw Error("ZIP内のファイル名が重複または不正です");
+  const badPath=opts.paths?(file?.name||"").split("/").some(seg=>!seg||seg==="."||seg===".."):(file?.name||"").includes("/");
+  if(!file||typeof file.name!=="string"||badPath||file.name.includes("\\")||file.name==="."||file.name===".."||seen.has(file.name))throw Error("ZIP内のファイル名が重複または不正です");
   seen.add(file.name);
   const name=encoder.encode(file.name);
   const bytes=typeof file.content==="string"?encoder.encode(file.content):file.content;
