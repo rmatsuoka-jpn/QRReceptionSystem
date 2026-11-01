@@ -91,15 +91,63 @@
   <div class="export-row"><span class="hint">登録済みの名簿を、Excelでの集計・保管用に書き出します（見出しは集計用の項目名です）。</span><button id="exportRoster" class="btn small">⇩ 登録済み名簿を出力（集計用CSV）</button></div>
   <div class="step-nav"><button type="button" class="btn" data-prep="settings">← ① イベント設定</button><button type="button" class="btn main" data-prep="qr">次へ：③ QR発行 →</button></div>
  </section>
- <section id="qrPanel" class="panel" hidden>
-  <h3>QR発行</h3><p class="hint">QRには職員番号だけを記録します。同じQRを他のイベントでも利用できます。</p><div id="qrEligibility" class="notice" role="status"></div>
-  <div class="fields two"><label class="field">発行対象<select id="qrPerson"></select></label><div class="field"><span>個別発行</span><div class="buttons"><button class="btn main" id="showQR">QRを表示</button><button class="btn" id="downloadQR">⇩ PNG</button></div></div></div>
-  <div id="qrSample" style="text-align:center"><div id="qrCanvas" class="qr-container"></div><strong id="qrPersonName"></strong><div id="qrPersonMeta" class="hint"></div></div>
-  <div class="grid2" style="margin-top:18px"><div class="tile"><h3>QR一括配布</h3><div class="hint">職員番号のある参加者のPNGと対応CSVをZIPにまとめて出力</div><button id="exportQRZip" class="btn main">⇩ QR一括ZIP</button></div><div class="tile"><h3>▦ 紙配布（A4・10面）</h3><div class="hint">名刺サイズ／2列×5行</div><button id="printQRs" class="btn main">▧ 印刷プレビュー</button></div></div>
-  <div class="step-nav"><button type="button" class="btn" data-prep="participants">← ② 参加者登録</button><button type="button" class="btn main" data-prep="results">次へ：④ 紙名簿・出力 →</button></div>
-  <div id="printSheets" class="print-sheet"></div>
- </section>
- <section id="resultsPanel" class="panel" hidden><h3>受付集計</h3><div id="sessionStats" class="summary"></div><div class="panel roster-print-controls"><h3>紙の受付名簿</h3><div class="row"><label class="field">印刷する受付区分<select id="rosterSession"></select></label><button type="button" class="btn main" id="printRosterPrep">▤ 受付名簿を印刷</button></div><p class="hint">PC不調に備え、開催前に印刷してください。手書きチェック欄・当日追加用の空欄付き。</p></div><div class="buttons"><button class="btn main" id="exportResult">⇩ このイベントの区分別CSV</button><button class="btn" id="exportAudit">⇩ 受付変更履歴CSV</button><button class="btn" data-backup>⇩ 全イベントJSON</button></div><div class="step-nav"><button type="button" class="btn" data-prep="qr">← ③ QR発行</button><button type="button" class="btn main" data-mode="day">準備完了：当日受付の画面へ →</button></div></section>
+<section id="qrPanel" class="panel qr-issue-panel" hidden>
+   <div class="qr-issue-header">
+    <div class="qr-title-area">
+     <div class="qr-title-icon" aria-hidden="true">▦</div>
+     <div><h3>QR発行 <span>（個別・一括）</span></h3>
+      <p>QRには職員番号だけを記録します。同じQRを別のイベントでも使用できます。</p>
+     </div>
+    </div>
+    <div id="qrEligibility" class="qr-issue-stats" role="status" aria-live="polite">
+     <div class="qr-stat qr-stat-eligible"><span>QR発行対象</span><strong><span id="qrEligibleCount">0</span><small>名</small></strong></div>
+     <div class="qr-stat qr-stat-excluded"><span>職員番号なし（発行対象外）</span><strong><span id="qrExcludedCount">0</span><small>名</small></strong></div>
+    </div>
+   </div>
+   <div class="qr-mode-tabs" role="tablist" aria-label="発行方法">
+    <button type="button" id="qrTabSingle" class="active" role="tab" aria-selected="true" aria-controls="qrIndividualArea" data-qr-mode="single">♙ 個別発行</button>
+    <button type="button" id="qrTabBulk" role="tab" aria-selected="false" aria-controls="qrBulkArea" data-qr-mode="bulk">▤ 一括発行（印刷・ダウンロード）</button>
+   </div>
+   <section id="qrIndividualArea" class="qr-mode-body" role="tabpanel" aria-labelledby="qrTabSingle">
+    <div class="qr-choose-bar">
+     <button type="button" id="qrPrevious" class="btn qr-step-button" aria-label="前の参加者">← <span>前の参加者</span></button>
+     <label class="qr-person-select"><span>発行対象</span><select id="qrPerson" aria-label="QR発行対象者"></select></label>
+     <button type="button" id="qrNext" class="btn qr-step-button" aria-label="次の参加者"><span>次の参加者</span> →</button>
+     <div class="qr-position" id="qrPosition" aria-live="polite">0 / 0</div>
+    </div>
+    <div class="qr-studio">
+     <div class="qr-card-holder">
+      <div id="qrSample" class="qr-person-card" aria-label="配布用QRカードのプレビュー">
+       <div id="qrCanvas" class="qr-card-code"></div>
+       <div class="qr-card-person">
+        <strong id="qrPersonName"></strong>
+        <span id="qrPersonStaff" class="qr-card-staff"></span>
+        <span id="qrPersonGroup" class="qr-card-group" hidden></span>
+       </div>
+      </div>
+      <div class="qr-preview-note">このカードをそのままPNG保存できます。QR・氏名・番号・グループをまとめて配布できます。</div>
+     </div>
+     <div class="qr-studio-actions">
+      <button type="button" id="printSingleQR" class="btn main qr-main-action"><span aria-hidden="true">▣</span><span>このQRを印刷<small>選択中の1名分を印刷</small></span></button>
+      <button type="button" id="downloadQR" class="btn qr-main-action"><span aria-hidden="true">⇩</span><span>PNGで保存<small>カード全体の画像</small></span></button>
+     </div>
+    </div>
+   </section>
+   <section id="qrBulkArea" class="qr-mode-body qr-bulk-body" role="tabpanel" aria-labelledby="qrTabBulk" hidden>
+    <h4>まとめて発行する</h4><p>職員番号のある方を対象に一括発行します。個別PNGと同じカード画像をZIPにまとめることもできます。</p>
+    <div class="qr-bulk-actions">
+     <button type="button" id="printQRs" class="qr-bulk-action">
+      <span class="qr-bulk-icon" aria-hidden="true">▣</span><span><strong>一括印刷（A4・10面）</strong><small>名刺サイズ・2列×5段で印刷プレビューを開く</small></span><span class="qr-bulk-arrow" aria-hidden="true">›</span>
+     </button>
+     <button type="button" id="exportQRZip" class="qr-bulk-action">
+      <span class="qr-bulk-icon" aria-hidden="true">⇩</span><span><strong>一括ダウンロード（ZIP）</strong><small>全員分のカードPNGと対応表CSVを取得</small></span><span class="qr-bulk-arrow" aria-hidden="true">›</span>
+     </button>
+    </div>
+   </section>
+   <div class="step-nav qr-step-nav"><button type="button" class="btn" data-prep="participants">← ② 参加者登録</button><button type="button" class="btn main" data-prep="results">次へ：④ 紙名簿・出力 →</button></div>
+   <div id="printSheets" class="print-sheet"></div>
+  </section>
+   <section id="resultsPanel" class="panel" hidden><h3>受付集計</h3><div id="sessionStats" class="summary"></div><div class="panel roster-print-controls"><h3>紙の受付名簿</h3><div class="row"><label class="field">印刷する受付区分<select id="rosterSession"></select></label><button type="button" class="btn main" id="printRosterPrep">▤ 受付名簿を印刷</button></div><p class="hint">PC不調に備え、開催前に印刷してください。手書きチェック欄・当日追加用の空欄付き。</p></div><div class="buttons"><button class="btn main" id="exportResult">⇩ このイベントの区分別CSV</button><button class="btn" id="exportAudit">⇩ 受付変更履歴CSV</button><button class="btn" data-backup>⇩ 全イベントJSON</button></div><div class="step-nav"><button type="button" class="btn" data-prep="qr">← ③ QR発行</button><button type="button" class="btn main" data-mode="day">準備完了：当日受付の画面へ →</button></div></section>
  </div></div>
 
  <section id="receptionView" class="reception rx" hidden>
