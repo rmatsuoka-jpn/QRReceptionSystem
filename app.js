@@ -324,6 +324,7 @@ function camError(err){const n=err?.name||"",m=String(err?.message||err||"");
  if(!window.isSecureContext&&!navigator.mediaDevices)return "このページではカメラを使用できません（HTTPS等が必要な環境です）。紙名簿や「名前から受付」を利用してください。";
  if(n==="NotAllowedError"||/Permission|NotAllowed/i.test(m))return "カメラの使用が許可されていません。アドレスバーのカメラのアイコンから「許可」にして、もう一度「カメラを起動」を押してください。";
  if(n==="NotFoundError"||/NotFound|no camera|Requested device not found/i.test(m))return "カメラが見つかりません。USBカメラの接続や、PCのカメラ設定を確認してください。";
+ if(n==="OverconstrainedError"||/Overconstrained/i.test(m))return "このカメラは要求した撮影条件に対応していません。カメラが複数ある場合は選択欄で別のカメラを選び、もう一度「カメラを起動」を押してください。（"+m+"）";
  if(n==="NotReadableError"||/NotReadable|Could not start video source/i.test(m))return "カメラを開始できません。Teams・Zoomなど他のアプリがカメラを使っていないか確認してください。";
  return "カメラを開始できません："+m;}
 async function loadCameras(){const cams=await Html5Qrcode.getCameras(),sel=$("cameraSelect");sel.replaceChildren();cams.forEach((c,i)=>sel.add(new Option(c.label||"カメラ "+(i+1),c.id)));if(!cams.length)throw {name:"NotFoundError"};if(cams.some(c=>c.id===meta.cameraId))sel.value=meta.cameraId;sel.hidden=cams.length<2;}
@@ -336,12 +337,25 @@ async function startCamera(){
   if(!$("cameraSelect").options.length)await loadCameras();
   const id=$("cameraSelect").value;
   CAM.qr||=new Html5Qrcode("reader",{verbose:false,useBarCodeDetectorIfSupported:true,...(typeof Html5QrcodeSupportedFormats!=="undefined"?{formatsToSupport:[Html5QrcodeSupportedFormats.QR_CODE]}:{})});
-  const run=async()=>{$("reader").style.width=CAM.width+"px";await CAM.qr.start({deviceId:{exact:id}},{fps:12,qrbox:(w,h)=>{const side=Math.max(160,Math.floor(Math.min(w,h)*0.6));return {width:side,height:side};},videoConstraints:{deviceId:{exact:id},width:{ideal:1280},height:{ideal:720}}},onScan,()=>{});};
-  // Older webcams may deliver only 640x480; the 1280px layout then just upsamples, which still decodes fine.
-  await run();
-  CAM.running=true;meta.cameraId=id;saveMeta();
+  // Some PC cameras/drivers reject a constraint set (OverconstrainedError), e.g. a stale device id or
+  // resolution handling. Try from best to most permissive; HD is only a preference (ideal), never required.
+  const hd={width:{ideal:1280},height:{ideal:720}},attempts=[
+   id&&{camera:{deviceId:{exact:id}},video:{deviceId:{exact:id},...hd}},
+   id&&{camera:{deviceId:{exact:id}},video:{deviceId:{exact:id}}},
+   {camera:{facingMode:"user"},video:{...hd}},
+   {camera:{facingMode:"user"},video:null}].filter(Boolean);
+  let lastErr=null,used=-1;
+  for(let i=0;i<attempts.length;i++){
+   const a=attempts[i];$("reader").style.width=CAM.width+"px";
+   try{await CAM.qr.start(a.camera,{fps:12,qrbox:(w,h)=>{const side=Math.max(160,Math.floor(Math.min(w,h)*0.6));return {width:side,height:side};},...(a.video?{videoConstraints:a.video}:{})},onScan,()=>{});used=i;break;}
+   catch(err){lastErr=err;if(/NotAllowed|Permission/i.test(String(err?.name||err?.message||err)))break;try{if(CAM.qr.isScanning)await CAM.qr.stop();}catch{}await new Promise(r=>setTimeout(r,250));}
+  }
+  if(used<0)throw lastErr;
+  CAM.running=true;
   const st=CAM.qr.getRunningTrackSettings?.()||{};
-  camHint("読み取り中（"+(st.width||"?")+"×"+(st.height||"?")+"）。QRをカメラから20〜40cm離し、枠内で止めてください。"+((st.width||0)<1000?" ※このカメラは低解像度のため、少し近づける必要があります。":""),"ok");
+  meta.cameraId=st.deviceId||id||"";saveMeta();
+  if(st.deviceId&&[...$("cameraSelect").options].some(o=>o.value===st.deviceId))$("cameraSelect").value=st.deviceId;
+  camHint("読み取り中（"+(st.width||"?")+"×"+(st.height||"?")+"）。QRをカメラから20〜40cm離し、枠内で止めてください。"+((st.width||0)&&st.width<1000?" ※このカメラは低解像度のため、少し近づける必要があります。":"")+(used>0?" （標準設定で起動できなかったため、互換モードで起動しました）":""),"ok");
  }catch(err){CAM.running=false;camHint(camError(err),"error");try{if(CAM.qr?.isScanning)await CAM.qr.stop();}catch{}}
  finally{CAM.busy=false;camUI();setTimeout(fitReader,50);}
 }
