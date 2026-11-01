@@ -5,11 +5,16 @@
 <body><header><div class="bar"><h1><a class="home-link" href="./app.html" title="総合管理（トップ）へ戻る">▦ QR受付システム</a></h1><div class="head-actions"><button type="button" id="backupStatus" class="backup-status" data-backup hidden></button><span>オフライン・1受付1PC</span><a class="help" href="./help.html">ⓘ ヘルプ・操作説明</a></div></div></header>
 <main class="wrap">
 <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
-<section id="homeView">
- <div class="row title-row"><h2>総合管理</h2><span class="tag">このPCのイベント</span></div>
- <div class="summary" id="globalSummary"></div>
+<section id="homeView" class="hm">
+ <div class="hm-top">
+  <h2>総合管理</h2>
+  <div class="hm-seg" id="homeTabs"><button data-home="events" class="active">▦ イベント</button><button data-home="cross">⌕ 横断検索</button><button data-home="data">▣ データ管理</button></div>
+  <div class="hm-spacer"></div>
+  <span class="hm-stats" id="globalSummary"></span>
+  <label class="hm-search" id="hmSearch"><span aria-hidden="true">⌕</span><input id="eventQuery" type="search" placeholder="イベント名で検索" aria-label="イベント名で検索"></label>
+  <button id="newEvent" class="btn main">＋ 新規イベント</button>
+ </div>
  <div id="storageWarn" class="alertline" hidden></div>
- <div class="tabs" id="homeTabs"><button data-home="events" class="active">▦ イベント</button><button data-home="cross">⌕ 横断検索</button><button data-home="data">▣ データ管理</button></div>
  <section id="homeEvents">
   <div id="firstGuide" class="panel first-guide" hidden>
    <h3>はじめての方へ</h3>
@@ -17,10 +22,23 @@
    <ol class="guide-steps"><li><b>① イベント設定</b><small>開催日・受付区分</small></li><li><b>② 参加者登録</b><small>Excelから貼り付け</small></li><li><b>③ QR発行</b><small>印刷またはPNG配布</small></li><li><b>④ 紙名簿・出力</b><small>非常用名簿を印刷</small></li><li><b>当日：▣ 受付</b><small>QRを読み取る</small></li></ol>
    <button type="button" class="btn main big" data-new-event>＋ 最初のイベントを作成する</button>
   </div>
-  <div id="todayEvents" class="panel today-panel" hidden><h3>本日のイベント <span class="tag" id="todayLabel"></span></h3><div id="todayRows"></div></div>
-  <div class="row title-row"><div><h3 style="margin:0">イベント一覧</h3><div class="hint" id="listGuide">事前準備は各イベントの「⚙ 準備」、開催当日は「▣ 受付」を押します。</div></div><button id="newEvent" class="btn main">＋ 新規イベント</button></div>
-  <div class="panel filter"><div class="fields"><label class="field">イベント名<input id="eventQuery" placeholder="名前を検索"></label><label class="field">開催日（開始）<input type="date" id="dateFrom"></label><label class="field">開催日（終了）<input type="date" id="dateTo"></label><label class="field">並び替え<select id="sortKey"><option value="date">開催日</option><option value="id">イベントID</option></select></label><label class="field">順序<select id="sortOrder"><option value="desc">降順 ↓</option><option value="asc">昇順 ↑</option></select></label><div style="align-self:end" class="buttons"><button type="button" id="filterToday" class="btn">今日</button><button type="button" id="filterUpcoming" class="btn">今日以降</button><button id="resetEvents" class="btn">↺ クリア</button></div></div></div>
-  <div class="row title-row"><div class="hint" id="eventCount"></div></div><div id="eventCards" class="cardlist"></div>
+  <div id="todayEvents" class="hm-heroes" hidden></div>
+  <div id="hmList" hidden>
+   <div class="hm-ltabs" role="tablist" aria-label="イベントの開催状況">
+    <button type="button" role="tab" class="hm-ltab active" data-list-tab="upcoming" aria-selected="true">未開催 <span class="n" id="countUpcoming">0</span></button>
+    <button type="button" role="tab" class="hm-ltab" data-list-tab="past" aria-selected="false">終了 <span class="n" id="countPast">0</span></button>
+    <span id="eventCount" class="hm-count"></span>
+    <button type="button" id="toggleFilter" class="hm-tool" aria-expanded="false" aria-controls="filterPanel">⚲ 絞り込み・並び替え<span id="filterDot" class="hm-dot" hidden></span></button>
+   </div>
+   <div id="filterPanel" class="hm-filter" hidden>
+    <label class="field">開催日（開始）<input type="date" id="dateFrom"></label>
+    <label class="field">開催日（終了）<input type="date" id="dateTo"></label>
+    <label class="field">並び替え<select id="sortKey"><option value="auto" title="未開催は開催日が近い順、終了は新しい順">標準</option><option value="date">開催日</option><option value="id">イベントID</option></select></label>
+    <label class="field">順序<select id="sortOrder"><option value="asc">昇順 ↑</option><option value="desc">降順 ↓</option></select></label>
+    <div class="buttons"><button type="button" id="filterToday" class="btn small">今日</button><button type="button" id="filterUpcoming" class="btn small">今日以降</button><button type="button" id="resetEvents" class="btn small">↺ クリア</button></div>
+   </div>
+   <div id="eventCards" class="hm-cards"></div>
+  </div>
  </section>
  <section id="homeCross" hidden>
   <div class="panel"><h3>横断参加者検索</h3><div class="fields"><label class="field">期間<select id="crossPeriod"><option value="fiscal">年度（4月〜翌3月）</option><option value="calendar">暦年</option><option value="all">全期間</option></select></label><label class="field">年<input id="crossYear" type="number" min="2000" max="2100" value="2026"></label><label class="field">イベント分類<select id="crossCategory"><option value="all">すべて</option><option value="training">研修</option><option value="briefing">説明会</option><option value="other">その他</option></select></label><label class="field">受付状況<select id="crossStatus"><option value="all">すべて</option><option value="checked">受付実績あり</option><option value="partial">一部受付</option><option value="pending">未受付</option></select></label><label class="field">氏名・番号・所属・グループ・イベント名<input id="crossQuery" placeholder="キーワード"></label></div></div>
@@ -335,6 +353,7 @@
  </section>
 </section>
 
+<div id="eventMenu" class="hm-menu" role="menu" hidden></div>
 <div id="dialogBackdrop" class="dialog-backdrop" hidden><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
  <div class="dialog-head"><h2 id="dialogTitle">参加者</h2><button class="btn small" id="closeDialog" aria-label="閉じる">✕</button></div>
  <div id="dialogBody"></div>
