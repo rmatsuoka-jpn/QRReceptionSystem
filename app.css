@@ -730,3 +730,20 @@ body.day-mode .notice{position:fixed;left:50%;bottom:18px;transform:translateX(-
  .ci-footer-summary{font-size:.72rem}
  .ci-footer #csvCommit{white-space:normal;text-align:center}
 }
+
+
+/* Excel import: neutral unused optional fields and inline info tooltips */
+.ci-import .ci-map-extras{display:inline-flex;align-items:center;justify-content:flex-end;gap:7px;flex:none}
+.ci-import .ci-unused .ci-map-state{color:#718796}
+.ci-import .ci-unused select{border-color:#c4d6e0;background:#fff}
+.ci-import .ci-not-mapped .ci-map-state{color:#a96722}
+.ci-import .ci-help{display:inline-flex;position:relative;flex:none;z-index:6;line-height:1}
+.ci-import .ci-help[open]{z-index:15}
+.ci-import .ci-help summary{cursor:pointer;list-style:none;display:grid;place-items:center;width:23px;height:23px;color:#087985;border-radius:50%;font-size:1.02rem;font-weight:900}
+.ci-import .ci-help summary::-webkit-details-marker{display:none}
+.ci-import .ci-help summary:hover,.ci-import .ci-help[open] summary{background:#e0f1ef}
+.ci-import .ci-help-tooltip{position:absolute;right:-10px;bottom:calc(100% + 9px);width:min(280px,calc(100vw - 75px));padding:11px 13px;background:#1c3a4a;color:#fff;border-radius:9px;box-shadow:0 8px 20px #122e4040;display:none;font-size:.78rem;line-height:1.65;white-space:normal;text-align:left;font-weight:500}
+.ci-import .ci-help:hover .ci-help-tooltip,.ci-import .ci-help:focus-within .ci-help-tooltip,.ci-import .ci-help[open] .ci-help-tooltip{display:block}
+.ci-import .ci-heading-row{display:flex;align-items:center;gap:7px;margin-bottom:6px}
+.ci-import .ci-heading-row h3{margin:0}
+.ci-import .ci-help summary:focus-visible{outline:3px solid #e4ae45;outline-offset:2px}
