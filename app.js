@@ -911,7 +911,6 @@ const CSV_FIELDS=[
  ["name","氏名（必須）",["氏名","name","名前"]],
  ["staffId","職員番号",["職員番号","staff_id"]],
  ["participantId","参加者ID（更新用）",["participant_id","参加者ID"]],
- ["eventId","イベントID（照合用）",["event_id","イベントID"]],
  ["department","所属",["所属","department"]],
  ["group","グループ",["グループ","group"]],
  ["custom0","任意項目1",["custom_1"]],
@@ -938,8 +937,6 @@ function prepareCsv(rows,m,mode,e){
   if(!name){blank++;continue;}
   if(EXAMPLE_RE.test(name)){example++;continue;}
   if(name.length>200)throw Error((ri+1)+"行目：氏名が長すぎます");
-  const csvEvent=mappedValue(row,m,"eventId");
-  if(csvEvent&&csvEvent!==e.id)throw Error((ri+1)+"行目：イベントIDが現在のイベントと異なります");
   const rawStaff=mappedValue(row,m,"staffId"),staff=rawStaff===null?null:normStaff(rawStaff),pid=mappedValue(row,m,"participantId");
   if(staff&&!validStaff(staff))throw Error((ri+1)+"行目：職員番号は半角英数字（ハイフンなし）にしてください（値："+staff.slice(0,30)+"）");
   const byPid=pid?e.participants.find(p=>p.id===pid):null;
@@ -988,7 +985,7 @@ function previewCsvImport(){
  $("csvMissingCount").textContent=String(core.length-matched);
  for(const select of document.querySelectorAll("[data-csv-field]")){
   const holder=select.closest(".ci-map-field"),assigned=Number(select.value)>=0;
-  if(holder){holder.classList.toggle("ci-not-mapped",!assigned);const status=holder.querySelector(".ci-map-state");if(status)status.textContent=assigned?"✓ 対応済み":"未対応";}
+  if(holder){const required=select.dataset.csvField==="name";holder.classList.toggle("ci-not-mapped",!assigned&&required);holder.classList.toggle("ci-unused",!assigned&&!required);const status=holder.querySelector(".ci-map-state");if(status)status.textContent=assigned?"✓ 対応済み":required?"要設定":"未使用";}
  }
  for(const radio of document.querySelectorAll("[data-csv-session-mode]:checked")){
   const wrap=document.querySelector('[data-csv-session-column-wrap="'+radio.dataset.csvSessionMode+'"]');
@@ -1081,11 +1078,30 @@ function setImportMode(mode){
   btn.classList.toggle("active",active);btn.setAttribute("aria-selected",String(active));
  }
 }
+
+const IMPORT_FIELD_HELP={
+ name:"氏名は必須です。Excelの氏名の列を選択してください。氏名が空欄の行は取り込み対象外です。",
+ staffId:"同じ職員番号が登録済みなら初期設定ではスキップし、詳細設定で更新も選べます。職員番号のない人にはQRを発行できません。先頭の0を残してください。",
+ participantId:"職員番号がない人など、既存の参加者をIDで特定して更新するときだけ使います。同じイベントから出力した参加者IDを指定してください。通常は未使用で問題ありません。",
+ department:"参加者の所属部署の列です。Excelにない場合は未使用で構いません。",
+ group:"グループの列です。使っていない場合は未使用で構いません。",
+ custom0:"イベント設定の「追加の登録項目1」に対応するExcel列を指定します。不要であれば未使用にできます。",
+ custom1:"イベント設定の「追加の登録項目2」に対応するExcel列を指定します。不要であれば未使用にできます。"
+};
+function importInfoHelp(name,description){
+ const details=document.createElement("details");details.className="ci-help";
+ const summary=document.createElement("summary");summary.textContent="ⓘ";summary.title=name+"の説明";summary.setAttribute("aria-label",name+"の説明");
+ const tooltip=document.createElement("div");tooltip.className="ci-help-tooltip";tooltip.textContent=description;
+ details.append(summary,tooltip);return details;
+}
 function importMapSelect(id,label,aliases,headers,compact=false){
- const wrap=document.createElement("label");wrap.className="field ci-map-field"+(compact?" ci-core-field":"");
- const title=document.createElement("span");title.className="ci-map-label";title.textContent=label;
- const status=document.createElement("small");status.className="ci-map-state";title.append(status);
- const select=document.createElement("select");select.dataset.csvField=id;select.setAttribute("aria-label",label+"に対応するExcel列");
+ const wrap=document.createElement("div");wrap.className="field ci-map-field"+(compact?" ci-core-field":"");
+ const title=document.createElement("div");title.className="ci-map-label";
+ const text=document.createElement("label");text.htmlFor="ci-map-"+id;text.textContent=label;
+ const help=importInfoHelp(label,IMPORT_FIELD_HELP[id]||"Excelから対応する列を読み込みます。未使用のままでも取り込めます。");
+ const status=document.createElement("small");status.className="ci-map-state";
+ const extras=document.createElement("span");extras.className="ci-map-extras";extras.append(help,status);title.append(text,extras);
+ const select=document.createElement("select");select.id="ci-map-"+id;select.dataset.csvField=id;select.setAttribute("aria-label",label+"に対応するExcel列");
  select.add(new Option("列を割り当てない","-1"));
  headers.forEach((h,i)=>select.add(new Option((i+1)+"列目："+h,String(i))));
  select.value=String(globalThis.QRSupport.detectColumn(headers,aliases.filter(Boolean)));
@@ -1119,7 +1135,7 @@ function showImportPreview(rows,source){
  const root=document.createElement("div");root.className="ci-import";
  const intro=document.createElement("p");intro.className="ci-intro";intro.textContent="列の対応と参加予定を確認してから登録します。正しく自動判定された項目は変更不要です。";root.append(intro);
  const summary=document.createElement("div");summary.className="ci-overview";
- for(const [id,value,label] of [["csvRowCount",rows.length-1,"読み取り行数"],["csvMatchedCount","0","対応済みの基本項目"],["csvMissingCount","0","未対応の基本項目"]]){
+ for(const [id,value,label] of [["csvRowCount",rows.length-1,"読み取り行数"],["csvMatchedCount","0","対応済みの基本項目"],["csvMissingCount","0","未使用の基本項目"]]){
   const tile=document.createElement("div");tile.className="ci-overview-tile";const val=document.createElement("strong");val.id=id;val.textContent=String(value);const caption=document.createElement("span");caption.textContent=label;tile.append(val,caption);summary.append(tile);
  }
  root.append(summary);
@@ -1131,20 +1147,20 @@ function showImportPreview(rows,source){
  for(const id of ["name","staffId","department","group"]){const field=fieldMap.find(f=>f.id===id);core.append(importMapSelect(field.id,field.label,field.aliases,headers,true));}
  section.append(core);root.append(section);
  const sessionSection=document.createElement("section");sessionSection.className="ci-section ci-session-section";
- const sh=document.createElement("h3");sh.textContent="参加予定の設定";sessionSection.append(sh);
+ const shRow=document.createElement("div");shRow.className="ci-heading-row";const sh=document.createElement("h3");sh.textContent="参加予定の設定";shRow.append(sh,importInfoHelp("参加予定の設定","受付区分ごとに参加する人を決めます。「全員を参加予定」は取り込む全員を対象にし、「Excelの列で指定」は列の○などで参加予定を読み込みます。「指定しない」は新規参加者を対象にせず、既存参加者の参加予定は変更しません。"));sessionSection.append(shRow);
  const sn=document.createElement("p");sn.className="ci-section-note";sn.textContent="受付区分ごとに、この名簿の参加者をどう登録するか指定します。";sessionSection.append(sn);
  for(const s of e.sessions)sessionSection.append(importSessionChoice(s,headers,e.sessions.length===1));
  root.append(sessionSection);
  const advanced=document.createElement("details");advanced.className="ci-advanced";
- const advancedSummary=document.createElement("summary");advancedSummary.textContent="詳細設定：追加項目・IDの対応・重複時の扱い";advanced.append(advancedSummary);
+ const advancedSummary=document.createElement("summary");advancedSummary.textContent="詳細設定：追加項目・参加者ID・重複時の扱い";advanced.append(advancedSummary);
  const more=document.createElement("div");more.className="ci-advanced-body";
  const mappings=document.createElement("div");mappings.className="ci-extra-mapping";
- const extra=fieldMap.filter(x=>["participantId","eventId"].includes(x.id)||x.id==="custom0"&&e.customLabels?.[0]||x.id==="custom1"&&e.customLabels?.[1]);
+ const extra=fieldMap.filter(x=>x.id==="participantId"||x.id==="custom0"&&e.customLabels?.[0]||x.id==="custom1"&&e.customLabels?.[1]);
  for(const field of extra)mappings.append(importMapSelect(field.id,field.label,field.aliases,headers));
  more.append(mappings);
- const conflict=document.createElement("label");conflict.className="field ci-conflict";conflict.textContent="同じ職員番号・参加者IDが登録されている場合";
+ const conflict=document.createElement("div");conflict.className="field ci-conflict";const conflictHead=document.createElement("div");conflictHead.className="ci-map-label";const conflictLabel=document.createElement("label");conflictLabel.htmlFor="csvConflictMode";conflictLabel.textContent="同じ職員番号・参加者IDが登録されている場合";conflictHead.append(conflictLabel,importInfoHelp("重複時の扱い","既存の職員番号または参加者IDと一致する行は初期設定でスキップします。「更新」を選ぶと、氏名・所属などを上書きします。参加者IDと受付履歴は維持します。氏名だけでは重複判定しません。"));
  const mode=document.createElement("select");mode.id="csvConflictMode";mode.add(new Option("既存の参加者はスキップ（推奨）","skip"));mode.add(new Option("既存の参加者情報を更新（QR・受付履歴は保持）","update"));mode.value="skip";mode.addEventListener("change",previewCsvImport);
- conflict.append(mode);more.append(conflict);advanced.append(more);root.append(advanced);
+ conflict.append(conflictHead,mode);more.append(conflict);advanced.append(more);root.append(advanced);
  const sampleSec=document.createElement("section");sampleSec.className="ci-section ci-sample-section";
  const sampleTitle=document.createElement("h3");sampleTitle.textContent="取り込みプレビュー";sampleSec.append(sampleTitle);
  const sampleHint=document.createElement("p");sampleHint.className="ci-section-note";sampleHint.textContent="先頭の最大5名を表示します。表示される内容は上で指定した列に連動します。";sampleSec.append(sampleHint);
@@ -1190,7 +1206,7 @@ $("crossPeriod").onchange=()=>{$("crossYear").disabled=$("crossPeriod").value===
 $("exportCross").onclick=()=>exportCross(false);$("exportCrossDetail").onclick=()=>exportCross(true);$("restoreBtn").onclick=restore;$("deleteAllData").onclick=openDeleteAllDialog;
 $("saveSettings").onclick=saveSettings;$("saveSettingsNext").onclick=()=>{if(saveSettings()){prepTab="participants";render();}};
 for(const c of document.querySelectorAll("[data-day-check]"))c.onchange=saveDayCheck;$("dayCheck").addEventListener("toggle",()=>{if($("dayCheck").open)$("dayCheck").dataset.userOpened="1";});$("soundTest").onclick=()=>{primeAudio();if(meta.sound===false){$("soundToggle").checked=true;meta.sound=true;saveMeta();}setTimeout(()=>feedback("success"),80);setTimeout(()=>feedback("warn"),1500);setTimeout(()=>feedback("error"),2700);};
-$("soundVolume").value=meta.volume||"high";$("soundVolume").onchange=()=>{meta.volume=$("soundVolume").value;saveMeta();primeAudio();setTimeout(()=>feedback("success"),60);};$("addSession").onclick=()=>addSession();$("sessionEditor").addEventListener("input",renderSessionPresets);for(let i=1;i<=2;i++){$("customType"+i).onchange=()=>{toggleCustomOptions(i);renderCustomPreview();renderCustomPresets();};$("customLabel"+i).oninput=()=>{renderCustomPreview();renderCustomPresets();};$("customOptions"+i).oninput=renderCustomPreview;}for(const b of document.querySelectorAll("[data-clear-custom]"))b.onclick=()=>clearCustomPreset(Number(b.dataset.clearCustom));document.addEventListener("click",ev=>{for(const tip of document.querySelectorAll("#settingsPanel .es-help[open]"))if(!tip.contains(ev.target))tip.open=false;});$("addPerson").onclick=()=>openPerson(null,false);
+$("soundVolume").value=meta.volume||"high";$("soundVolume").onchange=()=>{meta.volume=$("soundVolume").value;saveMeta();primeAudio();setTimeout(()=>feedback("success"),60);};$("addSession").onclick=()=>addSession();$("sessionEditor").addEventListener("input",renderSessionPresets);for(let i=1;i<=2;i++){$("customType"+i).onchange=()=>{toggleCustomOptions(i);renderCustomPreview();renderCustomPresets();};$("customLabel"+i).oninput=()=>{renderCustomPreview();renderCustomPresets();};$("customOptions"+i).oninput=renderCustomPreview;}for(const b of document.querySelectorAll("[data-clear-custom]"))b.onclick=()=>clearCustomPreset(Number(b.dataset.clearCustom));document.addEventListener("click",ev=>{for(const tip of document.querySelectorAll("#settingsPanel .es-help[open]"))if(!tip.contains(ev.target))tip.open=false;});document.addEventListener("click",ev=>{for(const tip of document.querySelectorAll(".dialog .ci-help[open]"))if(!tip.contains(ev.target))tip.open=false;});$("addPerson").onclick=()=>openPerson(null,false);
 document.addEventListener("click",ev=>{
  for(const tip of document.querySelectorAll("#participantsPanel .pt-help[open]")){
   if(!tip.contains(ev.target))tip.open=false;
