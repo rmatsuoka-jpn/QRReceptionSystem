@@ -402,3 +402,11 @@ body.day-mode .notice{position:fixed;left:50%;bottom:18px;transform:translateX(-
  body[data-print-mode="qr"] #qrPanel > :not(#printSheets){display:none!important}
  body[data-print-mode="qr"] #qrPanel{padding:0!important;border:0!important;box-shadow:none!important}
 }
+
+/* In individual mode, bulk actions stay visible below the card, as in the accepted screen. */
+#qrPanel .qr-tab-icon{height:18px;width:18px;vertical-align:-4px;margin-right:6px}
+#qrPanel .qr-button-icon{height:26px;width:26px;flex:none}
+#qrPanel .qr-bulk-inline{margin-top:25px;padding-top:18px;border-top:1px solid #dce8ec}
+#qrPanel .qr-bulk-inline h4{font-size:1rem}
+#qrPanel .qr-bulk-inline .qr-bulk-action{min-height:98px}
+#qrPanel .qr-bulk-inline .qr-bulk-icon{width:42px;height:42px}
