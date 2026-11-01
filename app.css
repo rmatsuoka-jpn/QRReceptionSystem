@@ -302,3 +302,19 @@ body.day-mode .notice{position:fixed;left:50%;bottom:18px;transform:translateX(-
 .manual-table .manual-sort-arrow{font-size:.83rem;color:#0a707a}
 .manual-table td{padding:8px 10px;font-size:1rem;line-height:1.35}
 .manual-table .btn.small{font-size:.95rem;padding:8px 13px}
+
+
+/* 受付上部: 受付音と同じ薄色で操作できる範囲を明示 */
+.rx-tools .rx-tool{background:#eef3f6;border-radius:10px;min-height:37px;padding:8px 11px}
+.rx-tools .rx-tool:hover{background:#dbe9ee}
+.rx-tools .rx-tool:active,.rx-pop[open]>summary.rx-tool{background:#d2e7e7}
+.rx-tool-icon{width:17px;height:17px;flex:none}
+
+/* 受付状況一覧: 氏名の右にコンパクトな操作ボタンを配置 */
+.rx .pending-person{gap:8px;align-items:center}
+.rx-person-info{flex:1;min-width:0;overflow-wrap:anywhere}
+.rx-person-actions{display:flex;flex:none;flex-direction:column;align-items:flex-end;gap:4px}
+.rx-person-action.btn.small{white-space:nowrap;min-height:34px;padding:6px 9px;border-radius:7px;border-color:#a8d4d1;background:#e5f3f2;color:#0a6069;font-size:.76rem;font-weight:800}
+.rx-person-action.btn.small:hover{background:#d1eae7;border-color:#64b3ae}
+.rx-person-cancel.btn.small{border-color:#e8c3c3;background:#fff3f1;color:#a03d44}
+.rx-person-cancel.btn.small:hover{background:#ffe7e3;border-color:#cf8990}

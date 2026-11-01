@@ -238,21 +238,27 @@ function renderPersonHistory(p){
   if(checked(p,s.id)){
    const btn=document.createElement("button");btn.type="button";btn.className="btn small danger";btn.textContent="受付取消";
    btn.style.marginTop="10px";
-   btn.onclick=()=>{
-    if(!confirm(p.name+" さんの「"+s.name+"」の受付を取り消しますか？"))return;
-    const reason=prompt("取消理由を入力してください（例：誤受付）","誤受付");
-    if(reason===null)return;
-    const ok=mutate(next=>{
-     const part=next.participants.find(x=>x.id===p.id),hist=part.checkins[s.id];
-     hist.active=false;hist.canceledAt=iso();
-     (hist.history||(hist.history=[])).push({type:"cancel",at:hist.canceledAt,reason:reason.trim().slice(0,200)});
-    });
-    if(ok){closeDialog();announce("受付取消を記録しました。","warn");}
-   };
+   btn.onclick=()=>cancelAttendance(p.id,s.id,true);
    card.append(btn);
   }
   root.append(card);
  }
+}
+/* 受付取消は参加者詳細画面と右側の受付済み一覧で共通化。履歴と初回時刻を維持する。 */
+function cancelAttendance(personId,sessionId,closeOnSuccess=false){
+ const e=current(),p=e?.participants.find(x=>x.id===personId),s=e?.sessions.find(x=>x.id===sessionId);
+ if(!p||p.removed||!s||!checked(p,sessionId)){announce("この参加者の受付済み記録は見つかりません。","warn");return false;}
+ if(!confirm(p.name+" さんの「"+s.name+"」の受付を取り消しますか？"))return false;
+ const reason=prompt("取消理由を入力してください（例：誤受付）","誤受付");
+ if(reason===null)return false;
+ const ok=mutate(next=>{
+  const part=next.participants.find(x=>x.id===personId),hist=part?.checkins?.[sessionId];
+  if(!part||part.removed||!hist||hist.active===false)throw Error("受付済み記録がないため取り消せません。");
+  hist.active=false;hist.canceledAt=iso();
+  (hist.history||(hist.history=[])).push({type:"cancel",at:hist.canceledAt,reason:reason.trim().slice(0,200)});
+ });
+ if(ok){if(closeOnSuccess)closeDialog();announce(p.name+" さんの受付取消を記録しました。","warn");}
+ return ok;
 }
 /* 手動受付: 検索を保ったまま見出しで昇順／降順に並び替え。 */
 const MANUAL_SORT_COLUMNS=[["id","ID"],["name","氏名"],["staffId","職員番号"],["department","所属"]];
@@ -321,6 +327,28 @@ function showReceptionTab(tab){
   
  }
 }
+/* 右側の一覧から受付操作。表示時の受付区分も保持し、切替後の誤操作を防ぐ。 */
+function receptionRowActions(p,s,alreadyChecked){
+ const actions=document.createElement("div");actions.className="rx-person-actions";
+ const id=document.createElement("span");id.className="code";id.textContent="#"+p.id;
+ const button=document.createElement("button");
+ button.type="button";button.className="btn small rx-person-action"+(alreadyChecked?" rx-person-cancel":"");
+ button.textContent=alreadyChecked?"受付取消":"手動受付";
+ button.dataset[alreadyChecked?"receptionCancel":"receptionCheckin"]=p.id;
+ button.dataset.sessionId=s.id;
+ button.setAttribute("aria-label",p.name+" さんの"+button.textContent+"（"+s.name+"）");
+ actions.append(id,button);return actions;
+}
+function quickReceptionCheckIn(id,sessionId){
+ const s=curSession(),p=current()?.participants.find(x=>x.id===id);
+ if(!s||s.id!==sessionId){announce("受付区分が変更されました。表示を確認してください。","warn");return;}
+ if(!p||p.removed||!p.planned[sessionId]){announce("この区分の未受付者ではありません。","warn");return;}
+ checkIn(id,"manual",false);
+}
+function quickReceptionCancel(id,sessionId){
+ if(curSession()?.id!==sessionId){announce("受付区分が変更されました。表示を確認してください。","warn");return;}
+ cancelAttendance(id,sessionId);
+}
 function renderReception(){
  const e=current(),sel=$("checkinSession"),existing=sel.value;
  sel.replaceChildren();
@@ -333,7 +361,8 @@ function renderReception(){
   const time=p=>p.checkins[s.id].lastAt||p.checkins[s.id].at||"";
   return time(b).localeCompare(time(a))||a.name.localeCompare(b.name,"ja");
  });
- const pending=people.filter(p=>!checked(p,s.id)&&p.source!=="walkin").sort((a,b)=>a.name.localeCompare(b.name,"ja"));
+ // 受付取消した当日登録者も「未受付」に戻し、右側から再受付できるようにする。
+ const pending=people.filter(p=>!checked(p,s.id)&&(p.source!=="walkin"||p.checkins?.[s.id]?.active===false)).sort((a,b)=>a.name.localeCompare(b.name,"ja"));
  const walkins=attended.filter(p=>p.source==="walkin").length,base=Math.max(people.length,attended.length);
  $("daySummary").innerHTML=summaryMetric("参加対象",people.length)+summaryMetric("未受付",pending.length)+summaryMetric("当日登録",walkins);
  $("rxProgressText").textContent=attended.length+" / "+people.length;
@@ -348,14 +377,15 @@ function renderReception(){
  for(const p of pending){
   const row=document.createElement("div");row.className="pending-person";
   const text=document.createElement("div"),title=document.createElement("b"),sub=document.createElement("small");
+  text.className="rx-person-info";
   title.textContent=p.name;sub.textContent=[p.department,p.group].filter(Boolean).join(" ／ ")||"所属未登録";text.append(title,sub);
-  const id=document.createElement("span");id.className="code";id.textContent="#"+p.id;
-  row.append(text,id);waiting.append(row);
+  row.append(text,receptionRowActions(p,s,false));waiting.append(row);
  }
  if(!attended.length)arrived.textContent="まだ受付済みの参加者はいません。";
  for(const p of attended){
   const row=document.createElement("div");row.className="pending-person";
   const text=document.createElement("div"),title=document.createElement("b"),sub=document.createElement("small"),detail=document.createElement("div");
+  text.className="rx-person-info";
   title.textContent=p.name;sub.textContent=[p.department,p.group].filter(Boolean).join(" ／ ")||"所属未登録";
   detail.className="attendance-detail";
   const method=document.createElement("span");method.className="attendance-method"+(p.source==="walkin"?" walkin":"");
@@ -364,8 +394,7 @@ function renderReception(){
   const clock=document.createElement("span");clock.className="checkin-time";
   clock.textContent=localDate(record.lastAt||record.at);
   detail.append(method,clock);text.append(title,sub,detail);
-  const id=document.createElement("span");id.className="code";id.textContent="#"+p.id;
-  row.append(text,id);arrived.append(row);
+  row.append(text,receptionRowActions(p,s,true));arrived.append(row);
  }
  showReceptionTab(receptionTab);
  renderDayCheck();
@@ -864,6 +893,8 @@ if(b.dataset.newEvent!==undefined){addEvent();return;}
 if(b.dataset.receptionTab){showReceptionTab(b.dataset.receptionTab);return;}
 if(b.dataset.manualSort){changeManualSort(b.dataset.manualSort);return;}
 if(b.dataset.manualPerson){manualCheck(b.dataset.manualPerson);return;}
+if(b.dataset.receptionCheckin){quickReceptionCheckIn(b.dataset.receptionCheckin,b.dataset.sessionId);return;}
+if(b.dataset.receptionCancel){quickReceptionCancel(b.dataset.receptionCancel,b.dataset.sessionId);return;}
 if(b.dataset.action){const id=b.dataset.id;switch(b.dataset.action){case "prep":return openEvent(id,false);case "day":return openEvent(id,true);case "clone":return addEvent(id);case "delete":return deleteEvent(id);case "edit-person":return openPerson(b.dataset.person,false);case "remove-session":return removeSession(b.dataset.session);}return;}
 });
 $("newEvent").onclick=()=>addEvent();$("backHome").onclick=()=>openHome();$("rxBack").onclick=()=>openHome();document.addEventListener("click",ev=>{const d=$("dayCheck");if(d.open&&!d.contains(ev.target))d.open=false;});$("resetEvents").onclick=()=>{for(const id of ["eventQuery","dateFrom","dateTo"])$(id).value="";renderEventList();};
