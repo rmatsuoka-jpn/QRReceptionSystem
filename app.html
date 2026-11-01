@@ -105,8 +105,8 @@
     </div>
    </div>
    <div class="qr-mode-tabs" role="tablist" aria-label="発行方法">
-    <button type="button" id="qrTabSingle" class="active" role="tab" aria-selected="true" aria-controls="qrIndividualArea" data-qr-mode="single">♙ 個別発行</button>
-    <button type="button" id="qrTabBulk" role="tab" aria-selected="false" aria-controls="qrBulkArea" data-qr-mode="bulk">▤ 一括発行（印刷・ダウンロード）</button>
+    <button type="button" id="qrTabSingle" class="active" role="tab" aria-selected="true" aria-controls="qrIndividualArea" data-qr-mode="single"><svg class="qr-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg> 個別発行</button>
+    <button type="button" id="qrTabBulk" role="tab" aria-selected="false" aria-controls="qrBulkArea" data-qr-mode="bulk"><svg class="qr-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="3" width="12" height="14" rx="2"/><path d="M5 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-1"/></svg> 一括発行（印刷・ダウンロード）</button>
    </div>
    <section id="qrIndividualArea" class="qr-mode-body" role="tabpanel" aria-labelledby="qrTabSingle">
     <div class="qr-choose-bar">
@@ -128,16 +128,16 @@
       <div class="qr-preview-note">このカードをそのままPNG保存できます。QR・氏名・番号・グループをまとめて配布できます。</div>
      </div>
      <div class="qr-studio-actions">
-      <button type="button" id="printSingleQR" class="btn main qr-main-action"><span aria-hidden="true">▣</span><span>このQRを印刷<small>選択中の1名分を印刷</small></span></button>
+      <button type="button" id="printSingleQR" class="btn main qr-main-action"><svg class="qr-button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="6" y="14" width="12" height="7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/></svg><span>このQRを印刷<small>選択中の1名分を印刷</small></span></button>
       <button type="button" id="downloadQR" class="btn qr-main-action"><span aria-hidden="true">⇩</span><span>PNGで保存<small>カード全体の画像</small></span></button>
      </div>
     </div>
    </section>
    <section id="qrBulkArea" class="qr-mode-body qr-bulk-body" role="tabpanel" aria-labelledby="qrTabBulk" hidden>
-    <h4>まとめて発行する</h4><p>職員番号のある方を対象に一括発行します。個別PNGと同じカード画像をZIPにまとめることもできます。</p>
+    <h4 id="qrBulkHeading">その他の発行方法</h4><p>職員番号のある方を対象に一括発行します。個別PNGと同じカード画像をZIPにまとめることもできます。</p>
     <div class="qr-bulk-actions">
      <button type="button" id="printQRs" class="qr-bulk-action">
-      <span class="qr-bulk-icon" aria-hidden="true">▣</span><span><strong>一括印刷（A4・10面）</strong><small>名刺サイズ・2列×5段で印刷プレビューを開く</small></span><span class="qr-bulk-arrow" aria-hidden="true">›</span>
+      <span class="qr-bulk-icon" aria-hidden="true"><svg class="qr-button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="6" y="14" width="12" height="7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/></svg></span><span><strong>一括印刷（A4・10面）</strong><small>名刺サイズ・2列×5段で印刷プレビューを開く</small></span><span class="qr-bulk-arrow" aria-hidden="true">›</span>
      </button>
      <button type="button" id="exportQRZip" class="qr-bulk-action">
       <span class="qr-bulk-icon" aria-hidden="true">⇩</span><span><strong>一括ダウンロード（ZIP）</strong><small>全員分のカードPNGと対応表CSVを取得</small></span><span class="qr-bulk-arrow" aria-hidden="true">›</span>
