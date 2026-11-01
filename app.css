@@ -650,3 +650,83 @@ body.day-mode .notice{position:fixed;left:50%;bottom:18px;transform:translateX(-
 @media(max-width:710px){#settingsPanel .es-basic-fields{grid-template-columns:1fr}#settingsPanel .es-card{padding:16px 13px}#settingsPanel .es-candidate-list{grid-template-columns:1fr}#settingsPanel .es-actions{flex-direction:column}#settingsPanel .es-actions .btn{width:100%}}
 
 #settingsPanel .es-label-line{display:flex;align-items:center;gap:6px}
+
+
+/* Inline feedback on reception category quick-add; do not send the user to page top. */
+#settingsPanel .es-session-inline-status{display:inline-flex;align-items:center;padding:7px 11px;margin-top:9px;border-radius:8px;font-size:.83rem;font-weight:700;color:#16704b;background:#e6f6ed;border:1px solid #c5e9d6}
+#settingsPanel .es-session-inline-status.warn{color:#8c5b22;background:#fff4df;border-color:#f0d6a5}
+#settingsPanel .es-session-inline-status[hidden]{display:none!important}
+#settingsPanel .session-row.es-just-added{background:#e7f7ef;border-radius:9px;box-shadow:0 0 0 2px #70cfa1;animation:es-row-appear 1.5s ease-out}
+@keyframes es-row-appear{0%{box-shadow:0 0 0 5px #6cc99a}100%{box-shadow:0 0 0 2px #70cfa1}}
+@media(prefers-reduced-motion:reduce){#settingsPanel .session-row.es-just-added{animation:none}}
+
+/* Guided confirmation of Excel/CSV participant import. */
+.dialog:has(.ci-import){max-width:930px;padding:22px 25px 0;overflow-y:auto}
+.dialog:has(.ci-import) .dialog-head{position:sticky;top:-22px;z-index:4;background:#fff;padding-top:15px;margin-top:-15px;padding-bottom:13px}
+.dialog:has(.ci-import) .dialog-head h2{font-size:1.25rem;color:#174352}
+.ci-import{color:#274c5b;min-width:0}
+.ci-intro{font-size:.85rem;color:#587684;line-height:1.65;margin:3px 0 17px}
+.ci-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;margin:0 0 21px}
+.ci-overview-tile{background:#f0f8f8;border:1px solid #d5e9e6;border-radius:12px;padding:14px 12px;text-align:center;display:flex;flex-direction:column;gap:3px}
+.ci-overview-tile strong{font-size:1.6rem;line-height:1.2;color:#0b747a;font-weight:900;font-variant-numeric:tabular-nums}
+.ci-overview-tile span{font-size:.76rem;color:#4c7180;font-weight:700}
+.ci-section{border:1px solid #dce8ec;background:#fff;border-radius:12px;padding:18px 19px;margin-bottom:15px;min-width:0}
+.ci-section h3{font-size:1.03rem;color:#1c4555;margin:0 0 5px;font-weight:850}
+.ci-section-note{color:#6a8592;font-size:.81rem;margin:0 0 14px;line-height:1.55}
+.ci-core-mapping{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px 18px}
+.ci-map-field{min-width:0;gap:7px;font-size:.82rem}
+.ci-map-field select{min-width:0;background:#fff;border-color:#b9d5db}
+.ci-map-label{display:flex;justify-content:space-between;align-items:center;gap:9px}
+.ci-map-state{display:inline-block;font-size:.71rem;font-weight:750;color:#237d63;white-space:nowrap}
+.ci-not-mapped .ci-map-state{color:#ad6d28}
+.ci-not-mapped select{background:#fffaf3;border-color:#e3c99e}
+.ci-session-section{background:#f7fbfa}
+.ci-session-item{border:1px solid #d6e5e7;background:#fff;border-radius:10px;padding:13px 14px;margin-top:12px}
+.ci-session-item h4{font-size:.9rem;margin:0 0 9px;color:#28596b}
+.ci-radio-options{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.ci-radio-choice{display:flex;align-items:center;gap:7px;cursor:pointer;border:1px solid #cadde3;padding:8px 12px;border-radius:8px;font-size:.82rem;font-weight:700;color:#4b6775;background:#fff}
+.ci-radio-choice:has(input:checked){border-color:#67b9b1;background:#e6f5f3;color:#0b7477}
+.ci-radio-choice input{accent-color:#0a7b7e;flex:none;margin:0}
+.ci-session-column{max-width:430px;margin-top:12px}
+.ci-session-hint{font-size:.75rem;color:#718894;margin:10px 0 0}
+.ci-advanced{border:1px solid #dbe6eb;background:#f9fbfc;border-radius:11px;margin:15px 0}
+.ci-advanced summary{cursor:pointer;font-size:.88rem;font-weight:800;color:#176b77;padding:15px 17px;list-style-position:inside}
+.ci-advanced[open] summary{border-bottom:1px solid #dce7ec}
+.ci-advanced-body{padding:17px}
+.ci-extra-mapping{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px 18px}
+.ci-conflict{margin-top:16px;max-width:550px}
+.ci-sample-section{margin-top:15px}
+.ci-sample-table{margin:0;border:1px solid #d9e6ea;border-radius:9px;max-height:240px;overflow:auto}
+.ci-sample-table table{min-width:570px;width:100%}
+.ci-sample-table th{background:#e9f2f4;color:#406272}
+.ci-sample-table td,.ci-sample-table th{padding:10px 12px;font-size:.82rem}
+.ci-results{margin:0 0 16px}
+.ci-result-label{font-weight:850;font-size:.93rem;margin-bottom:9px;color:#204c5e}
+.ci-result-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.ci-result-stats>div{display:flex;align-items:baseline;justify-content:center;gap:8px;padding:11px;border-radius:9px;background:#eef6f7}
+.ci-result-stats strong{font-size:1.25rem;color:#0a707a;font-variant-numeric:tabular-nums}
+.ci-result-stats span{font-size:.79rem;color:#536f7d;font-weight:700}
+.ci-info-note{font-size:.79rem;color:#687d88;margin:10px 2px 0}
+.ci-warning{border:1px solid #e7cf9c;border-left:4px solid #daa44e;background:#fff7e7;color:#7e581f;border-radius:9px;padding:11px 13px;margin:12px 0;font-size:.84rem;font-weight:650;line-height:1.55}
+.ci-warning.ci-error{color:#973b3f;border-color:#ebc3c4;border-left-color:#c65861;background:#fff1ef}
+.ci-footer{position:sticky;bottom:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 0 18px;border-top:1px solid #dbe6ea;background:#fff;box-shadow:0 -7px 15px #ffffffdd}
+.ci-footer-action{display:flex;align-items:center;gap:14px;min-width:0}
+.ci-footer-summary{font-size:.79rem;color:#5c7683;white-space:nowrap}
+.ci-footer #csvCommit{font-weight:800;padding:12px 18px;white-space:nowrap}
+.ci-footer #csvCommit:disabled{opacity:.5;cursor:not-allowed}
+.ci-import button:focus-visible,.ci-import select:focus-visible,.ci-import input:focus-visible{outline:3px solid #d9a441;outline-offset:2px}
+@media(max-width:670px){
+ .dialog:has(.ci-import){padding:17px 13px 0}
+ .dialog:has(.ci-import) .dialog-head{top:-17px}
+ .ci-overview{gap:6px}
+ .ci-overview-tile{padding:11px 4px}
+ .ci-overview-tile strong{font-size:1.3rem}
+ .ci-overview-tile span{font-size:.67rem;line-height:1.35}
+ .ci-section{padding:15px 12px}
+ .ci-core-mapping,.ci-extra-mapping{grid-template-columns:1fr}
+ .ci-radio-options{display:grid;grid-template-columns:1fr}
+ .ci-footer{align-items:stretch}
+ .ci-footer-action{flex-direction:column;align-items:flex-end;gap:3px}
+ .ci-footer-summary{font-size:.72rem}
+ .ci-footer #csvCommit{white-space:normal;text-align:center}
+}
