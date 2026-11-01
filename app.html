@@ -164,7 +164,7 @@
     </div>
     <div class="out-roster-controls">
      <div class="out-roster-field">
-      <div class="out-control-label"><label for="rosterSession">印刷する受付区分</label><details class="out-export-help"><summary aria-label="受付区分の詳しい説明" title="受付区分について">ⓘ</summary><div class="out-tooltip" role="note">午前・午後など、印刷したい受付区分を選びます。各区分の参加予定者のみを印刷します。</div></details></div>
+      <div class="out-control-label"><label for="rosterSession">印刷する受付区分</label><div class="out-export-help"><button type="button" class="out-info-trigger" data-output-help aria-label="受付区分の詳しい説明" aria-expanded="false" aria-controls="outHelp1" title="受付区分について">ⓘ</button><div class="out-tooltip" id="outHelp1" role="tooltip">午前・午後など、印刷したい受付区分を選びます。各区分の参加予定者のみを印刷します。</div></div></div>
       <select id="rosterSession" aria-label="紙名簿を印刷する受付区分"></select>
      </div>
      <button type="button" class="btn main out-print-btn" id="printRosterPrep"><svg class="out-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="6" y="14" width="12" height="7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/></svg><span>受付名簿を印刷</span></button>
@@ -176,13 +176,13 @@
     <div class="out-export-list">
     <div class="out-export-card"><button type="button" id="exportResult"  class="out-export-action">
   <span class="out-export-icon" aria-hidden="true"><svg class="out-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M13 2v7h7"/><path d="M7 17h10"/><path d="M7 14h10"/></svg></span><span class="out-export-text"><strong>このイベントの区分別CSV</strong><small>参加者×受付区分ごとの受付結果を出力</small></span>
- </button><details class="out-export-help"><summary aria-label="このイベントの区分別CSVの詳しい説明" title="このイベントの区分別CSVについて">ⓘ</summary><div class="out-tooltip" role="note">現在のイベントについて、参加者と受付区分の組み合わせごとに1行出力します。受付状況・受付日時・所属・職員番号などをExcelで集計する用途です。</div></details></div>
+ </button><div class="out-export-help"><button type="button" class="out-info-trigger" data-output-help aria-label="このイベントの区分別CSVの詳しい説明" aria-expanded="false" aria-controls="outHelp2" title="このイベントの区分別CSVについて">ⓘ</button><div class="out-tooltip" id="outHelp2" role="tooltip">現在のイベントについて、参加者と受付区分の組み合わせごとに1行出力します。受付状況・受付日時・所属・職員番号などをExcelで集計する用途です。</div></div></div>
     <div class="out-export-card"><button type="button" id="exportAudit"  class="out-export-action">
   <span class="out-export-icon" aria-hidden="true"><svg class="out-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M13 2v7h7"/><circle cx="15" cy="17" r="4.5"/><path d="M15 14.5V17l1.5 1"/></svg></span><span class="out-export-text"><strong>受付変更履歴CSV</strong><small>初回受付・取消・再受付の履歴を出力</small></span>
- </button><details class="out-export-help"><summary aria-label="受付変更履歴CSVの詳しい説明" title="受付変更履歴CSVについて">ⓘ</summary><div class="out-tooltip" role="note">現在のイベントの初回受付、受付取消、再受付を時刻・方法・取消理由とともに出力します。監査・修正内容の確認に使えます。</div></details></div>
-    <div class="out-export-card"><button type="button" id="" data-backup class="out-export-action">
+ </button><div class="out-export-help"><button type="button" class="out-info-trigger" data-output-help aria-label="受付変更履歴CSVの詳しい説明" aria-expanded="false" aria-controls="outHelp3" title="受付変更履歴CSVについて">ⓘ</button><div class="out-tooltip" id="outHelp3" role="tooltip">現在のイベントの初回受付、受付取消、再受付を時刻・方法・取消理由とともに出力します。監査・修正内容の確認に使えます。</div></div></div>
+    <div class="out-export-card"><button type="button" data-backup class="out-export-action">
   <span class="out-export-icon" aria-hidden="true"><svg class="out-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M13 2v7h7"/><path d="M10 13c-2 0-1 2-3 2 2 0 1 2 3 2M14 13c2 0 1 2 3 2-2 0-1 2-3 2"/></svg></span><span class="out-export-text"><strong>全イベントJSON</strong><small>全イベントのバックアップ・移行用</small></span>
- </button><details class="out-export-help"><summary aria-label="全イベントJSONの詳しい説明" title="全イベントJSONについて">ⓘ</summary><div class="out-tooltip" role="note">このイベントだけでなく、このPCのブラウザに保存された全イベントの設定・名簿・受付履歴をまとめてバックアップします。復元にも使用できます。個人情報を含むため適切に保管してください。</div></details></div>
+ </button><div class="out-export-help"><button type="button" class="out-info-trigger" data-output-help aria-label="全イベントJSONの詳しい説明" aria-expanded="false" aria-controls="outHelp4" title="全イベントJSONについて">ⓘ</button><div class="out-tooltip" id="outHelp4" role="tooltip">このイベントだけでなく、このPCのブラウザに保存された全イベントの設定・名簿・受付履歴をまとめてバックアップします。復元にも使用できます。個人情報を含むため適切に保管してください。</div></div></div>
     </div>
    </section>
   </div>
