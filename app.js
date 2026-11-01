@@ -2,7 +2,7 @@
 (()=>{"use strict";
 const $=id=>document.getElementById(id), IX="QRReception:index:v1", PREFIX="QRReception:event:v1:", META="QRReception:meta:v1", STORAGE_BUDGET=5000000;
 let meta={},audioCtx=null;
-const SCHEMA=1, db=new Map();let order=[],activeId=null,view="home",homeTab="events",prepTab="settings",day=false,qrRendered="",scannerStarted=false,lastScan="",lastScanAt=0,dialogReturnFocus=null,receptionTab="pending";
+const SCHEMA=1, db=new Map();let order=[],activeId=null,view="home",homeTab="events",prepTab="settings",day=false,qrRendered="",lastScan="",lastScanAt=0,dialogReturnFocus=null,receptionTab="pending";
 const esc=x=>String(x??"").replace(/[&<>"']/g,s=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[s]));
 const clone=x=>JSON.parse(JSON.stringify(x));
 const catName=x=>({training:"研修",briefing:"説明会",other:"その他"}[x]||"その他");
@@ -56,8 +56,6 @@ function renderSteps(){const e=current();if(!e)return;const st=stepStates(e),nx=
  text.innerHTML='<span class="next-label">次にやること</span><strong>'+"①②③④"[nx.index]+" "+esc(nx.label)+'</strong>　'+esc(nx.todo)+(here?'<small>（この画面で操作します）</small>':'');box.append(text);
  if(!here){const go=document.createElement("button");go.type="button";go.className="btn main";go.dataset.prep=nx.tab;go.textContent=nx.label+"へ →";box.append(go);}
 }
-const SCANNER_JA=[[/^Request Camera Permissions$/,"カメラを起動する"],[/^Requesting camera permissions\.\.\.$/,"カメラの使用を許可してください…"],[/^Start Scanning$/,"読み取り開始"],[/^Stop Scanning$/,"読み取り停止"],[/^Scan an Image File$/,"画像ファイルから読み取る"],[/^Scan using camera directly$/,"カメラで読み取る"],[/^Select Camera(.*)$/,"カメラを選択$1"],[/^Launching Camera\.\.\.$/,"カメラを起動中…"],[/^No camera found$/,"カメラが見つかりません"],[/^No Cameras$/,"カメラなし"],[/^Choose Image - No image choosen$/,"画像を選択 - 未選択"],[/^Choose Image$/,"画像を選択"],[/^Choose Another$/,"別の画像を選択"],[/^No image choosen$/,"画像が選択されていません"],[/^Or drop an image to scan.*$/,"または画像をここにドロップ"],[/^Scanning$/,"読み取り中"],[/^Idle$/,"待機中"],[/^Scanner paused$/,"一時停止中"],[/^Loading image\.\.\.$/,"画像を読み込み中…"],[/^Permission$/,"権限"],[/^Error$/,"エラー"],[/^Switch On Torch$/,"ライトを点ける"],[/^Switch Off Torch$/,"ライトを消す"],[/^Camera access is only supported in secure context.*$/,"このページではカメラを使用できません（HTTPS等が必要な環境です）。紙名簿や手動受付を利用してください。"]];
-function translateScanner(root){const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode())){const t=n.nodeValue.trim();if(!t)continue;for(const [re,ja] of SCANNER_JA){if(re.test(t)){const v=t.replace(re,ja);if(v!==t)n.nodeValue=v;break;}}}}
 function dayCheckState(){const e=current(),today=new Date().toLocaleDateString("ja-JP"),d=meta.dayCheck?.[e.id];return d&&d.date===today?d.items:[];}
 function renderDayCheck(){const items=dayCheckState(),all=["session","camera","sound","paper"],ok=all.every(x=>items.includes(x));for(const c of document.querySelectorAll("[data-day-check]"))c.checked=items.includes(c.dataset.dayCheck);$("dayCheckSession").textContent=curSession()?.name||"";const st=$("dayCheckStatus");st.textContent=ok?"✓ 準備OK":"未確認 "+items.length+"/4";st.className="tag"+(ok?"":" warn");if(ok&&!$("dayCheck").dataset.userOpened)$("dayCheck").open=false;}
 function saveDayCheck(){const e=current();meta.dayCheck||={};meta.dayCheck[e.id]={date:new Date().toLocaleDateString("ja-JP"),items:[...document.querySelectorAll("[data-day-check]:checked")].map(c=>c.dataset.dayCheck)};saveMeta();renderDayCheck();}
@@ -312,33 +310,42 @@ function renderReception(){
  }
  showReceptionTab(receptionTab);
  renderDayCheck();
- if(!scannerStarted)startScanner();
+ if(!CAM.running&&!CAM.busy&&meta.cameraId)startCamera();
 }
-function startScanner(){
- scannerStarted=true;
- if(typeof Html5QrcodeScanner!=="function"){$("cameraHint").textContent="QR読み取りライブラリが見つかりません。vendor/を確認してください。";return;}
+/* Camera scanning with Html5Qrcode directly (own Japanese UI).
+   The library decodes the qrbox at its on-screen CSS size, so the reader is laid out at the camera's native width
+   and only visually scaled down. That keeps the decode canvas at full camera resolution (HD when available),
+   which lets fixed-focus laptop cameras read cards held 30-40cm away instead of only very close and blurry. */
+const CAM={qr:null,running:false,busy:false,width:1280};
+function camHint(t,level=""){const h=$("cameraHint");h.textContent=t;h.className="hint"+(level?" cam-"+level:"");}
+function camUI(){$("cameraStart").hidden=CAM.running;$("cameraStop").hidden=!CAM.running;$("cameraStart").disabled=CAM.busy;$("cameraSelect").disabled=CAM.busy;}
+function fitReader(){const vp=$("readerViewport"),r=$("reader");if(!CAM.running){r.style.transform="";vp.style.height="";return;}const k=Math.min(1,vp.clientWidth/CAM.width),off=Math.max(0,(vp.clientWidth-CAM.width*k)/2);r.style.transform="translateX("+off+"px) scale("+k+")";vp.style.height=Math.ceil(r.offsetHeight*k)+"px";}
+function camError(err){const n=err?.name||"",m=String(err?.message||err||"");
+ if(!window.isSecureContext&&!navigator.mediaDevices)return "このページではカメラを使用できません（HTTPS等が必要な環境です）。紙名簿や「名前から受付」を利用してください。";
+ if(n==="NotAllowedError"||/Permission|NotAllowed/i.test(m))return "カメラの使用が許可されていません。アドレスバーのカメラのアイコンから「許可」にして、もう一度「カメラを起動」を押してください。";
+ if(n==="NotFoundError"||/NotFound|no camera|Requested device not found/i.test(m))return "カメラが見つかりません。USBカメラの接続や、PCのカメラ設定を確認してください。";
+ if(n==="NotReadableError"||/NotReadable|Could not start video source/i.test(m))return "カメラを開始できません。Teams・Zoomなど他のアプリがカメラを使っていないか確認してください。";
+ return "カメラを開始できません："+m;}
+async function loadCameras(){const cams=await Html5Qrcode.getCameras(),sel=$("cameraSelect");sel.replaceChildren();cams.forEach((c,i)=>sel.add(new Option(c.label||"カメラ "+(i+1),c.id)));if(!cams.length)throw {name:"NotFoundError"};if(cams.some(c=>c.id===meta.cameraId))sel.value=meta.cameraId;sel.hidden=cams.length<2;}
+function onScan(text){const code=String(text).trim(),now=Date.now();if(code===lastScan&&now-lastScanAt<1500)return;lastScan=code;lastScanAt=now;if(!day||view!=="event")return;checkInByToken(code);}
+async function startCamera(){
+ if(CAM.busy||CAM.running)return;
+ if(typeof Html5Qrcode!=="function")return camHint("QR読み取りライブラリが見つかりません。vendor/ を確認してください。","error");
+ CAM.busy=true;camUI();camHint("カメラを起動中…（初回は許可を求める表示が出ます）");
  try{
-  const scanner=new Html5QrcodeScanner("reader",{
-   fps:12,
-   qrbox:(viewWidth,viewHeight)=>{const side=Math.max(140,Math.floor(Math.min(viewWidth,viewHeight)*0.8));return {width:side,height:side};},
-   rememberLastUsedCamera:true,
-   aspectRatio:1.3333333,
-   // Staff QR cards are QR only: skipping the other 15 barcode formats cuts per-frame decode work by ~30-45%.
-   ...(typeof Html5QrcodeSupportedFormats!=="undefined"?{formatsToSupport:[Html5QrcodeSupportedFormats.QR_CODE]}:{}),
-   // Use the browser's native detector where available (macOS/ChromeOS/Android); Windows falls back to the JS decoder.
-   experimentalFeatures:{useBarCodeDetectorIfSupported:true}
-  },false);
-  scanner.render(text=>{
-   const code=String(text).trim(),now=Date.now();
-   if(code===lastScan&&now-lastScanAt<1500)return;
-   lastScan=code;lastScanAt=now;
-   if(!day||view!=="event")return;
-   checkInByToken(code);
-  },()=>{});
-  const reader=$("reader");translateScanner(reader);new MutationObserver(()=>translateScanner(reader)).observe(reader,{subtree:true,childList:true,characterData:true});
-  $("cameraHint").textContent="「カメラを起動する」→「読み取り開始」を押してください。QRはカメラから20〜40cm離し、紙を平らにして枠内で止めます（近づけすぎるとピントが合わず遅くなります）。";
- }catch(err){$("cameraHint").textContent="カメラを開始できません："+err.message;}
+  if(!$("cameraSelect").options.length)await loadCameras();
+  const id=$("cameraSelect").value;
+  CAM.qr||=new Html5Qrcode("reader",{verbose:false,useBarCodeDetectorIfSupported:true,...(typeof Html5QrcodeSupportedFormats!=="undefined"?{formatsToSupport:[Html5QrcodeSupportedFormats.QR_CODE]}:{})});
+  const run=async()=>{$("reader").style.width=CAM.width+"px";await CAM.qr.start({deviceId:{exact:id}},{fps:12,qrbox:(w,h)=>{const side=Math.max(160,Math.floor(Math.min(w,h)*0.6));return {width:side,height:side};},videoConstraints:{deviceId:{exact:id},width:{ideal:1280},height:{ideal:720}}},onScan,()=>{});};
+  // Older webcams may deliver only 640x480; the 1280px layout then just upsamples, which still decodes fine.
+  await run();
+  CAM.running=true;meta.cameraId=id;saveMeta();
+  const st=CAM.qr.getRunningTrackSettings?.()||{};
+  camHint("読み取り中（"+(st.width||"?")+"×"+(st.height||"?")+"）。QRをカメラから20〜40cm離し、枠内で止めてください。"+((st.width||0)<1000?" ※このカメラは低解像度のため、少し近づける必要があります。":""),"ok");
+ }catch(err){CAM.running=false;camHint(camError(err),"error");try{if(CAM.qr?.isScanning)await CAM.qr.stop();}catch{}}
+ finally{CAM.busy=false;camUI();setTimeout(fitReader,50);}
 }
+async function stopCamera(){if(!CAM.running||CAM.busy)return;CAM.busy=true;try{await CAM.qr.stop();}catch{}CAM.running=false;CAM.busy=false;camUI();fitReader();camHint("カメラを停止しました。「▶ カメラを起動」で再開します。");}
 function eligibleQrPeople(e){return e.participants.filter(p=>!p.removed&&/^[0-9]+$/.test(p.staffId||""));}
 function renderQRSelect(){
  const e=current(),sel=$("qrPerson"),old=sel.value,people=eligibleQrPeople(e),other=e.participants.filter(p=>!p.removed).length-people.length;
@@ -739,7 +746,7 @@ function showImportPreview(rows,source){
 }
 function openDialog(title,body){dialogReturnFocus=document.activeElement;$("dialogTitle").textContent=title;$("dialogBody").replaceChildren(body);$("dialogBackdrop").hidden=false;$("closeDialog").focus();}
 function closeDialog(){$("dialogBackdrop").hidden=true;$("dialogBody").replaceChildren();dialogReturnFocus?.focus?.();}
-function render(){const home=view==="home";$("homeView").hidden=!home;$("eventView").hidden=home;if(home)renderHome();else renderEvent();renderBackupStatus();}
+function render(){const home=view==="home";if((home||!day)&&CAM.running)stopCamera();$("homeView").hidden=!home;$("eventView").hidden=home;if(home)renderHome();else renderEvent();renderBackupStatus();}
 function delegate(){document.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
 if(b.dataset.home){homeTab=b.dataset.home;announce("");render();return;}
 if(b.dataset.mode){day=b.dataset.mode==="day";announce("");render();return;}
@@ -760,6 +767,8 @@ for(const c of document.querySelectorAll("[data-day-check]"))c.onchange=saveDayC
 $("personQuery").oninput=renderParticipants;$("importParticipants").onclick=importParticipants;$("exportRoster").onclick=exportRoster;$("downloadTemplate").onclick=downloadTemplate;$("previewPaste").onclick=importFromPaste;for(const btn of document.querySelectorAll("[data-import-mode]"))btn.onclick=()=>setImportMode(btn.dataset.importMode);
 $("qrPerson").onchange=renderOneQR;$("showQR").onclick=renderOneQR;$("downloadQR").onclick=downloadOneQR;$("printQRs").onclick=printQR;$("exportQRZip").onclick=exportQRZip;
 $("exportResult").onclick=eventDetailCSV;$("exportAudit").onclick=exportAudit;$("printRosterPrep").onclick=()=>printReceptionRoster($("rosterSession").value);$("printRosterDay").onclick=()=>printReceptionRoster(curSession()?.id);$("checkinSession").onchange=()=>{showResult(null,"スキャン待機中","");renderReception();};
+$("cameraStart").onclick=startCamera;$("cameraStop").onclick=stopCamera;$("cameraSelect").onchange=async()=>{if(CAM.running){await stopCamera();}startCamera();};
+if(window.ResizeObserver){const ro=new ResizeObserver(()=>fitReader());ro.observe($("readerViewport"));ro.observe($("reader"));}
 $("mirrorToggle").checked=meta.mirror!==false;$("reader").classList.toggle("mirror",meta.mirror!==false);$("mirrorToggle").onchange=()=>{meta.mirror=$("mirrorToggle").checked;saveMeta();$("reader").classList.toggle("mirror",meta.mirror);};
 $("soundToggle").checked=meta.sound!==false;$("soundToggle").onchange=()=>{meta.sound=$("soundToggle").checked;saveMeta();if(meta.sound){primeAudio();setTimeout(()=>feedback("success"),60);}};
 document.addEventListener("pointerdown",primeAudio,{passive:true});document.addEventListener("keydown",primeAudio);

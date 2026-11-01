@@ -102,14 +102,14 @@
   <details id="dayCheck" class="panel day-check" open><summary><strong>受付開始前の確認</strong> <span id="dayCheckStatus" class="tag warn">未確認</span></summary>
    <div class="day-check-items">
     <label class="check"><input type="checkbox" data-day-check="session"> 受付区分が正しい（現在：<b id="dayCheckSession"></b>）</label>
-    <label class="check"><input type="checkbox" data-day-check="camera"> 下の「カメラを起動する」を押し、テスト用QRで読み取れた</label>
+    <label class="check"><input type="checkbox" data-day-check="camera"> 下の「▶ カメラを起動」を押し、テスト用QRで読み取れた</label>
     <label class="check"><input type="checkbox" data-day-check="sound"> 受付音が聞こえる <button type="button" class="btn small" id="soundTest">♪ 音を試す</button></label>
     <label class="check"><input type="checkbox" data-day-check="paper"> 紙の受付名簿を手元に用意した（PC不調時用）</label>
    </div>
   </details>
   <div class="day-session"><div class="row"><strong>受付区分</strong><div class="buttons"><label class="check sound-toggle"><input type="checkbox" id="soundToggle" checked> 受付音を鳴らす</label><button type="button" class="btn small" id="printRosterDay">▤ 受付名簿を印刷</button></div></div><select id="checkinSession"></select></div><div id="daySummary" class="summary"></div>
   <div class="reception-grid">
-  <div><div class="panel"><h3>QR受付</h3><div class="camera"><div id="reader" class="reader"></div><div id="cameraHint" class="hint">「カメラを起動する」→「読み取り開始」を押し、QRを枠内にかざしてください。</div><label class="check mirror-toggle"><input type="checkbox" id="mirrorToggle" checked> 映像を鏡のように表示（PC内蔵・正面向きカメラ向け）</label></div><div id="checkinResult" class="result" role="status" aria-live="polite">スキャン待機中</div></div>
+  <div><div class="panel"><h3>QR受付</h3><div class="camera"><div class="camera-controls"><select id="cameraSelect" aria-label="使用するカメラ" hidden></select><button type="button" id="cameraStart" class="btn main">▶ カメラを起動</button><button type="button" id="cameraStop" class="btn" hidden>■ 停止</button></div><div id="readerViewport" class="reader-viewport"><div id="reader" class="reader"></div></div><div id="cameraHint" class="hint">「▶ カメラを起動」を押すと読み取りを始めます（初回はカメラの許可を求められます）。</div><label class="check mirror-toggle"><input type="checkbox" id="mirrorToggle" checked> 映像を鏡のように表示（PC内蔵・正面向きカメラ向け）</label></div><div id="checkinResult" class="result" role="status" aria-live="polite">スキャン待機中</div></div>
   <div class="panel"><h3>当日の参加者変更</h3><div class="grid2"><button id="walkinBtn" class="btn main">＋ 飛び入り登録</button><button id="manualBtn" class="btn">⌕ 名前から受付</button></div></div></div>
   <div class="panel attendance-panel">
     <div class="pending-header"><h3 style="margin:0">受付状況 <span id="pendingSessionName" class="tag"></span></h3></div>
