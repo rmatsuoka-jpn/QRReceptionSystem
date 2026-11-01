@@ -820,7 +820,7 @@ function templateRows(e){
 function downloadTemplate(){const e=current();csvDownload(templateRows(e),"template_"+fileSafe(e.id)+".csv");announce("CSV形式のひな形を出力しました。Excelで開くと職員番号の先頭の0が消えるため、Excel形式のひな形をおすすめします。","success");}
 function xmlEsc(v){return String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,"");}
 function colName(i){let s="";i++;while(i>0){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26);}return s;}
-function xlsxBlob(rows,textCols,sheetName){
+async function xlsxBlob(rows,textCols,sheetName){
  const NS='xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"',HEAD='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
  const width=rows[0].length,cols=Array.from({length:width},(_,i)=>'<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+(i===0?20:16)+'" customWidth="1"'+(textCols.includes(i)?' style="1"':'')+'/>').join("");
  const data=rows.map((r,ri)=>'<row r="'+(ri+1)+'">'+r.map((v,ci)=>'<c r="'+colName(ci)+(ri+1)+'" t="inlineStr" s="'+(ri===0?(textCols.includes(ci)?3:2):(textCols.includes(ci)?1:0))+'"><is><t>'+xmlEsc(v)+'</t></is></c>').join("")+'</row>').join("");
@@ -831,11 +831,13 @@ function xlsxBlob(rows,textCols,sheetName){
   {name:"xl/_rels/workbook.xml.rels",content:HEAD+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'},
   {name:"xl/styles.xml",content:HEAD+'<styleSheet '+NS+'><fonts count="2"><font><sz val="11"/><name val="游ゴシック"/></font><font><b/><sz val="11"/><name val="游ゴシック"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE2F0F1"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="49" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="49" fontId="1" fillId="2" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>'},
   {name:"xl/worksheets/sheet1.xml",content:HEAD+'<worksheet '+NS+'><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>'+cols+'</cols><sheetData>'+data+'</sheetData></worksheet>'}];
- return globalThis.QRSupport.zip(files,{paths:true});
+ if(typeof JSZip!=="function")throw Error("ファイル作成ライブラリ（JSZip）がありません");
+ const zip=new JSZip();for(const f of files)zip.file(f.name,f.content);
+ return zip.generateAsync({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",compression:"DEFLATE"});
 }
-function downloadTemplateXlsx(){
- const e=current();if(!globalThis.QRSupport)return announce("ファイル作成ライブラリがありません。","error");
- try{downloadBlob(new Blob([xlsxBlob(templateRows(e),[1],"参加者")],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),"template_"+fileSafe(e.id)+".xlsx");
+async function downloadTemplateXlsx(){
+ const e=current();if(typeof JSZip!=="function")return announce("ファイル作成ライブラリ（JSZip）がありません。配信ファイルを確認してください。","error");
+ try{downloadBlob(await xlsxBlob(templateRows(e),[1],"参加者"),"template_"+fileSafe(e.id)+".xlsx");
   announce("Excel形式のひな形を出力しました。職員番号の列は文字列に設定済みです。記入後、表を見出しごとコピーして「Excelから貼り付け」に貼り付けてください。","success");}
  catch(err){announce("ひな形を作成できません："+err.message,"error");}
 }
@@ -843,10 +845,10 @@ const qrZipButtonLabel=document.getElementById("exportQRZip")?.innerHTML||"⇩ �
 async function exportQRZip(){
  const button=$("exportQRZip"),e=current(),people=eligibleQrPeople(e);const skipped=e.participants.filter(p=>!p.removed&&!validStaff(p.staffId)).length;
  if(!people.length)return announce("QR発行対象者がいません。","warn");
- if(typeof QRCode!=="function"||!globalThis.QRSupport)return announce("QR/ZIPライブラリがありません。配信ファイルを確認してください。","error");
+ if(typeof QRCode!=="function"||typeof JSZip!=="function")return announce("QR/ZIPライブラリがありません。配信ファイルを確認してください。","error");
  button.disabled=true;button.textContent="QRを生成中…";
  try{
-  const files=[],csv=[["participant_id","name","staff_id","department","group","qr_png_filename"]];
+  const zip=new JSZip(),csv=[["participant_id","name","staff_id","department","group","qr_png_filename"]];
   const imgSize=360;
   for(let i=0;i<people.length;i++){
    const p=people[i],qr=document.createElement("div");
@@ -855,13 +857,14 @@ async function exportQRZip(){
    if(!qrImage)throw Error(p.name+" のQR画像を生成できません");
    const png=await qrCardDataURL(p,qrImage);
    const filename="QR_"+fileSafe(e.id)+"_"+p.id+".png";
-   files.push({name:filename,content:globalThis.QRSupport.pngBytes(png)});
+   if(!/^data:image\/png;base64,/.test(png))throw Error(p.name+" のQR画像を読み取れません");
+   zip.file(filename,png.slice(png.indexOf(",")+1),{base64:true});
    csv.push([p.id,p.name,p.staffId,p.department||"",p.group||"",filename]);
    if((i+1)%20===0){button.textContent="生成中 "+(i+1)+"/"+people.length;await new Promise(resolve=>setTimeout(resolve,0));}
   }
-  files.push({name:"qr_mapping.csv",content:"\uFEFF"+csv.map(row=>row.map(csvCell).join(",")).join("\r\n")+"\r\n"});
-  files.push({name:"README.txt",content:"QR受付システム　QR配布用\nイベント: "+e.name+"\n開催日: "+e.date+"\n発行数: "+people.length+"\n\n画像はQR・氏名・職員番号・グループが一体になった名刺型カードです。\n画像ファイル名と参加者の対応はqr_mapping.csvを確認してください。\nQRの内容は職員番号だけです。職員番号未登録者は発行対象外です。\n"});
-  const archive=globalThis.QRSupport.zip(files);
+  zip.file("qr_mapping.csv","\uFEFF"+csv.map(row=>row.map(csvCell).join(",")).join("\r\n")+"\r\n");
+  zip.file("README.txt","QR受付システム　QR配布用\nイベント: "+e.name+"\n開催日: "+e.date+"\n発行数: "+people.length+"\n\n画像はQR・氏名・職員番号・グループが一体になった名刺型カードです。\n画像ファイル名と参加者の対応はqr_mapping.csvを確認してください。\nQRの内容は職員番号だけです。職員番号未登録者は発行対象外です。\n");
+  const archive=await zip.generateAsync({type:"blob",mimeType:"application/zip",compression:"STORE"});
   downloadBlob(archive,"QR_reception_"+fileSafe(e.id)+"_"+stamp()+".zip");
   markStep(current().id,"qr");announce(people.length+"名分のQRと対応表をZIP出力しました。職員番号なし "+skipped+"名は除外しました。","success");
  }catch(err){announce("QRの一括発行に失敗しました："+err.message,"error");}
@@ -1109,7 +1112,7 @@ async function importParticipants(){
  showImportPreview(rows,"csv");
 }
 /* 貼り付けデータの区切り文字（タブ／カンマ）を、先頭の論理行で判定する。引用符内のカンマ・改行は数えない。
-   ZIP作成などの補助（app-support.js）とは役割が異なるため、画面側の処理としてここに置く。 */
+   画面側（貼り付け取り込み）の処理としてここに置く。 */
 function detectPasteDelimiter(text){
  const input=String(text??"").replace(/^\uFEFF/,"");let quoted=false,tabs=0,commas=0;
  for(let i=0;i<input.length;i++){
