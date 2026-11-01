@@ -70,7 +70,7 @@ function renderSteps(){const e=current();if(!e)return;const st=stepStates(e),nx=
 function dayCheckState(){const e=current(),today=new Date().toLocaleDateString("ja-JP"),d=meta.dayCheck?.[e.id];return d&&d.date===today?d.items:[];}
 function renderDayCheck(){const items=dayCheckState(),all=["session","camera","sound","paper"],ok=all.every(x=>items.includes(x));for(const c of document.querySelectorAll("[data-day-check]"))c.checked=items.includes(c.dataset.dayCheck);$("dayCheckSession").textContent=curSession()?.name||"";const st=$("dayCheckStatus");st.textContent=ok?"✓ 準備OK":"未確認 "+items.length+"/4";st.className="tag"+(ok?"":" warn");if(ok&&!$("dayCheck").dataset.userOpened)$("dayCheck").open=false;}
 function saveDayCheck(){const e=current();meta.dayCheck||={};meta.dayCheck[e.id]={date:new Date().toLocaleDateString("ja-JP"),items:[...document.querySelectorAll("[data-day-check]:checked")].map(c=>c.dataset.dayCheck)};saveMeta();renderDayCheck();}
-function mutate(fn){const old=db.get(activeId);if(!old)return false;const next=clone(old);try{fn(next)}catch(err){announce(err.message,"error");return false;}if(!writeEvent(next))return false;render();return true;}
+function mutate(fn){const old=db.get(activeId);if(!old)return false;const next=clone(old);try{fn(next)}catch(err){announce(err.message,"error");return false;}if(!writeEvent(next))return false;render({keepScroll:true});return true;}
 function current(){return db.get(activeId);}
 function curSession(){const e=current();return e?.sessions.find(s=>s.id===$("checkinSession").value)||e?.sessions[0];}
 function checked(p,s){const c=p.checkins?.[s];return !!(c&&c.active!==false);}
@@ -105,9 +105,9 @@ const list=[...db.values()].filter(e=>(!q||e.name.toLocaleLowerCase("ja-JP").inc
 $("eventCount").textContent=list.length+" / "+db.size+"件を表示";
 for(const e of list){const x=evCounts(e),card=document.createElement("article");card.className="event-card";card.innerHTML='<div><span class="date-pill">'+esc(e.date||"日付未設定")+'</span><span class="category-pill">'+esc(catName(e.category))+'</span><h3>'+esc(e.name)+'</h3><div class="code">'+esc(e.id)+'</div></div><div><div class="row status"><span>受付進捗</span><strong>'+x.done+" / "+x.target+'</strong></div><div class="progress"><div style="width:'+x.percent+'%"></div></div></div><div class="event-controls"><div class="status">'+e.participants.filter(p=>!p.removed).length+'名 登録　・　'+e.sessions.length+'区分　'+nextBadge(e)+'</div><div class="buttons"><button class="btn small" data-action="prep" data-id="'+esc(e.id)+'">⚙ 準備</button><button class="btn main small" data-action="day" data-id="'+esc(e.id)+'">▣ 受付</button><button class="btn small" data-action="clone" data-id="'+esc(e.id)+'">⧉ 複製</button><button class="btn danger small" data-action="delete" data-id="'+esc(e.id)+'">削除</button></div></div>';root.append(card);}
 if(!list.length){const p=document.createElement("div");p.className="panel";p.textContent="該当するイベントはありません。「＋ 新規イベント」から登録できます。";root.append(p);}}
-function renderEvent(){const e=current();if(!e)return openHome();$("eventTitle").textContent=e.name;$("eventSubtitle").textContent=(e.date||"開催日未設定")+"　／　"+e.id+"　／　"+catName(e.category);$("crumbEvent").textContent=e.name;$("rxEventName").textContent=e.name;$("crumbMode").textContent=day?"当日受付":"事前準備";$("prepView").hidden=day;$("receptionView").hidden=!day;for(const mode of ["prep","day"])document.querySelector('[data-mode="'+mode+'"]').classList.toggle("active",(mode==="day")===day);if(day){renderReception();return;}
+function renderEvent(keepScroll=false){const e=current();if(!e)return openHome();$("eventTitle").textContent=e.name;$("eventSubtitle").textContent=(e.date||"開催日未設定")+"　／　"+e.id+"　／　"+catName(e.category);$("crumbEvent").textContent=e.name;$("rxEventName").textContent=e.name;$("crumbMode").textContent=day?"当日受付":"事前準備";$("prepView").hidden=day;$("receptionView").hidden=!day;for(const mode of ["prep","day"])document.querySelector('[data-mode="'+mode+'"]').classList.toggle("active",(mode==="day")===day);if(day){renderReception();return;}
 for(const name of ["settings","participants","qr","results"]){$(name+"Panel").hidden=name!==prepTab;document.querySelector('[data-prep="'+name+'"]').classList.toggle("active",name===prepTab);}
-if(prepTab==="settings")renderSettings();if(prepTab==="participants")renderParticipants();if(prepTab==="qr")renderQRSelect();if(prepTab==="results")renderResults();renderSteps();window.scrollTo?.({top:0});}
+if(prepTab==="settings")renderSettings();if(prepTab==="participants")renderParticipants();if(prepTab==="qr")renderQRSelect();if(prepTab==="results")renderResults();renderSteps();if(!keepScroll)window.scrollTo?.({top:0});}
 function getCustomType(e,i){return e.customTypes?.[i]||"text";}
 function getCustomOptions(e,i){return e.customOptions?.[i]||[];}
 function normalizeCustom(e,i,value){
@@ -187,10 +187,19 @@ function saveSettings(){
  })){announce("イベント設定を保存しました。","success");renderSteps();return true;}
  return false;
 }
+function sessionLocalFeedback(message,type="success",id=null){
+ const note=$("sessionInlineStatus");if(!note)return;note.textContent=message;note.hidden=false;note.className="es-session-inline-status "+type;
+ for(const line of $("sessionEditor").children)line.classList.toggle("es-just-added",!!id&&line.querySelector("[data-session-name]")?.dataset.sessionName===id);
+}
 function addSession(preset=null){
- const name=(typeof preset==="string"?preset:$("newSessionName").value).trim();if(!name)return announce("受付区分名を入力してください。","warn");const snap=settingsSnapshot();
- if(Object.values(snap.ns).some(v=>v.trim()===name))return announce("同じ名前の受付区分があります。","warn");
- if(mutate(e=>{if(e.sessions.some(s=>s.name===name))throw Error("同じ名前の受付区分があります");const id=sessionId();e.sessions.push({id,name});for(const p of e.participants)p.planned[id]=false;})){snap.add="";restoreSettingsSnapshot(snap);announce("「"+name+"」を受付区分に追加しました。","success");}
+ const name=(typeof preset==="string"?preset:$("newSessionName").value).trim();
+ if(!name){sessionLocalFeedback("受付区分名を入力してください。","warn");return;}
+ const snap=settingsSnapshot();
+ if(Object.values(snap.ns).some(v=>v.trim()===name)){sessionLocalFeedback("「"+name+"」は設定済みです。","warn");return;}
+ let newId=null;
+ if(mutate(e=>{if(e.sessions.some(s=>s.name===name))throw Error("同じ名前の受付区分があります");newId=sessionId();e.sessions.push({id:newId,name});for(const p of e.participants)p.planned[newId]=false;})){
+  snap.add="";restoreSettingsSnapshot(snap);announce("");sessionLocalFeedback("「"+name+"」を追加しました。","success",newId);
+ }
 }
 function removeSession(id){
  const e=current(),s=e.sessions.find(x=>x.id===id);if(!s)return;if(e.sessions.length===1)return announce("受付区分は最低1つ必要です。","warn");
@@ -1067,7 +1076,7 @@ function showImportPreview(rows,source){
 }
 function openDialog(title,body){dialogReturnFocus=document.activeElement;$("dialogTitle").textContent=title;$("dialogBody").replaceChildren(body);$("dialogBackdrop").hidden=false;$("closeDialog").focus();}
 function closeDialog(){$("dialogBackdrop").hidden=true;$("dialogBody").replaceChildren();dialogReturnFocus?.focus?.();}
-function render(){const home=view==="home";document.body.classList.toggle("day-mode",!home&&day);if((home||!day)&&CAM.running)stopCamera();$("homeView").hidden=!home;$("eventView").hidden=home;if(home)renderHome();else renderEvent();renderBackupStatus();}
+function render({keepScroll=false}={}){const home=view==="home";document.body.classList.toggle("day-mode",!home&&day);if((home||!day)&&CAM.running)stopCamera();$("homeView").hidden=!home;$("eventView").hidden=home;if(home)renderHome();else renderEvent(keepScroll);renderBackupStatus();}
 function delegate(){document.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
 if(b.dataset.ptPage!==undefined){setParticipantPage(Number(b.dataset.ptPage));return;}
 if(b.dataset.outputHelp!==undefined){
