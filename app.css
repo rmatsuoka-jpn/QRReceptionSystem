@@ -457,12 +457,14 @@ body.day-mode .notice{position:fixed;left:50%;bottom:18px;transform:translateX(-
 #resultsPanel .out-export-text strong{display:block;font-size:.91rem;margin:0 0 5px;font-weight:800;line-height:1.35}
 #resultsPanel .out-export-text small{display:block;font-size:.75rem;line-height:1.5;color:#506c7a;font-weight:500}
 #resultsPanel .out-export-help{position:absolute;right:10px;top:11px;z-index:5}
-#resultsPanel .out-export-help summary{list-style:none;display:grid;place-items:center;width:23px;height:23px;font-size:1.1rem;font-weight:800;color:#087582;border-radius:50%;cursor:pointer}
-#resultsPanel .out-export-help summary::-webkit-details-marker{display:none}
-#resultsPanel .out-export-help summary:hover,#resultsPanel .out-export-help[open] summary{background:#e1f2f0}
+#resultsPanel .out-info-trigger{display:grid;place-items:center;width:23px;height:23px;padding:0;border:0;background:transparent;font-size:1.1rem;font-weight:800;color:#087582;border-radius:50%;cursor:pointer}
+#resultsPanel .out-info-trigger:hover,#resultsPanel .out-export-help.is-open .out-info-trigger{background:#e1f2f0}
+#resultsPanel .out-roster-field .out-export-help{position:relative;top:auto;right:auto;z-index:6}
+#resultsPanel .out-roster-field .out-tooltip{right:auto;left:-12px}
+#resultsPanel .out-roster-field .out-tooltip::after{right:auto;left:15px}
 #resultsPanel .out-tooltip{position:absolute;right:-6px;bottom:calc(100% + 9px);width:240px;padding:11px 13px;border-radius:10px;background:#1c3748;color:#fff;font-size:.8rem;line-height:1.5;box-shadow:0 8px 18px rgba(0,0,0,.16);font-weight:500;opacity:0;visibility:hidden;pointer-events:none}
 #resultsPanel .out-tooltip::after{content:"";position:absolute;top:100%;right:12px;border:7px solid transparent;border-top-color:#1c3748}
-#resultsPanel .out-export-help:hover .out-tooltip,#resultsPanel .out-export-help:focus-within .out-tooltip,#resultsPanel .out-export-help[open] .out-tooltip{opacity:1;visibility:visible;pointer-events:auto}
+#resultsPanel .out-export-help:hover .out-tooltip,#resultsPanel .out-export-help:focus-within .out-tooltip,#resultsPanel .out-export-help.is-open .out-tooltip{opacity:1;visibility:visible;pointer-events:auto}
 #resultsPanel .out-step-nav{margin-top:19px;border-top:1px solid #dfe9ee;padding-top:15px}
 @media(max-width:1100px){
  #resultsPanel .out-output-layout{grid-template-columns:1fr}
