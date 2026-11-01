@@ -490,3 +490,103 @@ body.day-mode .notice{position:fixed;left:50%;bottom:18px;transform:translateX(-
  #resultsPanel .out-roster-note{font-size:.75rem}
  #resultsPanel .out-tooltip{width:min(240px,75vw)}
 }
+
+
+/* 参加者登録: QR発行と共通の色・カード設計、名簿は固定高さ・ページング */
+#participantsPanel.pt-panel{padding:22px 24px 19px;background:#fff;border:1px solid #d9e6eb;border-radius:16px;box-shadow:0 3px 16px rgba(17,53,72,.035)}
+#participantsPanel .pt-heading{display:flex;justify-content:space-between;align-items:stretch;gap:18px;flex-wrap:wrap;margin-bottom:18px}
+#participantsPanel .pt-heading-main{display:flex;align-items:center;gap:13px;min-width:0}
+#participantsPanel .pt-heading-icon{width:55px;height:55px;display:grid;place-items:center;border-radius:15px;background:#e6f6f4;color:#087e81;flex:none}
+#participantsPanel .pt-heading h3{font-size:1.4rem;color:#143c50;margin:0 0 5px}
+#participantsPanel .pt-heading p{font-size:.84rem;color:#638093;margin:0;line-height:1.5}
+#participantsPanel .pt-summary{display:grid;grid-template-columns:repeat(3,minmax(115px,1fr));gap:9px;flex:1;max-width:570px;min-width:340px}
+#participantsPanel .pt-stat{background:#eaf6f3;border-radius:13px;padding:11px 13px;min-width:0}
+#participantsPanel .pt-stat-warn{background:#fff5e6}
+#participantsPanel .pt-stat>span{display:block;color:#316275;font-size:.77rem;font-weight:800;white-space:nowrap}
+#participantsPanel .pt-stat-warn>span{color:#8d6029}
+#participantsPanel .pt-stat strong{display:block;color:#125466;text-align:right;font-variant-numeric:tabular-nums;font-size:1.65rem;line-height:1.15}
+#participantsPanel .pt-stat strong small{font-size:.75rem;margin-left:4px}
+#participantsPanel .pt-entry-grid{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(235px,.86fr);gap:15px;align-items:start}
+#participantsPanel .pt-import-card,#participantsPanel .pt-single-card{min-width:0;margin:0;background:#fff;border:1px solid #dbe7ec;border-radius:13px;box-shadow:0 3px 12px rgba(17,53,72,.05)}
+#participantsPanel .pt-import-heading{cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;min-height:57px;padding:15px 17px;color:#173e51}
+#participantsPanel .pt-import-heading::-webkit-details-marker{display:none}
+#participantsPanel .pt-import-title{font-weight:850;font-size:1.04rem;display:flex;align-items:center;gap:9px}
+#participantsPanel .pt-import-title>span{color:#078989;font-size:1.45rem}
+#participantsPanel .pt-collapse-hint{font-size:.72rem;color:#608193;white-space:nowrap}
+#participantsPanel .pt-chevron{display:inline-block;color:#0b7b83;font-size:1rem;transition:transform .15s}
+#participantsPanel .pt-import-card[open] .pt-chevron{transform:rotate(180deg)}
+#participantsPanel .pt-import-content{padding:0 16px 16px}
+#participantsPanel .pt-template-line{display:flex;align-items:center;flex-wrap:wrap;gap:7px;padding:10px 12px;background:#f2f7f9;border-radius:10px;margin:0 0 14px}
+#participantsPanel .pt-template-line strong{font-size:.82rem;color:#426477;margin-right:4px}
+#participantsPanel .pt-template-line .btn{padding:7px 10px;font-size:.81rem;background:#fff}
+#participantsPanel .pt-template-primary.btn{border-color:#83c6c1;color:#0a727a}
+#participantsPanel .pt-rec{font-size:.68rem;background:#dff1ec;color:#237d6d;border-radius:5px;padding:2px 5px;margin-left:3px}
+#participantsPanel .pt-import-tabs{display:flex;align-items:center;gap:0;border-bottom:1px solid #b8d4d8;background:#f3f7f9;border-radius:11px 11px 0 0;padding:0 8px;position:relative}
+#participantsPanel .pt-import-tabs button{flex:1;min-width:0;min-height:43px;padding:9px 8px;border:0;border-bottom:3px solid transparent;background:none;color:#43677a;font-weight:800;font-size:.85rem;cursor:pointer}
+#participantsPanel .pt-import-tabs button.active{background:#e1f3f0;border-color:#0a707a;color:#096c74}
+#participantsPanel .pt-import-tab-body{padding:12px 12px 14px;border:1px solid #d8e6ec;border-top:0;border-radius:0 0 11px 11px}
+#participantsPanel .pt-textarea-label{font-size:.78rem;font-weight:750;color:#426474;display:block;margin-bottom:7px}
+#participantsPanel #participantPaste{width:100%;min-height:96px;max-height:260px;resize:vertical;white-space:pre;tab-size:4;background:#fff;border:1px solid #bcd1db;border-radius:9px;padding:11px 12px;font-size:.87rem}
+#participantsPanel #participantFile{width:100%;border:1px solid #d2e2e9;border-radius:8px;padding:12px;font-size:.85rem;background:#fff}
+#participantsPanel .pt-import-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:11px}
+#participantsPanel .pt-import-footer span{color:#617f91;font-size:.72rem}
+#participantsPanel .pt-import-footer .btn{padding:9px 13px}
+#participantsPanel .pt-single-card{padding:17px 15px;min-height:168px;display:flex;flex-direction:column;gap:12px}
+#participantsPanel .pt-single-heading{display:flex;align-items:center;gap:8px}
+#participantsPanel .pt-single-heading h4{font-size:1.02rem;font-weight:850;color:#163d50;margin:0}
+#participantsPanel .pt-single-card p{margin:0;color:#637d8e;font-size:.84rem;line-height:1.5}
+#participantsPanel .pt-add-btn{margin-top:auto;min-height:43px;border-radius:10px}
+#participantsPanel .pt-list-card{margin-top:17px;border:1px solid #dae7ec;border-radius:14px;padding:15px 17px 13px;box-shadow:0 2px 10px rgba(17,53,72,.035);min-width:0}
+#participantsPanel .pt-list-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:11px}
+#participantsPanel .pt-list-name{display:flex;align-items:center;gap:9px}
+#participantsPanel .pt-list-name h4{font-size:1.08rem;color:#163c50;margin:0}
+#participantsPanel .pt-list-tools{display:flex;align-items:center;gap:7px;flex-wrap:wrap;flex:1;justify-content:flex-end}
+#participantsPanel .pt-list-tools .search{width:min(100%,360px);height:39px;font-size:.82rem}
+#participantsPanel .pt-list-tools label{font-size:.75rem;white-space:nowrap;font-weight:750;color:#587587}
+#participantsPanel .pt-list-tools select{border:1px solid #c1d5df;border-radius:8px;padding:8px 10px;background:#fff;color:#244e62;max-width:180px;font-size:.82rem}
+#participantsPanel .pt-tablewrap{height:360px;min-height:0;overflow:auto;border:1px solid #dce7ed;border-radius:9px}
+#participantsPanel .pt-tablewrap table{min-width:715px;border-collapse:separate;border-spacing:0}
+#participantsPanel .pt-tablewrap th{position:sticky;top:0;z-index:2;background:#eaf2f6;box-shadow:0 1px 0 #d2e0e6}
+#participantsPanel .pt-tablewrap td,#participantsPanel .pt-tablewrap th{padding:9px 10px;font-size:.82rem}
+#participantsPanel .pt-tablewrap .pt-empty{color:#708796;text-align:center;padding:23px}
+#participantsPanel .pt-pagebar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:12px}
+#participantsPanel #ptPageInfo{color:#426c7e;font-size:.8rem;font-variant-numeric:tabular-nums}
+#participantsPanel .pt-page-navigation{display:flex;align-items:center;gap:5px}
+#participantsPanel .pt-page-navigation .btn{font-size:.78rem;padding:7px 9px}
+#participantsPanel .pt-page-buttons{display:flex;gap:4px;align-items:center}
+#participantsPanel .pt-page-buttons .btn{min-width:30px}
+#participantsPanel .pt-page-buttons .btn.active{background:#0a707a;color:#fff;border-color:#0a707a}
+#participantsPanel .pt-page-size{display:flex;gap:7px;align-items:center;color:#5d7788;font-size:.76rem}
+#participantsPanel .pt-page-size select{border:1px solid #c1d5df;border-radius:8px;background:#fff;padding:7px;color:#234f64}
+#participantsPanel .pt-export-footer{border-top:1px solid #e0eaee;margin-top:15px;padding-top:13px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#participantsPanel .pt-export-footer>span{font-size:.78rem;color:#617d8e}
+#participantsPanel .pt-export-footer>button{margin-left:auto}
+#participantsPanel .pt-step-nav{margin-top:16px}
+#participantsPanel .pt-help{display:inline-block;position:relative;flex:none;z-index:6}
+#participantsPanel .pt-help summary{list-style:none;color:#0a7a84;font-weight:850;font-size:1.05rem;cursor:pointer;width:24px;height:24px;display:grid;place-items:center;border-radius:50%}
+#participantsPanel .pt-help summary::-webkit-details-marker{display:none}
+#participantsPanel .pt-help summary:hover,#participantsPanel .pt-help[open] summary{background:#dcefed}
+#participantsPanel .pt-tooltip{position:absolute;right:-9px;bottom:calc(100% + 8px);width:min(310px,72vw);background:#1b3849;color:#fff;padding:11px 13px;border-radius:10px;line-height:1.55;font-size:.77rem;box-shadow:0 8px 18px #102a3a44;display:none;z-index:20}
+#participantsPanel .pt-help:hover .pt-tooltip,#participantsPanel .pt-help:focus-within .pt-tooltip,#participantsPanel .pt-help[open] .pt-tooltip{display:block}
+#participantsPanel .pt-tooltip::after{position:absolute;top:100%;right:13px;border:7px solid transparent;border-top-color:#1b3849;content:""}
+@media(max-width:1100px){
+ #participantsPanel .pt-heading{flex-direction:column}
+ #participantsPanel .pt-summary{max-width:none;width:100%}
+ #participantsPanel .pt-entry-grid{grid-template-columns:minmax(0,1.5fr) minmax(200px,.8fr)}
+}
+@media(max-width:770px){
+ #participantsPanel .pt-entry-grid{grid-template-columns:1fr}
+ #participantsPanel .pt-single-card{min-height:0}
+ #participantsPanel .pt-list-tools{justify-content:flex-start}
+ #participantsPanel .pt-list-tools .search{width:100%}
+}
+@media(max-width:590px){
+ #participantsPanel.pt-panel{padding:15px 12px}
+ #participantsPanel .pt-heading-icon{display:none}
+ #participantsPanel .pt-summary{min-width:0}
+ #participantsPanel .pt-stat{padding:10px 7px}
+ #participantsPanel .pt-stat>span{white-space:normal;font-size:.69rem}
+ #participantsPanel .pt-stat strong{font-size:1.25rem}
+ #participantsPanel .pt-page-buttons .btn:not(.active){display:none}
+ #participantsPanel .pt-export-footer>button{margin-left:0}
+}
