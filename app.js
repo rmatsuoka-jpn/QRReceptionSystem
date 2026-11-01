@@ -458,7 +458,9 @@ let qrMode="single";
 function switchQrMode(mode){
  qrMode=mode==="bulk"?"bulk":"single";
  $("qrIndividualArea").hidden=qrMode!=="single";
- $("qrBulkArea").hidden=qrMode!=="bulk";
+ $("qrBulkArea").hidden=false;
+ $("qrBulkArea").classList.toggle("qr-bulk-inline",qrMode==="single");
+ $("qrBulkHeading").textContent=qrMode==="single"?"その他の発行方法":"まとめて発行する";
  for(const key of ["single","bulk"]){
   const b=$(key==="single"?"qrTabSingle":"qrTabBulk"),active=key===qrMode;
   b.classList.toggle("active",active);b.setAttribute("aria-selected",String(active));
