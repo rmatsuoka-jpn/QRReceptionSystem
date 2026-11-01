@@ -747,3 +747,95 @@ body.day-mode .notice{position:fixed;left:50%;bottom:18px;transform:translateX(-
 .ci-import .ci-heading-row{display:flex;align-items:center;gap:7px;margin-bottom:6px}
 .ci-import .ci-heading-row h3{margin:0}
 .ci-import .ci-help summary:focus-visible{outline:3px solid #e4ae45;outline-offset:2px}
+
+/* ===== 総合管理（2026-11 B案）: 次のイベント・未開催／終了タブ・⋯メニュー ===== */
+.hm-top{display:flex;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap}
+.hm-top h2{margin:0 6px 0 0;font-size:1.35rem}
+.hm-seg{display:flex;background:#dfe8ee;border-radius:11px;padding:4px;gap:2px}
+.hm-seg button{border:0;background:transparent;padding:7px 14px;border-radius:8px;font-weight:750;color:#3c5a6d;font-size:.86rem}
+.hm-seg button.active{background:#fff;color:#0a707a;box-shadow:0 1px 3px rgba(16,42,58,.12)}
+.hm-spacer{flex:1}
+.hm-stats{font-size:.8rem;color:#6c8494;font-weight:700;white-space:nowrap}
+.hm-stats b{color:#183a4f;font-size:.95rem;margin:0 2px}
+.hm-search{display:flex;align-items:center;gap:8px;background:#fff;border-radius:10px;box-shadow:0 0 0 1px #dfe8ee;padding:0 12px;width:260px;height:40px;color:#6c8494}
+.hm-search input{border:0;outline:0;background:transparent;flex:1;min-width:0;font-size:.9rem;color:#183a4f}
+.hm-search:focus-within{box-shadow:0 0 0 2px #0a707a}
+.hm-top .btn.main{border-radius:10px;padding:10px 15px}
+
+.hm-heroes{display:flex;flex-direction:column;gap:12px;margin-bottom:18px}
+.hm-hero{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:26px;align-items:center;background:#fff;border-radius:18px;padding:22px 26px;box-shadow:0 0 0 1px #dfe8ee,0 6px 20px rgba(16,42,58,.06);position:relative;overflow:hidden}
+.hm-hero::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:#0a707a}
+.hm-hero.today::before{background:#1f8a5b}
+.hm-dblock{width:92px;height:92px;border-radius:16px;background:#e5f3f2;color:#0a707a;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
+.hm-dblock .m{font-size:.8rem;font-weight:800}.hm-dblock .d{font-size:2.2rem;font-weight:900;margin:3px 0}.hm-dblock .w{font-size:.78rem;font-weight:800}
+.hm-eyebrow{font-size:.75rem;font-weight:800;letter-spacing:.08em;color:#0a707a;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.hm-hero h3{margin:0 0 8px;font-size:1.55rem;color:#183a4f;word-break:break-all}
+.hm-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:.84rem;color:#6c8494;font-weight:650}
+.hm-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:.76rem;font-weight:800;white-space:nowrap}
+.hm-pill.ok{background:#dcf3e6;color:#1f6b45}.hm-pill.next{background:#fde7c8;color:#8a4f10}.hm-pill.cat{background:#eaf5f5;color:#216776}
+.hm-pill.rel{background:#17394f;color:#fff;letter-spacing:0}.hm-pill.today{background:#1f8a5b;color:#fff;letter-spacing:0}
+.hm-steps{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+.hm-step{display:flex;align-items:center;gap:6px;font-size:.78rem;font-weight:750;color:#8a4f10;background:#fff4e6;border-radius:8px;padding:5px 9px}
+.hm-step i{font-style:normal;width:18px;height:18px;border-radius:50%;background:#f0b35c;color:#fff;display:grid;place-items:center;font-size:.7rem}
+.hm-step.done{color:#2f5f63;background:#f1f7f7}.hm-step.done i{background:#1f8a5b}
+.hm-bigprog{margin-top:12px;max-width:520px}
+.hm-bigprog .row{font-size:.82rem;font-weight:800;color:#4b6a7c}
+.hm-bigprog .progress{height:10px}
+.hm-hero-acts{display:flex;flex-direction:column;gap:8px;min-width:220px}
+.hm-hero-acts .btn{border-radius:10px}
+.hm-big{padding:14px 24px!important;font-size:1.02rem!important;border-radius:12px!important}
+
+.hm-ltabs{display:flex;align-items:flex-end;gap:4px;margin:6px 0 4px;border-bottom:2px solid #dfe8ee}
+.hm-ltab{border:0;background:none;padding:10px 16px;font-weight:800;font-size:.95rem;color:#6c8494;border-bottom:3px solid transparent;margin-bottom:-2px;display:flex;gap:8px;align-items:center}
+.hm-ltab .n{font-size:.75rem;background:#dfe8ee;color:#506b7d;border-radius:20px;padding:1px 8px;font-variant-numeric:tabular-nums}
+.hm-ltab.active{color:#0a707a;border-bottom-color:#0a707a}.hm-ltab.active .n{background:#0a707a;color:#fff}
+.hm-count{margin-left:auto;align-self:center;font-size:.8rem;font-weight:700;color:#8a4f10}
+.hm-tool{border:0;background:transparent;color:#2a4c60;font-weight:750;font-size:.86rem;padding:8px 10px;border-radius:9px;margin-bottom:4px;position:relative}
+.hm-count:empty+.hm-tool{margin-left:auto}
+.hm-tool:hover,.hm-tool[aria-expanded=true]{background:#e5edf2}
+.hm-dot{position:absolute;top:6px;right:4px;width:8px;height:8px;border-radius:50%;background:#e5a239}
+.hm-filter{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:12px;align-items:end;background:#fff;border-radius:14px;padding:14px 16px;box-shadow:0 0 0 1px #dfe8ee;margin:10px 0 4px}
+.hm-filter .buttons{flex-wrap:nowrap}
+.hm-grp{font-size:.8rem;font-weight:800;color:#4b6a7c;margin:14px 2px 8px}
+.hm-grp small{font-weight:700;color:#6c8494;margin-left:6px}
+.hm-list{background:#fff;border-radius:16px;box-shadow:0 0 0 1px #dfe8ee}
+.hm-item{display:grid;grid-template-columns:76px minmax(0,1fr) 200px auto;gap:18px;align-items:center;padding:14px 18px;border-top:1px solid #edf2f5}
+.hm-item:first-child{border-top:0}
+.hm-sdate{text-align:center;line-height:1.15;display:flex;flex-direction:column}
+.hm-sdate .y{font-size:.7rem;color:#6c8494;font-weight:800}
+.hm-sdate .d{font-size:1.25rem;font-weight:900;color:#183a4f;font-variant-numeric:tabular-nums}
+.hm-sdate .w{font-size:.74rem;color:#6c8494;font-weight:800}
+.hm-sdate.none .d{font-size:.8rem;color:#6c8494}
+.hm-name{font-weight:800;font-size:1.02rem;margin-bottom:5px;color:#183a4f;word-break:break-all}
+.hm-sub{display:flex;gap:7px;align-items:center;flex-wrap:wrap;font-size:.78rem;color:#6c8494;font-weight:650}
+.hm-sub .code,.hm-meta .code{font-size:.7rem;color:#9aacb8}
+.hm-prog .row{font-size:.76rem;color:#6c8494;font-weight:750}
+.hm-prog .progress{height:7px;margin-top:6px}
+.hm-item.past .hm-name,.hm-item.past .hm-sdate .d{color:#5f7686}
+.hm-acts{display:flex;justify-content:flex-end;gap:6px;align-items:center;min-width:190px}
+.hm-acts .btn{border-radius:10px;white-space:nowrap}
+.hm-more{width:36px;height:36px;border-radius:9px;border:0;background:transparent;color:#5b7486;font-weight:900;font-size:1.1rem;flex:none}
+.hm-more:hover,.hm-more[aria-expanded=true]{background:#eef3f6}
+.hm-morebar{display:block;width:100%;border:0;border-top:1px solid #edf2f5;background:none;padding:12px;font-size:.85rem;font-weight:750;color:#0a707a;border-radius:0 0 16px 16px}
+.hm-morebar:hover{background:#f3f8f9}
+.hm-cards>.hm-morebar{border:0;border-radius:12px;background:#fff;box-shadow:0 0 0 1px #dfe8ee;margin-top:14px}
+.hm-empty{background:#fff;border-radius:14px;box-shadow:0 0 0 1px #dfe8ee;padding:22px;text-align:center;color:#6c8494;font-weight:700;margin-top:14px}
+.hm-menu{position:absolute;z-index:50;background:#fff;border-radius:12px;box-shadow:0 14px 40px rgba(16,42,58,.2),0 0 0 1px #dfe8ee;padding:6px;width:170px;display:flex;flex-direction:column}
+.hm-menu button{border:0;background:none;text-align:left;padding:9px 12px;border-radius:8px;font-size:.86rem;font-weight:700;color:#2a4c60}
+.hm-menu button:hover,.hm-menu button:focus-visible{background:#eef3f6}
+.hm-menu .del{color:#b23a43;border-top:1px solid #edf2f5;margin-top:4px;padding-top:10px;border-radius:0 0 8px 8px}
+
+@media (max-width:1100px){
+ .hm-search{width:200px}
+ .hm-item{grid-template-columns:64px minmax(0,1fr) 150px auto}
+ .hm-filter{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:850px){
+ .hm-top{gap:10px}.hm-spacer{display:none}.hm-search{width:100%;order:5}
+ .hm-hero{grid-template-columns:auto minmax(0,1fr);gap:16px;padding:18px}
+ .hm-hero-acts{grid-column:1/-1;flex-direction:row;flex-wrap:wrap;min-width:0}
+ .hm-item{grid-template-columns:56px minmax(0,1fr);gap:10px 14px}
+ .hm-prog{grid-column:2}.hm-acts{grid-column:1/-1;min-width:0}
+ .hm-filter{grid-template-columns:1fr}
+}
+@media (max-width:850px){.hm-stats{display:none}.hm-top>.btn.main{margin-left:auto}}

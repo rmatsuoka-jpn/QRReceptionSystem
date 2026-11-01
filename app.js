@@ -91,20 +91,72 @@ function deleteEvent(id){const e=db.get(id);if(!e)return;if(!confirm("「"+e.nam
 function openEvent(id,goDay=false,tab){if(!db.has(id))return;if(!tab){const n=nextStep(db.get(id));tab=n?n.tab:"results";}activeId=id;view="event";day=goDay;prepTab=tab;receptionTab="pending";render();}
 function openHome(tab="events"){view="home";homeTab=tab;render();}
 function todayStr(){return new Date().toLocaleDateString("sv-SE");}
-function renderToday(ev){const today=todayStr(),list=ev.filter(e=>e.date===today).sort((a,b)=>a.name.localeCompare(b.name,"ja")),box=$("todayEvents");box.hidden=!list.length;if(!list.length)return;
- const d=new Date();$("todayLabel").textContent=(d.getMonth()+1)+"月"+d.getDate()+"日";const root=$("todayRows");root.replaceChildren();
- for(const e of list){const x=evCounts(e),row=document.createElement("div");row.className="today-row";row.innerHTML='<div><strong>'+esc(e.name)+'</strong><div class="hint">'+e.participants.filter(p=>!p.removed).length+'名 登録　・　受付 '+x.done+' / '+x.target+'　'+nextBadge(e)+'</div></div><div class="buttons"><button type="button" class="btn small" data-action="prep" data-id="'+esc(e.id)+'">⚙ 準備</button><button type="button" class="btn main big" data-action="day" data-id="'+esc(e.id)+'">▣ 受付を開始</button></div>';root.append(row);}}
 function nextBadge(e){const n=nextStep(e);return n?'<span class="tag warn">次：'+"①②③④"[n.index]+" "+esc(n.label)+'</span>':'<span class="tag">✓ 準備完了</span>';}
 function summaryMetric(label,value){return '<div class="metric"><span>'+esc(label)+'</span><strong>'+esc(value)+'</strong></div>';}
-function renderHome(){const ev=[...db.values()];$("globalSummary").innerHTML=summaryMetric("イベント",ev.length)+summaryMetric("参加登録（延べ）",ev.reduce((n,e)=>n+e.participants.filter(p=>!p.removed).length,0))+summaryMetric("受付済み（区分別）",ev.reduce((n,e)=>n+evCounts(e).done,0));
-$("backupCount").textContent=ev.length+"イベントがバックアップ対象";$("firstGuide").hidden=ev.length>0;renderToday(ev);$("listGuide").hidden=!ev.length;
-for(const name of ["events","cross","data"]){$("home"+name[0].toUpperCase()+name.slice(1)).hidden=name!==homeTab;document.querySelector('[data-home="'+name+'"]')?.classList.toggle("active",name===homeTab);}
-if(homeTab==="events")renderEventList();if(homeTab==="cross")renderCross();}
-function renderEventList(){const q=$("eventQuery").value.trim().toLocaleLowerCase("ja-JP"),from=$("dateFrom").value,to=$("dateTo").value,k=$("sortKey").value,sign=$("sortOrder").value==="asc"?1:-1,root=$("eventCards");root.replaceChildren();if(from&&to&&from>to){$("eventCount").textContent="開始日と終了日を確認してください。";return;}
-const list=[...db.values()].filter(e=>(!q||e.name.toLocaleLowerCase("ja-JP").includes(q))&&(!from||(e.date&&e.date>=from))&&(!to||(e.date&&e.date<=to))).sort((a,b)=>{if(k==="date"){if(!a.date||!b.date)return !a.date&&!b.date?a.id.localeCompare(b.id):a.date?-1:1;return sign*a.date.localeCompare(b.date)||a.id.localeCompare(b.id);}return sign*a.id.localeCompare(b.id,"ja",{numeric:true});});
-$("eventCount").textContent=list.length+" / "+db.size+"件を表示";
-for(const e of list){const x=evCounts(e),card=document.createElement("article");card.className="event-card";card.innerHTML='<div><span class="date-pill">'+esc(e.date||"日付未設定")+'</span><span class="category-pill">'+esc(catName(e.category))+'</span><h3>'+esc(e.name)+'</h3><div class="code">'+esc(e.id)+'</div></div><div><div class="row status"><span>受付進捗</span><strong>'+x.done+" / "+x.target+'</strong></div><div class="progress"><div style="width:'+x.percent+'%"></div></div></div><div class="event-controls"><div class="status">'+e.participants.filter(p=>!p.removed).length+'名 登録　・　'+e.sessions.length+'区分　'+nextBadge(e)+'</div><div class="buttons"><button class="btn small" data-action="prep" data-id="'+esc(e.id)+'">⚙ 準備</button><button class="btn main small" data-action="day" data-id="'+esc(e.id)+'">▣ 受付</button><button class="btn small" data-action="clone" data-id="'+esc(e.id)+'">⧉ 複製</button><button class="btn danger small" data-action="delete" data-id="'+esc(e.id)+'">削除</button></div></div>';root.append(card);}
-if(!list.length){const p=document.createElement("div");p.className="panel";p.textContent="該当するイベントはありません。「＋ 新規イベント」から登録できます。";root.append(p);}}
+/* ===== 総合管理（2026-11 B案）: 次のイベント／未開催・終了タブ／⋯メニュー ===== */
+let listTab="upcoming",showOlderPast=false;
+const WEEK="日月火水木金土";
+function parseDay(d){const [y,m,dd]=String(d).split("-").map(Number);return new Date(y,m-1,dd);}
+function dayDiff(d){return Math.round((parseDay(d)-parseDay(todayStr()))/86400000);}
+function relLabel(n){return n===0?"今日":n===1?"明日":n===-1?"昨日":n>1?n+"日後":(-n)+"日前";}
+function liveCount(e){return e.participants.filter(p=>!p.removed).length;}
+function readyPill(e){const n=nextStep(e);return n?'<span class="hm-pill next">次：'+"①②③④"[n.index]+" "+esc(n.label)+'</span>':'<span class="hm-pill ok">✓ 準備完了</span>';}
+function heroEvents(ev){const t=todayStr(),today=ev.filter(e=>e.date===t).sort((a,b)=>a.name.localeCompare(b.name,"ja"));if(today.length)return {today:true,list:today};const fut=ev.filter(e=>e.date&&e.date>t).sort((a,b)=>a.date.localeCompare(b.date)||a.name.localeCompare(b.name,"ja"));return {today:false,list:fut.length?fut.filter(e=>e.date===fut[0].date):[]};}
+function renderHero(ev){const box=$("todayEvents"),h=heroEvents(ev);box.replaceChildren();box.hidden=!h.list.length;
+ for(const e of h.list){const d=parseDay(e.date),x=evCounts(e),card=document.createElement("article");card.className="hm-hero"+(h.today?" today":"");
+  const steps=stepStates(e).map((st,i)=>'<span class="hm-step'+(st.done?" done":"")+'"><i>'+(st.done?"✓":i+1)+'</i>'+esc(STEPS[i].label)+'</span>').join("");
+  const body=h.today?'<div class="hm-bigprog"><div class="row"><span>受付進捗（全区分）</span><strong>'+x.done+' / '+x.target+'</strong></div><div class="progress"><div style="width:'+x.percent+'%"></div></div></div>':'<div class="hm-steps">'+steps+'</div>';
+  const n=nextStep(e);
+  const acts=h.today?'<button type="button" class="btn main hm-big" data-action="day" data-id="'+esc(e.id)+'">▣ 受付を開始 →</button><button type="button" class="btn" data-action="prep" data-id="'+esc(e.id)+'">⚙ 準備を確認</button>'
+   :'<button type="button" class="btn main hm-big" data-action="prep" data-id="'+esc(e.id)+'">⚙ '+(n?"準備を続ける":"準備を確認")+'</button><button type="button" class="btn" data-action="results" data-id="'+esc(e.id)+'">▤ 紙名簿を印刷</button>';
+  card.innerHTML='<div class="hm-dblock"><span class="m">'+(d.getMonth()+1)+'月</span><span class="d">'+d.getDate()+'</span><span class="w">（'+WEEK[d.getDay()]+'）</span></div><div class="hm-hero-body"><div class="hm-eyebrow">'+(h.today?'本日のイベント <span class="hm-pill today">今日</span>':'次のイベント <span class="hm-pill rel">'+relLabel(dayDiff(e.date))+'</span>')+'</div><h3>'+esc(e.name)+'</h3><div class="hm-meta">'+readyPill(e)+'<span>'+esc(catName(e.category))+'・'+liveCount(e)+'名 登録・'+e.sessions.length+'区分</span><span class="code">'+esc(e.id)+'</span></div>'+body+'</div><div class="hm-hero-acts">'+acts+'</div>';
+  box.append(card);}
+ return h;}
+function renderHome(){const ev=[...db.values()];
+ $("globalSummary").innerHTML='このPC：イベント<b>'+ev.length+'</b>件・延べ<b>'+ev.reduce((n,e)=>n+liveCount(e),0)+'</b>名';
+ $("backupCount").textContent=ev.length+"イベントがバックアップ対象";$("firstGuide").hidden=ev.length>0;$("hmList").hidden=!ev.length;
+ $("hmSearch").hidden=homeTab!=="events";
+ for(const name of ["events","cross","data"]){$("home"+name[0].toUpperCase()+name.slice(1)).hidden=name!==homeTab;document.querySelector('[data-home="'+name+'"]')?.classList.toggle("active",name===homeTab);}
+ if(homeTab==="events"){renderHero(ev);renderEventList();}if(homeTab==="cross")renderCross();}
+function eventRow(e,past){const x=evCounts(e),row=document.createElement("article");row.className="hm-item"+(past?" past":"");
+ let date='<div class="hm-sdate none"><span class="d">未設定</span></div>';
+ if(e.date){const d=parseDay(e.date),y=d.getFullYear()!==new Date().getFullYear()?'<span class="y">'+d.getFullYear()+'</span>':'';date='<div class="hm-sdate">'+y+'<span class="d">'+(d.getMonth()+1)+'/'+d.getDate()+'</span><span class="w">'+WEEK[d.getDay()]+'</span></div>';}
+ const n=nextStep(e),id=esc(e.id);
+ const primary=past?'<button type="button" class="btn" data-action="results" data-id="'+id+'">▤ 結果・出力</button>':'<button type="button" class="btn'+(n?" main":"")+'" data-action="prep" data-id="'+id+'">⚙ '+(n?"準備を続ける":"準備を確認")+'</button>';
+ row.innerHTML=date+'<div class="hm-main"><div class="hm-name">'+esc(e.name)+'</div><div class="hm-sub"><span class="hm-pill cat">'+esc(catName(e.category))+'</span><span>'+liveCount(e)+'名 登録・'+e.sessions.length+'区分</span>'+(past?'':readyPill(e))+'<span class="code">'+id+'</span></div></div><div class="hm-prog"><div class="row"><span>受付</span><span>'+(x.target?x.done+' / '+x.target:'—')+'</span></div><div class="progress"><div style="width:'+x.percent+'%"></div></div></div><div class="hm-acts">'+primary+'<button type="button" class="hm-more" data-menu="'+id+'" aria-haspopup="menu" aria-label="'+esc(e.name)+'のその他の操作">⋯</button></div>';
+ return row;}
+function renderEventList(){closeEventMenu();
+ const q=$("eventQuery").value.trim().toLocaleLowerCase("ja-JP"),from=$("dateFrom").value,to=$("dateTo").value,k=$("sortKey").value,sign=$("sortOrder").value==="asc"?1:-1,root=$("eventCards"),t=todayStr();
+ root.replaceChildren();
+ const filtered=!!(q||from||to),custom=k!=="auto";$("sortOrder").disabled=!custom;$("filterDot").hidden=!(from||to||custom);
+ for(const b of document.querySelectorAll("[data-list-tab]")){const on=b.dataset.listTab===listTab;b.classList.toggle("active",on);b.setAttribute("aria-selected",String(on));}
+ if(from&&to&&from>to){$("eventCount").textContent="開始日と終了日を確認してください。";return;}
+ const all=[...db.values()].filter(e=>(!q||e.name.toLocaleLowerCase("ja-JP").includes(q))&&(!from||(e.date&&e.date>=from))&&(!to||(e.date&&e.date<=to)));
+ const upcoming=all.filter(e=>!e.date||e.date>=t),past=all.filter(e=>e.date&&e.date<t);
+ $("countUpcoming").textContent=upcoming.length;$("countPast").textContent=past.length;
+ $("eventCount").textContent=filtered||custom?"絞り込み中："+all.length+" / "+db.size+"件":"";
+ const sorter=asc=>(a,b)=>{if(custom&&k==="id")return sign*a.id.localeCompare(b.id,"ja",{numeric:true});const s=custom?sign:(asc?1:-1);if(!a.date||!b.date)return !a.date&&!b.date?a.id.localeCompare(b.id):a.date?-1:1;return s*a.date.localeCompare(b.date)||a.name.localeCompare(b.name,"ja");};
+ const group=(title,note,list,past)=>{if(!list.length)return;const h=document.createElement("div");h.className="hm-grp";h.innerHTML=esc(title)+(note?' <small>'+esc(note)+'</small>':'');const box=document.createElement("div");box.className="hm-list";for(const e of list)box.append(eventRow(e,past));root.append(h,box);return box;};
+ const empty=msg=>{const p=document.createElement("div");p.className="hm-empty";p.textContent=msg;root.append(p);};
+ if(listTab==="upcoming"){
+  const heroIds=filtered?new Set():new Set(heroEvents([...db.values()]).list.map(e=>e.id));
+  const dated=upcoming.filter(e=>e.date&&!heroIds.has(e.id)).sort(sorter(true)),undated=upcoming.filter(e=>!e.date).sort(sorter(true));
+  const hid=upcoming.some(e=>heroIds.has(e.id));
+  group("これから",(hid?"上のカード以外・":"")+(custom?"指定の順":"開催日が近い順"),dated,false);
+  group("日付未設定","",undated,false);
+  if(!dated.length&&!undated.length)empty(filtered?"条件に合う未開催のイベントはありません。":hid?"ほかに未開催のイベントはありません。":"未開催のイベントはありません。「＋ 新規イベント」から作成できます。");
+ }else{
+  const limit=new Date(parseDay(t).getTime()-30*86400000).toLocaleDateString("sv-SE");
+  const sorted=past.sort(sorter(false)),recent=filtered||showOlderPast?sorted:sorted.filter(e=>e.date>=limit),older=sorted.length-recent.length;
+  const box=group(filtered?"終了したイベント":showOlderPast?"すべての終了イベント":"直近30日",custom?"指定の順":"新しい順",recent,true);
+  if(older>0){const more=document.createElement("button");more.type="button";more.className="hm-morebar";more.textContent="それより前のイベントを表示（"+older+"件）";more.onclick=()=>{showOlderPast=true;renderEventList();};(box||root).append(more);}
+  if(!recent.length&&!older)empty(filtered?"条件に合う終了イベントはありません。":"終了したイベントはまだありません。");
+ }}
+function closeEventMenu(){const m=$("eventMenu");if(m&&!m.hidden){m.hidden=true;m.replaceChildren();document.querySelector("[data-menu][aria-expanded=true]")?.setAttribute("aria-expanded","false");}}
+function openEventMenu(btn){const m=$("eventMenu"),id=btn.dataset.menu;if(!m.hidden&&m.dataset.for===id)return closeEventMenu();closeEventMenu();
+ m.dataset.for=id;const e=db.get(id),past=e?.date&&e.date<todayStr();
+ m.innerHTML='<button type="button" role="menuitem" data-action="day" data-id="'+esc(id)+'">▣ 受付画面</button>'+(past?'<button type="button" role="menuitem" data-action="prep" data-id="'+esc(id)+'">⚙ 準備画面</button>':'<button type="button" role="menuitem" data-action="results" data-id="'+esc(id)+'">▤ 紙名簿・出力</button>')+'<button type="button" role="menuitem" data-action="clone" data-id="'+esc(id)+'">⧉ 複製</button><button type="button" role="menuitem" class="del" data-action="delete" data-id="'+esc(id)+'">削除</button>';
+ const r=btn.getBoundingClientRect();m.hidden=false;m.style.top=(window.scrollY+r.bottom+6)+"px";m.style.left=Math.max(8,window.scrollX+r.right-m.offsetWidth)+"px";btn.setAttribute("aria-expanded","true");m.querySelector("button")?.focus();}
 function renderEvent(keepScroll=false){const e=current();if(!e)return openHome();$("eventTitle").textContent=e.name;$("eventSubtitle").textContent=(e.date||"開催日未設定")+"　／　"+e.id+"　／　"+catName(e.category);$("crumbEvent").textContent=e.name;$("rxEventName").textContent=e.name;$("crumbMode").textContent=day?"当日受付":"事前準備";$("prepView").hidden=day;$("receptionView").hidden=!day;for(const mode of ["prep","day"])document.querySelector('[data-mode="'+mode+'"]').classList.toggle("active",(mode==="day")===day);if(day){renderReception();return;}
 for(const name of ["settings","participants","qr","results"]){$(name+"Panel").hidden=name!==prepTab;document.querySelector('[data-prep="'+name+'"]').classList.toggle("active",name===prepTab);}
 if(prepTab==="settings")renderSettings();if(prepTab==="participants")renderParticipants();if(prepTab==="qr")renderQRSelect();if(prepTab==="results")renderResults();renderSteps();if(!keepScroll)window.scrollTo?.({top:0});}
@@ -1220,10 +1272,13 @@ if(b.dataset.manualSort){changeManualSort(b.dataset.manualSort);return;}
 if(b.dataset.manualPerson){manualCheck(b.dataset.manualPerson);return;}
 if(b.dataset.receptionCheckin){quickReceptionCheckIn(b.dataset.receptionCheckin,b.dataset.sessionId);return;}
 if(b.dataset.receptionCancel){quickReceptionCancel(b.dataset.receptionCancel,b.dataset.sessionId);return;}
-if(b.dataset.action){const id=b.dataset.id;switch(b.dataset.action){case "prep":return openEvent(id,false);case "day":return openEvent(id,true);case "clone":return addEvent(id);case "delete":return deleteEvent(id);case "edit-person":return openPerson(b.dataset.person,false);case "remove-session":return removeSession(b.dataset.session);}return;}
+if(b.dataset.menu){openEventMenu(b);return;}
+if(b.dataset.listTab){listTab=b.dataset.listTab;renderEventList();return;}
+if(b.dataset.action){closeEventMenu();const id=b.dataset.id;switch(b.dataset.action){case "results":return openEvent(id,false,"results");case "prep":return openEvent(id,false);case "day":return openEvent(id,true);case "clone":return addEvent(id);case "delete":return deleteEvent(id);case "edit-person":return openPerson(b.dataset.person,false);case "remove-session":return removeSession(b.dataset.session);}return;}
 });
-$("newEvent").onclick=()=>addEvent();$("backHome").onclick=()=>openHome();$("rxBack").onclick=()=>openHome();document.addEventListener("click",ev=>{const d=$("dayCheck");if(d.open&&!d.contains(ev.target))d.open=false;});$("resetEvents").onclick=()=>{for(const id of ["eventQuery","dateFrom","dateTo"])$(id).value="";renderEventList();};
-$("filterToday").onclick=()=>{$("dateFrom").value=$("dateTo").value=todayStr();renderEventList();};$("filterUpcoming").onclick=()=>{$("dateFrom").value=todayStr();$("dateTo").value="";$("sortOrder").value="asc";renderEventList();};
+$("newEvent").onclick=()=>addEvent();$("backHome").onclick=()=>openHome();$("rxBack").onclick=()=>openHome();document.addEventListener("click",ev=>{const d=$("dayCheck");if(d.open&&!d.contains(ev.target))d.open=false;});$("resetEvents").onclick=()=>{for(const id of ["eventQuery","dateFrom","dateTo"])$(id).value="";$("sortKey").value="auto";$("sortOrder").value="asc";showOlderPast=false;renderEventList();};
+$("toggleFilter").onclick=()=>{const p=$("filterPanel");p.hidden=!p.hidden;$("toggleFilter").setAttribute("aria-expanded",String(!p.hidden));};document.addEventListener("click",ev=>{if(!ev.target.closest("#eventMenu,[data-menu]"))closeEventMenu();});document.addEventListener("keydown",ev=>{if(ev.key==="Escape")closeEventMenu();});window.addEventListener("resize",closeEventMenu);
+$("filterToday").onclick=()=>{listTab="upcoming";$("dateFrom").value=$("dateTo").value=todayStr();renderEventList();};$("filterUpcoming").onclick=()=>{listTab="upcoming";$("dateFrom").value=todayStr();$("dateTo").value="";$("sortOrder").value="asc";renderEventList();};
 for(const id of ["eventQuery","dateFrom","dateTo","sortKey","sortOrder"])$(id).addEventListener(id==="eventQuery"?"input":"change",renderEventList);
 for(const id of ["crossPeriod","crossYear","crossCategory","crossStatus","crossQuery"])$(id).addEventListener(["crossYear","crossQuery"].includes(id)?"input":"change",renderCross);
 $("crossPeriod").onchange=()=>{$("crossYear").disabled=$("crossPeriod").value==="all";renderCross();};
