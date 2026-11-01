@@ -318,3 +318,95 @@ body.day-mode .notice{position:fixed;left:50%;bottom:18px;transform:translateX(-
 .rx-person-action.btn.small:hover{background:#d1eae7;border-color:#64b3ae}
 .rx-person-cancel.btn.small{border-color:#e8c3c3;background:#fff3f1;color:#a03d44}
 .rx-person-cancel.btn.small:hover{background:#ffe7e3;border-color:#cf8990}
+
+
+/* QR issue page — modern card studio (2026-11) */
+#qrPanel.qr-issue-panel{padding:22px 24px 20px;border:1px solid #dce7ec;border-radius:16px;background:#fff;box-shadow:0 3px 16px rgba(17,53,72,.035)}
+#qrPanel .qr-issue-header{display:flex;align-items:stretch;justify-content:space-between;gap:18px;margin-bottom:20px}
+#qrPanel .qr-title-area{display:flex;gap:14px;align-items:flex-start;min-width:0}
+#qrPanel .qr-title-icon{width:54px;height:54px;display:grid;place-items:center;border-radius:14px;flex:none;background:#e6f5f3;color:#087c7e;font-size:1.9rem;font-weight:800}
+#qrPanel .qr-title-area h3{font-size:1.42rem;margin:3px 0 6px;color:#153b50;line-height:1.3}
+#qrPanel .qr-title-area h3 span{font-size:1rem;font-weight:750}
+#qrPanel .qr-title-area p{font-size:.84rem;color:#617d8e;line-height:1.6;margin:0;max-width:530px}
+#qrPanel .qr-issue-stats{display:grid;grid-template-columns:repeat(2,minmax(155px,1fr));gap:10px;min-width:330px}
+#qrPanel .qr-stat{display:flex;flex-direction:column;justify-content:space-between;padding:12px 15px;border-radius:13px;gap:3px;background:#e8f6f6;color:#125b65}
+#qrPanel .qr-stat-excluded{background:#fff5e6;color:#a45b10}
+#qrPanel .qr-stat>span{font-size:.75rem;font-weight:800}
+#qrPanel .qr-stat strong{font-size:1.7rem;text-align:right;font-variant-numeric:tabular-nums;line-height:1.1}
+#qrPanel .qr-stat strong small{font-size:.78rem;margin-left:4px}
+#qrPanel .qr-mode-tabs{display:flex;gap:10px;align-items:stretch;border-bottom:1px solid #dce8ec;margin:0 -24px 20px;padding:0 24px}
+#qrPanel .qr-mode-tabs button{border:0;background:#f3f7f9;border-radius:11px 11px 0 0;padding:13px 19px;font-size:.94rem;font-weight:800;color:#3d6374;cursor:pointer;min-height:48px}
+#qrPanel .qr-mode-tabs button.active{background:#0a707a;color:#fff}
+#qrPanel .qr-mode-tabs button:hover:not(.active){background:#e4eff1}
+#qrPanel .qr-mode-body[hidden]{display:none!important}
+#qrPanel .qr-choose-bar{display:grid;grid-template-columns:auto minmax(180px,1fr) auto auto;gap:10px;align-items:end;margin-bottom:20px}
+#qrPanel .qr-person-select{display:flex;flex-direction:column;gap:5px;min-width:0;font-size:.78rem;font-weight:800;color:#587385}
+#qrPanel #qrPerson{padding:11px 12px;background:#fff;border:1px solid #bcd1de;border-radius:10px;min-width:0;width:100%;font-size:.97rem;font-weight:750;color:#193e50}
+#qrPanel .qr-step-button{min-height:43px;padding:10px 13px;border-radius:10px;white-space:nowrap;border-color:#bad0db;font-weight:800}
+#qrPanel .qr-step-button:hover:not(:disabled){background:#e6f5f3;border-color:#0a707a}
+#qrPanel .qr-position{align-self:end;min-height:43px;display:grid;place-items:center;padding:0 10px;color:#346778;background:#f2f7f8;border-radius:10px;white-space:nowrap;font-weight:850;font-size:.94rem;font-variant-numeric:tabular-nums}
+#qrPanel .qr-studio{display:grid;grid-template-columns:minmax(0,1fr) 195px;gap:18px;align-items:center;padding:8px 0 10px}
+#qrPanel .qr-card-holder{min-width:0}
+#qrPanel .qr-person-card{width:100%;aspect-ratio:91 / 55;display:flex;align-items:center;gap:3.2%;padding:3.3%;border-radius:16px;background:#fff;border:1px solid #aac7d0;box-shadow:0 9px 26px rgba(17,53,72,.09),0 3px 0 #078b88 inset;overflow:hidden}
+#qrPanel #qrCanvas.qr-card-code{width:43.4%;height:auto;min-height:0;aspect-ratio:1;flex:none;padding:0;margin:0;border:0;border-radius:0;background:#fff;display:grid;place-items:center}
+#qrPanel #qrCanvas img{display:block;max-width:100%;width:100%;height:auto;margin:0;image-rendering:pixelated}
+#qrPanel .qr-card-person{min-width:0;flex:1;display:flex;flex-direction:column;gap:9px;align-items:flex-start;justify-content:center;border-left:1px solid #e0e8ec;padding-left:4%;overflow-wrap:anywhere}
+#qrPanel #qrPersonName{font-size:clamp(1.2rem,2.4vw,1.6rem);line-height:1.3;color:#15384e}
+#qrPanel .qr-card-staff{font-size:clamp(1.05rem,2vw,1.35rem);font-variant-numeric:tabular-nums;letter-spacing:.03em;color:#2d5468}
+#qrPanel .qr-card-group{display:inline-block;max-width:100%;padding:5px 10px;background:#f0f5f6;color:#345568;border-radius:8px;font-size:.82rem}
+#qrPanel .qr-preview-note{margin:16px auto 0;border-radius:9px;background:#f1f7f8;padding:11px 14px;color:#4c7083;text-align:center;font-size:.82rem;line-height:1.5}
+#qrPanel .qr-studio-actions{display:flex;flex-direction:column;gap:11px}
+#qrPanel .qr-main-action{display:flex;gap:12px;align-items:center;text-align:left;justify-content:center;min-height:79px;line-height:1.3;padding:12px 13px;border-radius:12px;box-shadow:0 2px 6px rgba(10,75,91,.08);font-size:.99rem;font-weight:850}
+#qrPanel .qr-main-action>span:first-child{font-size:1.45rem}
+#qrPanel .qr-main-action small{display:block;font-weight:600;font-size:.69rem;margin-top:4px;opacity:.72}
+#qrPanel .qr-bulk-body h4{font-size:1.15rem;margin:4px 0 6px;color:#163c50}
+#qrPanel .qr-bulk-body>p{font-size:.84rem;color:#617d8e;line-height:1.6;margin:0 0 22px}
+#qrPanel .qr-bulk-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+#qrPanel .qr-bulk-action{display:flex;align-items:center;text-align:left;gap:15px;min-height:128px;border:1px solid #d0e4e8;background:linear-gradient(125deg,#ecf8f8,#f8fbfb);border-radius:14px;padding:18px;color:#153e51;cursor:pointer}
+#qrPanel .qr-bulk-action:hover:not(:disabled){border-color:#50b5b1;background:#e5f5f4}
+#qrPanel .qr-bulk-icon{width:50px;height:50px;border-radius:12px;display:grid;place-items:center;background:#daeeee;color:#078082;font-size:2rem;flex:none}
+#qrPanel .qr-bulk-action strong{display:block;font-size:1rem;margin-bottom:5px}
+#qrPanel .qr-bulk-action small{display:block;font-size:.77rem;color:#617c8a;line-height:1.5}
+#qrPanel .qr-bulk-arrow{font-size:1.8rem;color:#14868b;margin-left:auto}
+#qrPanel .qr-step-nav{margin-top:26px}
+@media(max-width:1100px){
+ #qrPanel .qr-issue-header{flex-wrap:wrap}
+ #qrPanel .qr-issue-stats{width:100%}
+}
+@media(max-width:740px){
+ #qrPanel.qr-issue-panel{padding:18px 15px}
+ #qrPanel .qr-mode-tabs{margin:0 -15px 18px;padding:0 15px}
+ #qrPanel .qr-mode-tabs button{font-size:.83rem;padding:12px 10px}
+ #qrPanel .qr-choose-bar{grid-template-columns:auto minmax(0,1fr) auto}
+ #qrPanel .qr-choose-bar .qr-person-select{grid-column:1/-1;grid-row:1}
+ #qrPanel .qr-position{grid-column:2;grid-row:2}
+ #qrPanel .qr-step-button span{display:none}
+ #qrPanel .qr-studio{grid-template-columns:1fr}
+ #qrPanel .qr-studio-actions{display:grid;grid-template-columns:1fr 1fr}
+ #qrPanel .qr-bulk-actions{grid-template-columns:1fr}
+}
+@media(max-width:480px){
+ #qrPanel .qr-title-icon{display:none}
+ #qrPanel .qr-issue-stats{min-width:0;grid-template-columns:1fr 1fr}
+ #qrPanel .qr-stat{padding:11px 9px}
+ #qrPanel .qr-stat>span{font-size:.67rem}
+ #qrPanel .qr-person-card{border-radius:10px}
+ #qrPanel .qr-card-person{gap:4px}
+ #qrPanel #qrPersonName{font-size:1rem}
+ #qrPanel .qr-card-staff{font-size:.9rem}
+ #qrPanel .qr-card-group{font-size:.7rem;padding:3px 6px}
+ #qrPanel .qr-main-action{min-height:68px;font-size:.8rem}
+ #qrPanel .qr-main-action small{font-size:.63rem}
+}
+@media print{
+ body[data-print-mode="qr"] #qrPanel > :not(#printSheets){display:none!important}
+ body[data-print-mode="qr"] #qrPanel{padding:0!important;border:0!important;box-shadow:none!important}
+}
+
+/* In individual mode, bulk actions stay visible below the card, as in the accepted screen. */
+#qrPanel .qr-tab-icon{height:18px;width:18px;vertical-align:-4px;margin-right:6px}
+#qrPanel .qr-button-icon{height:26px;width:26px;flex:none}
+#qrPanel .qr-bulk-inline{margin-top:25px;padding-top:18px;border-top:1px solid #dce8ec}
+#qrPanel .qr-bulk-inline h4{font-size:1rem}
+#qrPanel .qr-bulk-inline .qr-bulk-action{min-height:98px}
+#qrPanel .qr-bulk-inline .qr-bulk-icon{width:42px;height:42px}
