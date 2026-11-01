@@ -536,15 +536,18 @@ async function qrCardDataURL(p,qrImageData){
  const scale=10,canvas=document.createElement("canvas");canvas.width=91*scale;canvas.height=55*scale;
  const ctx=canvas.getContext("2d");if(!ctx)throw Error("画像の描画に失敗しました");
  ctx.fillStyle="#FFFFFF";ctx.fillRect(0,0,canvas.width,canvas.height);
+ // Match the card preview's teal accent, subtle separator and group label.
+ ctx.fillStyle="#078b88";ctx.fillRect(0,0,canvas.width,3*scale);
  ctx.imageSmoothingEnabled=false;ctx.drawImage(image,6*scale,9.5*scale,36*scale,36*scale);
  ctx.imageSmoothingEnabled=true;
+ ctx.fillStyle="#e0e8ec";ctx.fillRect(45.2*scale,9*scale,1,37*scale);
  const x=48*scale,maxWidth=39*scale,font='"Yu Gothic","Meiryo",sans-serif';
- // The printed card's text remains dark on white, including names with Japanese characters.
  ctx.fillStyle="#183a4f";ctx.font='bold 45px '+font;
  ctx.fillText(p.name,x,20.5*scale,maxWidth);
  ctx.fillStyle="#354b5e";ctx.font='38px '+font;
  ctx.fillText(p.staffId,x,29.5*scale,maxWidth);
  if(p.group){
+  ctx.fillStyle="#f0f5f6";ctx.fillRect(47*scale,32.5*scale,40*scale,7.5*scale);
   ctx.fillStyle="#3e5667";ctx.font='31px '+font;
   ctx.fillText(p.group,x,38*scale,maxWidth);
  }
