@@ -134,7 +134,7 @@
     </div>
    </section>
    <section id="qrBulkArea" class="qr-mode-body qr-bulk-body" role="tabpanel" aria-labelledby="qrTabBulk" hidden>
-    <h4 id="qrBulkHeading">その他の発行方法</h4><p>職員番号のある方を対象に一括発行します。個別PNGと同じカード画像をZIPにまとめることもできます。</p>
+    <h4 id="qrBulkHeading">まとめて発行する</h4><p>職員番号のある方を対象に一括発行します。個別PNGと同じカード画像をZIPにまとめることもできます。</p>
     <div class="qr-bulk-actions">
      <button type="button" id="printQRs" class="qr-bulk-action">
       <span class="qr-bulk-icon" aria-hidden="true"><svg class="qr-button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="6" y="14" width="12" height="7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/></svg></span><span><strong>一括印刷（A4・10面）</strong><small>名刺サイズ・2列×5段で印刷プレビューを開く</small></span><span class="qr-bulk-arrow" aria-hidden="true">›</span>
@@ -147,7 +147,47 @@
    <div class="step-nav qr-step-nav"><button type="button" class="btn" data-prep="participants">← ② 参加者登録</button><button type="button" class="btn main" data-prep="results">次へ：④ 紙名簿・出力 →</button></div>
    <div id="printSheets" class="print-sheet"></div>
   </section>
-   <section id="resultsPanel" class="panel" hidden><h3>受付集計</h3><div id="sessionStats" class="summary"></div><div class="panel roster-print-controls"><h3>紙の受付名簿</h3><div class="row"><label class="field">印刷する受付区分<select id="rosterSession"></select></label><button type="button" class="btn main" id="printRosterPrep">▤ 受付名簿を印刷</button></div><p class="hint">PC不調に備え、開催前に印刷してください。手書きチェック欄・当日追加用の空欄付き。</p></div><div class="buttons"><button class="btn main" id="exportResult">⇩ このイベントの区分別CSV</button><button class="btn" id="exportAudit">⇩ 受付変更履歴CSV</button><button class="btn" data-backup>⇩ 全イベントJSON</button></div><div class="step-nav"><button type="button" class="btn" data-prep="qr">← ③ QR発行</button><button type="button" class="btn main" data-mode="day">準備完了：当日受付の画面へ →</button></div></section>
+   <section id="resultsPanel" class="panel out-panel" hidden>
+  <div class="out-heading">
+   <span class="out-heading-icon" aria-hidden="true"><svg class="out-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="6" y="14" width="12" height="7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/></svg></span>
+   <div><h3>紙名簿・出力</h3><p>受付名簿の印刷や、集計・管理用データを出力します。</p></div>
+  </div>
+  <section class="out-overview" aria-label="受付の状況">
+   <div class="out-section-heading"><h4>受付の状況</h4><span id="outStatsNote" class="out-hint"></span></div>
+   <div id="sessionStats" class="summary out-stats" role="status" aria-live="polite"></div>
+  </section>
+  <div class="out-output-layout">
+   <section class="out-roster-card" aria-labelledby="outRosterTitle">
+    <div class="out-roster-lead">
+     <span class="out-roster-icon" aria-hidden="true"><svg class="out-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="6" y="14" width="12" height="7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/></svg></span>
+     <div><h4 id="outRosterTitle">紙の受付名簿（印刷）</h4><p>当日の受付で使用する名簿を印刷します。</p></div>
+    </div>
+    <div class="out-roster-controls">
+     <div class="out-roster-field">
+      <div class="out-control-label"><label for="rosterSession">印刷する受付区分</label><div class="out-export-help"><button type="button" class="out-info-trigger" data-output-help aria-label="受付区分の詳しい説明" aria-expanded="false" aria-controls="outHelp1" title="受付区分について">ⓘ</button><div class="out-tooltip" id="outHelp1" role="tooltip">午前・午後など、印刷したい受付区分を選びます。各区分の参加予定者のみを印刷します。</div></div></div>
+      <select id="rosterSession" aria-label="紙名簿を印刷する受付区分"></select>
+     </div>
+     <button type="button" class="btn main out-print-btn" id="printRosterPrep"><svg class="out-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="6" y="14" width="12" height="7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/></svg><span>受付名簿を印刷</span></button>
+    </div>
+    <div class="out-roster-note"><span aria-hidden="true">ⓘ</span><span>氏名・職員番号・所属・グループ・手書きチェック欄・受付時刻の記入欄を印刷します。PC不調に備えて開催前に用意してください。</span></div>
+   </section>
+   <section class="out-export-section" aria-labelledby="outExportTitle">
+    <h4 id="outExportTitle">データ出力 <small>（データ管理・集計用）</small></h4>
+    <div class="out-export-list">
+    <div class="out-export-card"><button type="button" id="exportResult"  class="out-export-action">
+  <span class="out-export-icon" aria-hidden="true"><svg class="out-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M13 2v7h7"/><path d="M7 17h10"/><path d="M7 14h10"/></svg></span><span class="out-export-text"><strong>このイベントの区分別CSV</strong><small>参加者×受付区分ごとの受付結果を出力</small></span>
+ </button><div class="out-export-help"><button type="button" class="out-info-trigger" data-output-help aria-label="このイベントの区分別CSVの詳しい説明" aria-expanded="false" aria-controls="outHelp2" title="このイベントの区分別CSVについて">ⓘ</button><div class="out-tooltip" id="outHelp2" role="tooltip">現在のイベントについて、参加者と受付区分の組み合わせごとに1行出力します。受付状況・受付日時・所属・職員番号などをExcelで集計する用途です。</div></div></div>
+    <div class="out-export-card"><button type="button" id="exportAudit"  class="out-export-action">
+  <span class="out-export-icon" aria-hidden="true"><svg class="out-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M13 2v7h7"/><circle cx="15" cy="17" r="4.5"/><path d="M15 14.5V17l1.5 1"/></svg></span><span class="out-export-text"><strong>受付変更履歴CSV</strong><small>初回受付・取消・再受付の履歴を出力</small></span>
+ </button><div class="out-export-help"><button type="button" class="out-info-trigger" data-output-help aria-label="受付変更履歴CSVの詳しい説明" aria-expanded="false" aria-controls="outHelp3" title="受付変更履歴CSVについて">ⓘ</button><div class="out-tooltip" id="outHelp3" role="tooltip">現在のイベントの初回受付、受付取消、再受付を時刻・方法・取消理由とともに出力します。監査・修正内容の確認に使えます。</div></div></div>
+    <div class="out-export-card"><button type="button" data-backup class="out-export-action">
+  <span class="out-export-icon" aria-hidden="true"><svg class="out-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M13 2v7h7"/><path d="M10 13c-2 0-1 2-3 2 2 0 1 2 3 2M14 13c2 0 1 2 3 2-2 0-1 2-3 2"/></svg></span><span class="out-export-text"><strong>全イベントJSON</strong><small>全イベントのバックアップ・移行用</small></span>
+ </button><div class="out-export-help"><button type="button" class="out-info-trigger" data-output-help aria-label="全イベントJSONの詳しい説明" aria-expanded="false" aria-controls="outHelp4" title="全イベントJSONについて">ⓘ</button><div class="out-tooltip" id="outHelp4" role="tooltip">このイベントだけでなく、このPCのブラウザに保存された全イベントの設定・名簿・受付履歴をまとめてバックアップします。復元にも使用できます。個人情報を含むため適切に保管してください。</div></div></div>
+    </div>
+   </section>
+  </div>
+  <div class="step-nav out-step-nav"><button type="button" class="btn" data-prep="qr">← ③ QR発行</button><button type="button" class="btn main" data-mode="day">準備完了：当日受付の画面へ →</button></div>
+ </section>
  </div></div>
 
  <section id="receptionView" class="reception rx" hidden>
