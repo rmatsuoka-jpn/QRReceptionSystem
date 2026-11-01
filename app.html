@@ -102,28 +102,69 @@
  <section id="resultsPanel" class="panel" hidden><h3>受付集計</h3><div id="sessionStats" class="summary"></div><div class="panel roster-print-controls"><h3>紙の受付名簿</h3><div class="row"><label class="field">印刷する受付区分<select id="rosterSession"></select></label><button type="button" class="btn main" id="printRosterPrep">▤ 受付名簿を印刷</button></div><p class="hint">PC不調に備え、開催前に印刷してください。手書きチェック欄・当日追加用の空欄付き。</p></div><div class="buttons"><button class="btn main" id="exportResult">⇩ このイベントの区分別CSV</button><button class="btn" id="exportAudit">⇩ 受付変更履歴CSV</button><button class="btn" data-backup>⇩ 全イベントJSON</button></div><div class="step-nav"><button type="button" class="btn" data-prep="qr">← ③ QR発行</button><button type="button" class="btn main" data-mode="day">準備完了：当日受付の画面へ →</button></div></section>
  </div></div>
 
- <section id="receptionView" class="reception" hidden>
-  <details id="dayCheck" class="panel day-check" open><summary><strong>受付開始前の確認</strong> <span id="dayCheckStatus" class="tag warn">未確認</span></summary>
-   <div class="day-check-items">
-    <label class="check"><input type="checkbox" data-day-check="session"> 受付区分が正しい（現在：<b id="dayCheckSession"></b>）</label>
-    <label class="check"><input type="checkbox" data-day-check="camera"> 下の「▶ カメラを起動」を押し、テスト用QRで読み取れた</label>
-    <label class="check"><input type="checkbox" data-day-check="sound"> PCの音量を上げ、受付音が聞こえる <button type="button" class="btn small" id="soundTest">♪ 3種類の音を試す</button></label>
-    <label class="check"><input type="checkbox" data-day-check="paper"> 紙の受付名簿を手元に用意した（PC不調時用）</label>
+ <section id="receptionView" class="reception rx" hidden>
+  <div class="rx-bar">
+   <button type="button" class="rx-icon-btn" id="rxBack" title="総合管理へ戻る" aria-label="総合管理へ戻る">←</button>
+   <div class="rx-event"><span class="rx-eyebrow">当日受付</span><strong id="rxEventName"></strong></div>
+   <label class="rx-session"><span>受付区分</span><select id="checkinSession"></select></label>
+   <div class="rx-tools">
+    <details id="dayCheck" class="rx-pop day-check">
+     <summary class="rx-tool"><span aria-hidden="true">☑</span> 受付前チェック <span id="dayCheckStatus" class="tag warn">未確認</span></summary>
+     <div class="rx-pop-body">
+      <p class="rx-pop-title">受付を始める前に</p>
+      <label class="check"><input type="checkbox" data-day-check="session"> 受付区分は「<b id="dayCheckSession"></b>」で正しい</label>
+      <label class="check"><input type="checkbox" data-day-check="camera"> テスト用QRが読み取れた</label>
+      <div class="rx-check-row"><label class="check"><input type="checkbox" data-day-check="sound"> 受付音が聞こえる</label><button type="button" class="btn small" id="soundTest">♪ 試聴</button></div>
+      <label class="check"><input type="checkbox" data-day-check="paper"> 紙の受付名簿を用意した</label>
+     </div>
+    </details>
+    <div class="rx-sound" role="group" aria-label="受付音">
+     <label class="rx-switch" title="受付音のON/OFF"><input type="checkbox" id="soundToggle" checked><span class="rx-switch-ui" aria-hidden="true"></span><span>受付音</span></label>
+     <select id="soundVolume" aria-label="受付音の音量"><option value="high">大</option><option value="mid">中</option><option value="low">小</option></select>
+    </div>
+    <button type="button" class="rx-tool" id="printRosterDay" title="紙の受付名簿を印刷">▤ 紙名簿</button>
+    <button type="button" class="rx-tool" data-mode="prep" title="設定・名簿・QR発行に戻る">⚙ 事前準備</button>
    </div>
-  </details>
-  <div class="day-session"><div class="row"><strong>受付区分</strong><div class="buttons"><label class="check sound-toggle"><input type="checkbox" id="soundToggle" checked> 受付音を鳴らす</label><label class="check sound-toggle">音量<select id="soundVolume" aria-label="受付音の音量"><option value="high">大</option><option value="mid">中</option><option value="low">小</option></select></label><button type="button" class="btn small" id="printRosterDay">▤ 受付名簿を印刷</button></div></div><select id="checkinSession"></select></div><div id="daySummary" class="summary"></div>
+  </div>
   <div class="reception-grid">
-  <div><div class="panel"><h3>QR受付</h3><div class="camera"><div class="camera-controls"><select id="cameraSelect" aria-label="使用するカメラ" hidden></select><button type="button" id="cameraStart" class="btn main">▶ カメラを起動</button><button type="button" id="cameraStop" class="btn" hidden>■ 停止</button></div><div id="readerViewport" class="reader-viewport"><div id="reader" class="reader"></div></div><div id="cameraHint" class="hint">「▶ カメラを起動」を押すと読み取りを始めます（初回はカメラの許可を求められます）。</div><div id="camDiag" class="cam-diag" hidden><span id="camStats">解析 —</span><button type="button" class="linkbtn" id="cameraSnapshot">映像を保存（調査用）</button></div><label class="check mirror-toggle"><input type="checkbox" id="mirrorToggle" checked> 映像を鏡のように表示（PC内蔵・正面向きカメラ向け）</label></div><div id="checkinResult" class="result" role="status" aria-live="polite">スキャン待機中</div></div>
-  <div class="panel"><h3>当日の参加者変更</h3><div class="grid2"><button id="walkinBtn" class="btn main">＋ 飛び入り登録</button><button id="manualBtn" class="btn">⌕ 名前から受付</button></div></div></div>
-  <div class="panel attendance-panel">
-    <div class="pending-header"><h3 style="margin:0">受付状況 <span id="pendingSessionName" class="tag"></span></h3></div>
+   <div class="rx-main">
+    <div class="rx-stage">
+     <div class="rx-camera camera">
+      <div class="rx-video">
+       <div id="readerViewport" class="reader-viewport"><div id="reader" class="reader"></div></div>
+       <div class="rx-cam-idle">
+        <svg viewBox="0 0 48 48" width="44" height="44" aria-hidden="true"><path d="M6 15V9a3 3 0 0 1 3-3h6M33 6h6a3 3 0 0 1 3 3v6M42 33v6a3 3 0 0 1-3 3h-6M15 42H9a3 3 0 0 1-3-3v-6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><rect x="15" y="15" width="7" height="7" rx="1" fill="currentColor"/><rect x="26" y="15" width="7" height="7" rx="1" fill="currentColor"/><rect x="15" y="26" width="7" height="7" rx="1" fill="currentColor"/><rect x="27" y="27" width="5" height="5" rx="1" fill="currentColor"/></svg>
+        <button type="button" id="cameraStart" class="btn main rx-start">▶ カメラを起動</button>
+       </div>
+      </div>
+      <div class="rx-cam-bar camera-controls">
+       <select id="cameraSelect" aria-label="使用するカメラ" hidden></select>
+       <label class="rx-mini-check" title="PC内蔵・正面向きカメラ向け"><input type="checkbox" id="mirrorToggle" checked> 鏡表示</label>
+       <div id="camDiag" class="cam-diag" hidden><span id="camStats">解析 —</span><button type="button" class="linkbtn" id="cameraSnapshot">映像を保存</button></div>
+       <button type="button" id="cameraStop" class="btn small" hidden>■ 停止</button>
+      </div>
+      <div id="cameraHint" class="hint">カメラを起動してQRを読み取ります</div>
+     </div>
+     <div id="checkinResult" class="result" role="status" aria-live="polite"><div class="outcome">QRコードをかざしてください</div></div>
+    </div>
+    <div class="rx-actions">
+     <button type="button" id="manualBtn" class="rx-action"><span class="rx-action-ico" aria-hidden="true">⌕</span><span><b>名前から受付</b><small>QRを忘れた方</small></span></button>
+     <button type="button" id="walkinBtn" class="rx-action"><span class="rx-action-ico" aria-hidden="true">＋</span><span><b>飛び入り登録</b><small>名簿にいない方</small></span></button>
+    </div>
+   </div>
+   <aside class="panel attendance-panel">
+    <div class="rx-progress">
+     <div class="rx-progress-head"><span>受付済み <span id="pendingSessionName" class="tag"></span></span><strong id="rxProgressText">0 / 0</strong></div>
+     <div class="progress"><div id="rxProgressBar"></div></div>
+     <div id="daySummary" class="summary rx-summary"></div>
+    </div>
     <div class="attendance-tabs" role="tablist" aria-label="参加者の受付状況">
-      <button id="tabPending" type="button" role="tab" aria-controls="pendingRows" aria-selected="true" class="active" data-reception-tab="pending">未受付 <span id="pendingCount" class="attendance-count">0</span></button>
-      <button id="tabChecked" type="button" role="tab" aria-controls="checkedRows" aria-selected="false" data-reception-tab="checked">受付済み <span id="checkedCount" class="attendance-count">0</span></button>
+     <button id="tabPending" type="button" role="tab" aria-controls="pendingRows" aria-selected="true" class="active" data-reception-tab="pending">未受付 <span id="pendingCount" class="attendance-count">0</span></button>
+     <button id="tabChecked" type="button" role="tab" aria-controls="checkedRows" aria-selected="false" data-reception-tab="checked">受付済み <span id="checkedCount" class="attendance-count">0</span></button>
     </div>
     <div id="pendingRows" class="pending-list" role="tabpanel" aria-labelledby="tabPending"></div>
     <div id="checkedRows" class="pending-list" role="tabpanel" aria-labelledby="tabChecked" hidden></div>
-  </div>
+   </aside>
   </div>
  </section>
 </section>
