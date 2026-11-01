@@ -46,27 +46,63 @@
  <nav class="sidebar steps" aria-label="事前準備の手順" id="prepSteps"><button data-prep="settings" class="active">イベント設定</button><button data-prep="participants">参加者登録</button><button data-prep="qr">QR発行</button><button data-prep="results">紙名簿・出力</button></nav>
  <div>
  <div id="nextStep" class="next-step" role="status"></div>
- <section id="settingsPanel" class="panel">
-  <h3>イベント設定</h3><div class="fields"><label class="field">イベント名<input id="editEventName" required></label><label class="field">開催日<input id="editEventDate" type="date"></label><label class="field">分類<select id="editEventCategory"><option value="training">研修</option><option value="briefing">説明会</option><option value="other">その他</option></select></label></div>
-  <h3 style="margin-top:24px">受付区分</h3><div id="sessionEditor"></div><div class="buttons" style="margin-top:12px"><input id="newSessionName" class="search" style="max-width:240px" placeholder="新しい受付区分名"><button class="btn" id="addSession">＋ 区分追加</button></div>
-  <h3 style="margin-top:24px">任意項目（最大2つ）</h3>
-  <div class="fields two">
-   <div class="custom-config"><label class="field">項目名1<input id="customLabel1" placeholder="例：参加形式"></label>
-    <label class="field">入力方法<select id="customType1"><option value="text">自由入力</option><option value="bool">有・無</option><option value="select">選択肢</option></select></label>
-    <label class="field" id="customOptionsWrap1" hidden>選択肢（| で区切る）<input id="customOptions1" placeholder="例：対面|オンライン"></label>
+ <section id="settingsPanel" class="panel es-panel">
+   <div class="es-page-heading"><span class="es-heading-icon" aria-hidden="true">⚙</span><div><h3>イベント設定</h3><p>開催内容と受付に必要な情報を設定します。</p></div></div>
+   <div class="es-card">
+    <div class="es-card-heading"><h4>基本情報</h4><details class="es-help"><summary aria-label="基本情報の説明" title="基本情報の説明">ⓘ</summary><div class="es-tooltip">イベント名・開催日・分類を設定します。イベント名は受付画面や印刷物にも表示されます。</div></details></div>
+    <div class="fields es-basic-fields"><label class="field">イベント名 <span class="es-required">必須</span><input id="editEventName" required></label><label class="field">開催日<input id="editEventDate" type="date"></label><label class="field">分類<select id="editEventCategory"><option value="training">研修</option><option value="briefing">説明会</option><option value="other">その他</option></select></label></div>
    </div>
-   <div class="custom-config"><label class="field">項目名2<input id="customLabel2" placeholder="例：PC持参"></label>
-    <label class="field">入力方法<select id="customType2"><option value="text">自由入力</option><option value="bool">有・無</option><option value="select">選択肢</option></select></label>
-    <label class="field" id="customOptionsWrap2" hidden>選択肢（| で区切る）<input id="customOptions2" placeholder="例：あり|なし|未定"></label>
+   <div class="es-card">
+    <div class="es-card-heading"><h4>受付区分</h4><details class="es-help"><summary aria-label="受付区分の説明" title="受付区分の説明">ⓘ</summary><div class="es-tooltip">午前・午後、講演・交流会など、受付を分けて記録したい単位です。区分ごとに参加予定と受付時刻を管理できます。分けない場合は「共通受付」だけで運用できます。</div></details></div>
+    <div class="es-split">
+     <div class="es-main-area">
+      <p class="es-area-label">このイベントの受付区分</p>
+      <div id="sessionEditor" class="es-session-list"></div>
+      <div class="es-add-row"><input id="newSessionName" class="search" maxlength="80" placeholder="新しい区分名を入力" aria-label="新しい受付区分名"><button type="button" class="btn" id="addSession">＋ 追加</button></div>
+      <p class="es-small-note">区分名は直接編集できます。削除すると参加予定の設定も外れます。</p>
+     </div>
+     <aside class="es-preset-area" aria-label="受付区分の入力候補">
+      <p class="es-area-label">よく使う区分 <span class="es-note-tag">クリックで追加</span></p>
+      <div id="sessionPresetButtons" class="es-chip-list"></div>
+      <p class="es-area-label es-recent-title">最近使った区分</p>
+      <div id="sessionRecentButtons" class="es-chip-list"></div>
+      <p class="es-small-note">このPCに保存されているイベントから候補を表示します。</p>
+     </aside>
+    </div>
    </div>
-  </div>
-  <div class="panel config-preview">
-<div class="row"><h3>参加者登録への反映イメージ</h3><span class="tag" id="customSaveStatus" role="status">保存済み</span></div>
-<div id="customPreview" class="fields two"></div>
-</div>
-<div class="form-actions step-nav"><button class="btn" id="saveSettings">設定を保存</button><button class="btn main" id="saveSettingsNext">保存して次へ：② 参加者登録 →</button></div>
- </section>
- <section id="participantsPanel" class="panel pt-panel" hidden>
+   <div class="es-card">
+    <div class="es-card-heading"><h4>追加の登録項目 <span class="es-max-note">最大2つ</span></h4><details class="es-help"><summary aria-label="追加の登録項目の説明" title="追加の登録項目の説明">ⓘ</summary><div class="es-tooltip">氏名・職員番号・所属・グループ以外に、イベントごとに確認したい項目を最大2つ設定できます。例えば参加形式、PC持参、昼食希望などです。自由入力・はい／いいえ・選択式から選べます。</div></details></div>
+    <p class="es-section-intro">参加者登録の際に追加で確認したい情報を設定できます。不要な場合は空欄のままで構いません。</p>
+    <div class="es-split">
+     <div class="es-main-area es-custom-editor">
+      <p class="es-area-label">このイベントで使う項目</p>
+      <div class="es-custom-grid">
+       <div class="custom-config"><div class="es-field-heading"><strong>追加項目 1</strong><button type="button" class="es-clear" data-clear-custom="1">クリア</button></div><label class="field">項目名<input id="customLabel1" placeholder="例：参加形式"></label>
+        <label class="field">入力方法<select id="customType1"><option value="text">自由入力</option><option value="bool">はい／いいえ</option><option value="select">選択式</option></select></label>
+        <label class="field" id="customOptionsWrap1" hidden>選択肢（| で区切る）<input id="customOptions1" placeholder="例：対面|オンライン"></label>
+       </div>
+       <div class="custom-config"><div class="es-field-heading"><strong>追加項目 2</strong><button type="button" class="es-clear" data-clear-custom="2">クリア</button></div><label class="field">項目名<input id="customLabel2" placeholder="例：PC持参"></label>
+        <label class="field">入力方法<select id="customType2"><option value="text">自由入力</option><option value="bool">はい／いいえ</option><option value="select">選択式</option></select></label>
+        <label class="field" id="customOptionsWrap2" hidden>選択肢（| で区切る）<input id="customOptions2" placeholder="例：対面|オンライン"></label>
+       </div>
+      </div>
+     </div>
+     <aside class="es-preset-area" aria-label="追加の登録項目の入力候補">
+      <p class="es-area-label">よく使う項目 <span class="es-note-tag">クリックで設定</span></p>
+      <div id="customPresetButtons" class="es-candidate-list"></div>
+      <p class="es-area-label es-recent-title">最近使った項目</p>
+      <div id="customRecentButtons" class="es-candidate-list"></div>
+      <p class="es-small-note">空いている項目にセットします。候補から設定した後も編集できます。</p>
+     </aside>
+    </div>
+    <div class="es-preview config-preview">
+     <div class="row"><h4>参加者登録画面での表示イメージ</h4><span class="tag" id="customSaveStatus" role="status">保存済み</span></div>
+     <div id="customPreview" class="fields two"></div>
+    </div>
+   </div>
+   <div class="form-actions step-nav es-actions"><button class="btn" id="saveSettings">設定を保存</button><button class="btn main" id="saveSettingsNext">保存して次へ：② 参加者登録 →</button></div>
+  </section>
+  <section id="participantsPanel" class="panel pt-panel" hidden>
  <div class="pt-heading">
   <div class="pt-heading-main"><div class="pt-heading-icon"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6M17 14a5 5 0 0 1 4 5"/></svg></div><div><h3>参加者登録</h3><p>参加者の登録・名簿の取り込みを行います。</p></div></div>
   <div class="pt-summary" role="status" aria-live="polite">
