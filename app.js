@@ -961,7 +961,9 @@ function commitCsvImport(){
    }
   }
  });
- if(ok){const src=csvPending?.source;closeDialog();csvPending=null;$("participantFile").value="";if(src==="paste")$("participantPaste").value="";announce("参加者登録完了：新規 "+plan.adds+"名、更新 "+plan.updates+"名、スキップ "+plan.skip+"名","success");}
+ if(ok){const src=csvPending?.source;closeDialog();csvPending=null;$("participantFile").value="";if(src==="paste")$("participantPaste").value="";
+ $("participantImportDetails").open=false;setParticipantPage(1);
+ announce("参加者登録完了：新規 "+plan.adds+"名、更新 "+plan.updates+"名、スキップ "+plan.skip+"名","success");}
 }
 async function importParticipants(){
  const file=$("participantFile").files?.[0];if(!file)return announce("CSVファイルを選択してください。","warn");
@@ -1064,6 +1066,11 @@ $("exportCross").onclick=()=>exportCross(false);$("exportCrossDetail").onclick=(
 $("saveSettings").onclick=saveSettings;$("saveSettingsNext").onclick=()=>{if(saveSettings()){prepTab="participants";render();}};
 for(const c of document.querySelectorAll("[data-day-check]"))c.onchange=saveDayCheck;$("dayCheck").addEventListener("toggle",()=>{if($("dayCheck").open)$("dayCheck").dataset.userOpened="1";});$("soundTest").onclick=()=>{primeAudio();if(meta.sound===false){$("soundToggle").checked=true;meta.sound=true;saveMeta();}setTimeout(()=>feedback("success"),80);setTimeout(()=>feedback("warn"),1500);setTimeout(()=>feedback("error"),2700);};
 $("soundVolume").value=meta.volume||"high";$("soundVolume").onchange=()=>{meta.volume=$("soundVolume").value;saveMeta();primeAudio();setTimeout(()=>feedback("success"),60);};$("addSession").onclick=addSession;for(let i=1;i<=2;i++){$("customType"+i).onchange=()=>{toggleCustomOptions(i);renderCustomPreview();};$("customLabel"+i).oninput=renderCustomPreview;$("customOptions"+i).oninput=renderCustomPreview;}$("addPerson").onclick=()=>openPerson(null,false);
+document.addEventListener("click",ev=>{
+ for(const tip of document.querySelectorAll("#participantsPanel .pt-help[open]")){
+  if(!tip.contains(ev.target))tip.open=false;
+ }
+});
 $("personQuery").oninput=()=>setParticipantPage(1);
  $("personSessionFilter").onchange=()=>setParticipantPage(1);
  $("ptPageSize").onchange=()=>{participantPageSize=Number($("ptPageSize").value)||25;setParticipantPage(1);};
