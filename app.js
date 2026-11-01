@@ -167,6 +167,7 @@ function restoreSettingsSnapshot(s){
  renderCustomPreview();renderSessionPresets();renderCustomPresets();
 }
 function renderSettings(){
+ $("sessionInlineStatus").hidden=true;
  const e=current();$("editEventName").value=e.name;$("editEventDate").value=e.date||"";$("editEventCategory").value=e.category;
  for(let i=0;i<2;i++){$("customLabel"+(i+1)).value=e.customLabels?.[i]||"";$("customType"+(i+1)).value=getCustomType(e,i);$("customOptions"+(i+1)).value=getCustomOptions(e,i).join("|");toggleCustomOptions(i+1);}
  renderCustomPreview();const root=$("sessionEditor");root.replaceChildren();
@@ -1000,17 +1001,19 @@ function previewCsvImport(){
     throw Error("「"+radio.dataset.sessionLabel+"」の参加予定を表すExcel列を選択してください。");
   }
   const plan=prepareCsv(csvPending.rows,mapping,mode,e);
+  const top=$("csvTopAlert");top.hidden=!plan.nonTarget;if(plan.nonTarget){top.className="ci-warning";top.textContent="⚠ 参加予定がない新規登録者が "+plan.nonTarget+"名います。受付区分を設定しないと当日の未受付一覧に表示されません。下の「参加予定の設定」を確認してください。";}
   root.innerHTML='<div class="ci-result-label">取り込み予定</div><div class="ci-result-stats">'+
    '<div><strong>'+plan.adds+'</strong><span>新規登録</span></div>'+
    '<div><strong>'+plan.updates+'</strong><span>既存を更新</span></div>'+
    '<div><strong>'+plan.skip+'</strong><span>スキップ</span></div></div>'+
    ((plan.blank||plan.example)?'<p class="ci-info-note">氏名が空欄：'+plan.blank+'行'+(plan.example?'　／　記入例：'+plan.example+'行':'')+'（取り込み対象外）</p>':'')+
-   (plan.nonTarget?'<div class="ci-warning" role="alert">⚠ 参加予定がない新規登録者が '+plan.nonTarget+'名 います。受付区分を設定しないと当日の未受付一覧には表示されません。上の「参加予定の設定」を確認してください。</div>':'');
+   '';
   $("csvCommit").disabled=plan.plans.length===0;
   $("csvCommit").textContent=plan.plans.length?plan.plans.length+"名を取り込む →":"取り込み対象がありません";
   $("csvFooterSummary").textContent="新規 "+plan.adds+"名・更新 "+plan.updates+"名・スキップ "+plan.skip+"名";
   return plan;
  }catch(err){
+  const top=$("csvTopAlert");top.hidden=false;top.className="ci-warning ci-error";top.textContent="確認が必要です："+err.message;
   root.replaceChildren();const n=document.createElement("div");n.className="ci-warning ci-error";n.setAttribute("role","alert");n.textContent="確認が必要です："+err.message;root.append(n);
   $("csvCommit").disabled=true;$("csvFooterSummary").textContent="列の対応を確認してください";return null;
  }
@@ -1120,6 +1123,7 @@ function showImportPreview(rows,source){
   const tile=document.createElement("div");tile.className="ci-overview-tile";const val=document.createElement("strong");val.id=id;val.textContent=String(value);const caption=document.createElement("span");caption.textContent=label;tile.append(val,caption);summary.append(tile);
  }
  root.append(summary);
+ const topAlert=document.createElement("div");topAlert.id="csvTopAlert";topAlert.hidden=true;topAlert.setAttribute("role","alert");root.append(topAlert);
  const section=document.createElement("section");section.className="ci-section";
  const title=document.createElement("h3");title.textContent="✓ 基本的な列の対応";section.append(title);
  const note=document.createElement("p");note.className="ci-section-note";note.textContent="Excelの列名から自動判定しています。違う列が選ばれていた場合だけ変更してください。";section.append(note);
