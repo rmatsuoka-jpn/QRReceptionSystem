@@ -649,7 +649,7 @@ function renderQRSelect(){
  switchQrMode(qrMode);
  if(!people.length){
   qrRendered="";$("qrCanvas").replaceChildren();$("qrPersonName").textContent="発行対象者がいません";
-  $("qrPersonStaff").textContent="";$("qrPersonGroup").textContent="";$("qrPersonGroup").hidden=true;
+  $("qrPersonStaff").textContent="";$("qrPersonGroup").textContent="";$("qrPersonGroup").hidden=true;$("qrPersonCustom").replaceChildren();$("qrPersonCustom").hidden=true;
   $("qrPosition").textContent="0 / 0";
   for(const id of ["qrPrevious","qrNext","downloadQR","printSingleQR","printQRs","exportQRZip"])$(id).disabled=true;
   return;
@@ -674,6 +674,7 @@ function renderOneQR(){
  $("qrPersonStaff").textContent=p.staffId;
  $("qrPersonGroup").textContent=p.group||"";
  $("qrPersonGroup").hidden=!p.group;
+ $("qrPersonCustom").replaceChildren();$("qrPersonCustom").hidden=!appendCustomDetails($("qrPersonCustom"),current(),p,"qr-custom-line");
  if(typeof QRCode!=="function")return announce("QRコード生成ライブラリがありません。","error");
  try{
   const tmp=document.createElement("div");
@@ -723,6 +724,16 @@ async function qrCardDataURL(p,qrImageData){
   ctx.fillStyle="#3e5667";ctx.font='31px '+font;
   ctx.fillText(p.group,x,38*scale,maxWidth);
  }
+ ctx.fillStyle="#355468";ctx.font='24px '+font;
+ for(const [i,entry] of customEntries(current(),p).entries()){
+  const full=entry.label+"："+entry.value;
+  let shown=full;
+  if(ctx.measureText(shown).width>maxWidth){
+   while(shown&&ctx.measureText(shown+"…").width>maxWidth)shown=shown.slice(0,-1);
+   shown=shown?shown+"…":"…";
+  }
+  ctx.fillText(shown,x,(p.group?44.7:36.9)*scale+i*5.2*scale,maxWidth);
+ }
  return canvas.toDataURL("image/png");
 }
 async function downloadOneQR(){
@@ -750,7 +761,7 @@ async function printQRCards(people){
    const title=document.createElement("div");title.className="print-name";title.textContent=p.name;
    const staff=document.createElement("div");staff.className="print-staff";staff.textContent=p.staffId;
    meta.append(title,staff);
-   if(p.group){const g=document.createElement("div");g.className="print-group";g.textContent=p.group;meta.append(g);}
+   if(p.group){const g=document.createElement("div");g.className="print-group";g.textContent=p.group;meta.append(g);}appendCustomDetails(meta,e,p,"print-custom");
    card.append(holder,meta);page.append(card);count++;
   }
  }catch(err){return announce("QR印刷の準備に失敗しました："+err.message,"error");}
@@ -773,7 +784,8 @@ function printReceptionRoster(sessionID){
  const participants=e.participants.filter(p=>!p.removed&&p.planned?.[session.id])
   .sort((a,b)=>a.name.localeCompare(b.name,"ja")||String(a.staffId||"").localeCompare(String(b.staffId||""),"ja",{numeric:true})||a.id.localeCompare(b.id,"ja",{numeric:true}));
  const rows=[...participants.map(p=>({person:p})),...Array.from({length:ROSTER_BLANK_ROWS},(_,i)=>({extra:i+1}))];
- const pageCount=Math.ceil(rows.length/ROSTER_ROWS_PER_PAGE),root=$("receptionPrint");
+ const rowsPerPage=participants.some(p=>customEntries(e,p).length)?16:ROSTER_ROWS_PER_PAGE;
+ const pageCount=Math.ceil(rows.length/rowsPerPage),root=$("receptionPrint");
  root.replaceChildren();
  const printTime=localDate(iso());
  for(let pageNo=0;pageNo<pageCount;pageNo++){
@@ -800,7 +812,7 @@ function printReceptionRoster(sessionID){
   }
   thead.append(trhead);table.append(thead);
   const tbody=document.createElement("tbody");
-  for(const item of rows.slice(pageNo*ROSTER_ROWS_PER_PAGE,(pageNo+1)*ROSTER_ROWS_PER_PAGE)){
+  for(const item of rows.slice(pageNo*rowsPerPage,(pageNo+1)*rowsPerPage)){
    const tr=document.createElement("tr");if(item.extra)tr.className="roster-extra-row";
    const tdCheck=document.createElement("td");const box=document.createElement("span");box.className="roster-checkbox";box.setAttribute("aria-label","手書きチェック欄");tdCheck.append(box);tr.append(tdCheck);
    const p=item.person;
@@ -809,7 +821,7 @@ function printReceptionRoster(sessionID){
    for(let ci=0;ci<values.length;ci++){
     const td=document.createElement("td");
     td.textContent=values[ci];
-    if(ci===2)td.className="roster-name-cell";
+    if(ci===2){td.className="roster-name-cell";if(p)appendCustomDetails(td,e,p,"roster-custom");}
     if(ci===5)td.className=isDone?"roster-existing-done":"roster-existing-pending";
     tr.append(td);
    }
@@ -872,7 +884,7 @@ async function exportQRZip(){
  if(typeof QRCode!=="function"||typeof JSZip!=="function")return announce("QR/ZIPライブラリがありません。配信ファイルを確認してください。","error");
  button.disabled=true;button.textContent="QRを生成中…";
  try{
-  const zip=new JSZip(),csv=[["participant_id","name","staff_id","department","group","qr_png_filename"]];
+  const customCols=customColumnIndices(e),zip=new JSZip(),csv=[["participant_id","name","staff_id","department","group",...customCols.map(i=>e.customLabels[i]),"qr_png_filename"]];
   const imgSize=360;
   for(let i=0;i<people.length;i++){
    const p=people[i],qr=document.createElement("div");
@@ -883,11 +895,11 @@ async function exportQRZip(){
    const filename="QR_"+fileSafe(e.id)+"_"+p.id+".png";
    if(!/^data:image\/png;base64,/.test(png))throw Error(p.name+" のQR画像を読み取れません");
    zip.file(filename,png.slice(png.indexOf(",")+1),{base64:true});
-   csv.push([p.id,p.name,p.staffId,p.department||"",p.group||"",filename]);
+   csv.push([p.id,p.name,p.staffId,p.department||"",p.group||"",...customCols.map(i=>customDisplayValue(e,p,i)),filename]);
    if((i+1)%20===0){button.textContent="生成中 "+(i+1)+"/"+people.length;await new Promise(resolve=>setTimeout(resolve,0));}
   }
   zip.file("qr_mapping.csv","\uFEFF"+csv.map(row=>row.map(csvCell).join(",")).join("\r\n")+"\r\n");
-  zip.file("README.txt","QR受付システム　QR配布用\nイベント: "+e.name+"\n開催日: "+e.date+"\n発行数: "+people.length+"\n\n画像はQR・氏名・職員番号・グループが一体になった名刺型カードです。\n画像ファイル名と参加者の対応はqr_mapping.csvを確認してください。\nQRの内容は職員番号だけです。職員番号未登録者は発行対象外です。\n");
+  zip.file("README.txt","QR受付システム　QR配布用\nイベント: "+e.name+"\n開催日: "+e.date+"\n発行数: "+people.length+"\n\n画像はQR・氏名・職員番号・グループ・設定済みの追加項目が一体になった名刺型カードです。\n画像ファイル名と参加者の対応はqr_mapping.csvを確認してください。\nQRの内容は職員番号だけです。職員番号未登録者は発行対象外です。\n");
   const archive=await zip.generateAsync({type:"blob",mimeType:"application/zip",compression:"STORE"});
   downloadBlob(archive,"QR_reception_"+fileSafe(e.id)+"_"+stamp()+".zip");
   markStep(current().id,"qr");announce(people.length+"名分のQRと対応表をZIP出力しました。職員番号なし "+skipped+"名は除外しました。","success");
