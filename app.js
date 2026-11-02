@@ -580,6 +580,49 @@ function quickReceptionCancel(id,sessionId){
  if(curSession()?.id!==sessionId){announce("受付区分が変更されました。表示を確認してください。","warn");return;}
  cancelAttendance(id,sessionId);
 }
+/* Explicit, scoped reset for test check-ins. Deletes attendance records and audit history, not participants. */
+function openClearAttendanceDialog(){
+ const e=current(),session=curSession();
+ if(!day||!e||!session)return;
+ const originId=e.id,originSessionId=session.id;
+ const panel=document.createElement("div");panel.className="rx-clear-dialog";
+ panel.innerHTML=
+  '<p class="rx-clear-warning">選んだ範囲の受付時刻・受付済み状態・取消／再受付履歴を完全に削除します。元には戻せません。</p>'+
+  '<p class="hint">イベント名・参加者名簿・職員番号・参加予定の設定は残ります。テストで追加した飛び入り参加者も削除されません。</p>'+
+  '<fieldset class="rx-clear-scope"><legend>クリアする範囲</legend>'+
+  '<label class="check"><input type="radio" name="clearAttendanceScope" value="session" checked> 現在の受付区分だけ</label>'+
+  '<label class="check"><input type="radio" name="clearAttendanceScope" value="all"> このイベントの全受付区分</label>'+
+  '</fieldset>'+
+  '<p class="rx-clear-count" id="clearAttendanceCount"></p>'+
+  '<label class="field">確認のため「クリア」と入力してください<input type="text" id="clearAttendancePhrase" autocomplete="off" placeholder="クリア"></label>'+
+  '<div class="delete-dialog-buttons"><button type="button" class="btn" id="clearAttendanceBackup">⇩ 先にJSONを保存</button><button type="button" class="btn" id="clearAttendanceCancel">キャンセル</button><button type="button" class="btn danger" id="clearAttendanceCommit" disabled>受付記録を削除する</button></div>';
+ openDialog("受付状況を一括クリア",panel);
+ const phrase=$("clearAttendancePhrase"),commit=$("clearAttendanceCommit");
+ const scope=()=>panel.querySelector('input[name="clearAttendanceScope"]:checked')?.value==="all"?"all":"session";
+ const update=()=>{
+  const all=scope()==="all";
+  const records=e.participants.reduce((sum,p)=>sum+(all?Object.keys(p.checkins||{}).length:Number(!!p.checkins?.[originSessionId])),0);
+  const active=e.participants.reduce((sum,p)=>sum+(all?e.sessions.filter(s=>checked(p,s.id)).length:Number(checked(p,originSessionId))),0);
+  $("clearAttendanceCount").textContent="対象："+(all?"全受付区分":session.name)+" ／ 受付記録 "+records+"件（うち受付済み "+active+"件）";
+  commit.disabled=phrase.value.trim()!=="クリア"||records===0;
+ };
+ phrase.addEventListener("input",update);
+ for(const radio of panel.querySelectorAll('input[name="clearAttendanceScope"]'))radio.addEventListener("change",update);
+ $("clearAttendanceCancel").onclick=closeDialog;
+ $("clearAttendanceBackup").onclick=backup;
+ commit.onclick=()=>{
+  if(phrase.value.trim()!=="クリア"||commit.disabled)return;
+  if(activeId!==originId||!day)return announce("対象イベントが変更されたため、もう一度操作してください。","warn");
+  const all=scope()==="all";
+  const done=mutate(next=>{for(const p of next.participants){if(all)p.checkins={};else if(p.checkins)delete p.checkins[originSessionId];}});
+  if(!done)return;
+  lastScan="";lastScanAt=0;
+  closeDialog();showResult(null,"QRコードをかざしてください","");
+  announce("受付記録をクリアしました（"+(all?"全受付区分":session.name)+"）。参加者名簿は残っています。","warn");
+ };
+ update();
+ phrase.focus();
+}
 function renderReception(){
  const e=current(),sel=$("checkinSession"),existing=sel.value;
  sel.replaceChildren();
@@ -1416,7 +1459,7 @@ document.addEventListener("click",ev=>{
   if(help.contains(ev.target))continue;
   help.classList.remove("is-open");help.querySelector(".out-info-trigger").setAttribute("aria-expanded","false");
  }
-});$("printRosterDay").onclick=()=>printReceptionRoster(curSession()?.id);$("checkinSession").onchange=()=>{showResult(null,"QRコードをかざしてください","");renderReception();};
+});$("printRosterDay").onclick=()=>printReceptionRoster(curSession()?.id);$("clearAttendance").onclick=openClearAttendanceDialog;$("checkinSession").onchange=()=>{showResult(null,"QRコードをかざしてください","");renderReception();};
 $("cameraStart").onclick=startCamera;$("cameraSnapshot").onclick=saveCameraFrame;$("cameraStop").onclick=stopCamera;$("cameraSelect").onchange=async()=>{if(CAM.running){await stopCamera();}startCamera();};
 if(window.ResizeObserver){const ro=new ResizeObserver(()=>fitReader());ro.observe($("readerViewport"));ro.observe($("reader"));}
 $("mirrorToggle").checked=meta.mirror!==false;$("reader").classList.toggle("mirror",meta.mirror!==false);$("mirrorToggle").onchange=()=>{meta.mirror=$("mirrorToggle").checked;saveMeta();$("reader").classList.toggle("mirror",meta.mirror);};
