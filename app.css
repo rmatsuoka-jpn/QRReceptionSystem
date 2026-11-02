@@ -897,3 +897,24 @@ body.day-mode #eventView>.ev-bar{display:none}
 .file-pick-name{font-size:.84rem;color:#8aa0ae;font-weight:650;word-break:break-all}
 .file-pick-name.on{color:#183a4f}
 .visually-hidden{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+
+
+/* Configured extra participant fields: use shared label/value styling across views. */
+#qrPanel .qr-card-group[hidden],#qrPanel .qr-card-custom[hidden]{display:none!important}
+#qrPanel .qr-card-person{gap:5px}
+#qrPanel .qr-card-custom{width:100%;display:flex;flex-direction:column;gap:3px;min-width:0;color:#486578}
+#qrPanel .qr-custom-line{display:block;font-size:clamp(.62rem,1.2vw,.8rem);line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+#participantsPanel .pt-tablewrap table:has([data-pt-custom]){min-width:880px}
+#participantsPanel .pt-custom-cell{min-width:100px;max-width:220px;overflow-wrap:anywhere}
+.dialog:has(#manualRows) .manual-table:has([data-manual-sort^="custom"]){min-width:920px}
+.rx-custom-line{display:block;color:#537381;font-size:.72rem;line-height:1.45;margin-top:2px;overflow-wrap:anywhere}
+.rx-result-custom{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:10px;max-width:100%}
+.rx-custom-pill{display:inline-block;border:1px solid #d4e4e7;background:#fff;color:#284f64;border-radius:7px;padding:5px 10px;font-size:.84rem;font-weight:700;overflow-wrap:anywhere}
+.cross-custom{display:flex;flex-direction:column;gap:2px;margin-top:4px}
+.cross-custom small{display:block;color:#5b7a89;font-size:.73rem;line-height:1.35;overflow-wrap:anywhere}
+@media print{
+ body[data-print-mode="qr"] .print-custom{font-size:7.7pt;line-height:1.16;color:#345568;overflow-wrap:anywhere}
+ body[data-print-mode="qr"] .print-meta{gap:1.5mm}
+ body[data-print-mode="roster"] .roster-print-table tr:has(.roster-custom){height:13mm}
+ body[data-print-mode="roster"] .roster-custom{display:block;font-size:7.1pt!important;line-height:1.08;font-weight:400;color:#43545a;margin-top:.7mm;overflow-wrap:anywhere}
+}
