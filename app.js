@@ -703,7 +703,7 @@ function qrDataURL(root){
 }
 /* Printed cards measure 91×55mm. Keep the individual/ZIP PNG at the same aspect ratio,
    with the same 36mm QR area and its embedded quiet zone. */
-async function qrCardDataURL(p,qrImageData){
+async function qrCardDataURL(p,qrImageData,e=current()){
  const image=new Image();
  await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=()=>reject(Error("QR画像を読み込めません"));image.src=qrImageData;});
  const scale=10,canvas=document.createElement("canvas");canvas.width=91*scale;canvas.height=55*scale;
@@ -725,7 +725,7 @@ async function qrCardDataURL(p,qrImageData){
   ctx.fillText(p.group,x,38*scale,maxWidth);
  }
  ctx.fillStyle="#355468";ctx.font='24px '+font;
- for(const [i,entry] of customEntries(current(),p).entries()){
+ for(const [i,entry] of customEntries(e,p).entries()){
   const full=entry.label+"："+entry.value;
   let shown=full;
   if(ctx.measureText(shown).width>maxWidth){
@@ -741,7 +741,7 @@ async function downloadOneQR(){
  if(!p||!img?.src||p.id!==qrRendered)return announce("QR画像が準備できていません。","warn");
  const btn=$("downloadQR");btn.disabled=true;
  try{
-  const data=await qrCardDataURL(p,img.src);
+  const data=await qrCardDataURL(p,img.src,e);
   downloadLink(data,"QR_card_"+fileSafe(p.staffId)+".png");markStep(e.id,"qr");
  }catch(err){announce("PNG保存に失敗しました："+err.message,"error");}
  finally{btn.disabled=false;}
@@ -891,7 +891,7 @@ async function exportQRZip(){
    new QRCode(qr,{text:p.staffId,width:imgSize,height:imgSize,correctLevel:QRCode.CorrectLevel.M});
    const qrImage=qrDataURL(qr);
    if(!qrImage)throw Error(p.name+" のQR画像を生成できません");
-   const png=await qrCardDataURL(p,qrImage);
+   const png=await qrCardDataURL(p,qrImage,e);
    const filename="QR_"+fileSafe(e.id)+"_"+p.id+".png";
    if(!/^data:image\/png;base64,/.test(png))throw Error(p.name+" のQR画像を読み取れません");
    zip.file(filename,png.slice(png.indexOf(",")+1),{base64:true});
