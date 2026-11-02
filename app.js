@@ -168,6 +168,16 @@ for(const name of ["settings","participants","qr","results"]){$(name+"Panel").hi
 if(prepTab==="settings")renderSettings();if(prepTab==="participants")renderParticipants();if(prepTab==="qr")renderQRSelect();if(prepTab==="results")renderResults();renderSteps();if(!keepScroll)window.scrollTo?.({top:0});}
 function getCustomType(e,i){return e.customTypes?.[i]||"text";}
 function getCustomOptions(e,i){return e.customOptions?.[i]||[];}
+/* Consistent labels and readable values across participant views. */
+function customColumnIndices(e){return [0,1].filter(i=>String(e.customLabels?.[i]||"").trim());}
+function customDisplayValue(e,p,i){const v=String(p?.customValues?.[i]??"").trim();return getCustomType(e,i)==="bool"?(v==="有"?"はい":v==="無"?"いいえ":v):v;}
+function customEntries(e,p){return customColumnIndices(e).map(i=>({index:i,label:String(e.customLabels[i]).trim(),value:customDisplayValue(e,p,i)})).filter(x=>x.value);}
+function customSearchText(e,p){return customEntries(e,p).flatMap(x=>[x.label,x.value]).join(" ");}
+function appendCustomDetails(root,e,p,cssClass){
+ const fields=customEntries(e,p);
+ for(const x of fields){const el=document.createElement("span");el.className=cssClass;el.textContent=x.label+"："+x.value;el.title=x.label+"："+x.value;root.append(el);}
+ return fields.length;
+}
 function normalizeCustom(e,i,value){
  const v=String(value??"").trim(),type=getCustomType(e,i);
  if(!v)return "";
@@ -298,18 +308,24 @@ function renderParticipants(){
  select.add(new Option("参加予定なし","none"));
  select.value=[...select.options].some(o=>o.value===oldFilter)?oldFilter:"all";
  const filter=select.value,q=$("personQuery").value.trim().toLowerCase();
- const people=all.filter(p=>[p.name,p.staffId,p.department,p.group,p.id].join(" ").toLowerCase().includes(q)
+ const people=all.filter(p=>[p.name,p.staffId,p.department,p.group,p.id,customSearchText(e,p)].join(" ").toLowerCase().includes(q)
   &&(filter==="all"||(filter==="none"?!e.sessions.some(s=>p.planned[s.id]):!!p.planned[filter])));
  const pages=Math.max(1,Math.ceil(people.length/participantPageSize));
  participantPage=Math.min(Math.max(1,participantPage),pages);
  const start=(participantPage-1)*participantPageSize,shown=people.slice(start,start+participantPageSize),tbody=$("participantRows");
+ const customCols=customColumnIndices(e),header=document.querySelector("#ptTableViewport thead tr");
+ for(const th of header.querySelectorAll("[data-pt-custom]"))th.remove();
+ const before=header.children[header.children.length-2];
+ for(const i of customCols){const th=document.createElement("th");th.scope="col";th.dataset.ptCustom=String(i);th.textContent=e.customLabels[i];header.insertBefore(th,before);}
  tbody.replaceChildren();
  for(const p of shown){
   const tr=document.createElement("tr"),sessions=e.sessions.filter(s=>p.planned[s.id]).map(s=>s.name).join(" / ");
-  tr.innerHTML="<td>"+esc(p.id)+"</td><td>"+esc(p.name)+"</td><td>"+esc(p.staffId||"—")+"</td><td>"+esc(p.department||"—")+"</td><td>"+esc(p.group||"—")+'</td><td><span class="tag">'+esc(sessions||"対象外")+'</span></td><td><button class="btn small" data-action="edit-person" data-person="'+esc(p.id)+'">編集</button></td>';
+  tr.innerHTML="<td>"+esc(p.id)+"</td><td>"+esc(p.name)+"</td><td>"+esc(p.staffId||"—")+"</td><td>"+esc(p.department||"—")+"</td><td>"+esc(p.group||"—")+"</td>"+
+ customCols.map(i=>'<td class="pt-custom-cell" title="'+esc(customDisplayValue(e,p,i))+'">'+esc(customDisplayValue(e,p,i)||"—")+"</td>").join("")+
+ '<td><span class="tag">'+esc(sessions||"対象外")+'</span></td><td><button class="btn small" data-action="edit-person" data-person="'+esc(p.id)+'">編集</button></td>';
   tbody.append(tr);
  }
- if(!people.length){const tr=document.createElement("tr");tr.innerHTML='<td colspan="7" class="pt-empty">該当する参加者がいません。</td>';tbody.append(tr);}
+ if(!people.length){const tr=document.createElement("tr");tr.innerHTML='<td colspan="'+(7+customCols.length)+'" class="pt-empty">該当する参加者がいません。</td>';tbody.append(tr);}
  $("ptPageInfo").textContent=people.length?(start+1)+"–"+Math.min(start+participantPageSize,people.length)+" / "+people.length+"名"+(people.length!==all.length?"（全"+all.length+"名）":""):"0 / 0名";
  $("ptPagePrev").disabled=participantPage<=1;
  $("ptPageNext").disabled=participantPage>=pages;
@@ -417,12 +433,14 @@ function cancelAttendance(personId,sessionId,closeOnSuccess=false){
 }
 /* 手動受付: 検索を保ったまま見出しで昇順／降順に並び替え。 */
 const MANUAL_SORT_COLUMNS=[["id","ID"],["name","氏名"],["staffId","職員番号"],["department","所属"]];
+function manualColumns(e){return [...MANUAL_SORT_COLUMNS,...customColumnIndices(e).map(i=>["custom"+i,e.customLabels[i]])];}
+function manualSortValue(e,p,field){return /^custom[01]$/.test(field)?customDisplayValue(e,p,Number(field.slice(-1))):p[field];}
 let manualSortField="id",manualSortDirection=1;
 function openManual(){
  manualSortField="id";manualSortDirection=1;
  const panel=document.createElement("div");
- const headings=MANUAL_SORT_COLUMNS.map(([field,label])=>'<th scope="col" data-manual-sort-column="'+field+'" aria-sort="none"><button type="button" class="manual-sort" data-manual-sort="'+field+'">'+label+' <span class="manual-sort-arrow" aria-hidden="true">↕</span></button></th>').join("");
- panel.innerHTML='<input id="manualQuery" class="search" aria-label="参加者を検索" placeholder="氏名・職員番号・所属・参加者IDを検索" autofocus>'+
+ const headings=manualColumns(current()).map(([field,label])=>'<th scope="col" data-manual-sort-column="'+field+'" aria-sort="none"><button type="button" class="manual-sort" data-manual-sort="'+field+'">'+esc(label)+' <span class="manual-sort-arrow" aria-hidden="true">↕</span></button></th>').join("");
+ panel.innerHTML='<input id="manualQuery" class="search" aria-label="参加者を検索" placeholder="氏名・職員番号・所属・追加項目・参加者IDを検索" autofocus>'+
   '<div class="tablewrap manual-tablewrap"><table class="manual-table" aria-label="名前から受付の参加者一覧"><thead><tr>'+headings+
   '<th scope="col">状況</th><th scope="col">受付</th></tr></thead><tbody id="manualRows"></tbody></table></div>';
  openDialog("名前から受付・変更",panel);
@@ -431,22 +449,22 @@ function openManual(){
  $("manualQuery").focus();
 }
 function changeManualSort(field){
- if(!MANUAL_SORT_COLUMNS.some(([key])=>key===field))return;
+ if(!manualColumns(current()).some(([key])=>key===field))return;
  if(manualSortField===field)manualSortDirection*=-1;
  else{manualSortField=field;manualSortDirection=1;}
  renderManual();
 }
 function renderManual(){
  const q=$("manualQuery").value.toLowerCase().trim(),e=current(),s=curSession(),tbody=$("manualRows");
- const people=e.participants.filter(p=>!p.removed&&[p.name,p.staffId,p.department,p.group,p.id].join(" ").toLowerCase().includes(q))
+ const people=e.participants.filter(p=>!p.removed&&[p.name,p.staffId,p.department,p.group,p.id,customSearchText(e,p)].join(" ").toLowerCase().includes(q))
   .sort((a,b)=>{
-   const av=String(a[manualSortField]??""),bv=String(b[manualSortField]??"");
+   const av=String(manualSortValue(e,a,manualSortField)??""),bv=String(manualSortValue(e,b,manualSortField)??"");
    return av.localeCompare(bv,"ja",{numeric:true,sensitivity:"base"})*manualSortDirection||a.id.localeCompare(b.id,"ja",{numeric:true});
   }).slice(0,100);
  tbody.replaceChildren();
  for(const p of people){
   const tr=document.createElement("tr");
-  for(const v of [p.id,p.name,p.staffId||"—",p.department||"—",checked(p,s.id)?"受付済み":p.planned[s.id]?"未受付":"対象外"]){
+  for(const v of [p.id,p.name,p.staffId||"—",p.department||"—",...customColumnIndices(e).map(i=>customDisplayValue(e,p,i)||"—"),checked(p,s.id)?"受付済み":p.planned[s.id]?"未受付":"対象外"]){
    const td=document.createElement("td");td.textContent=v;tr.append(td);
   }
   const td=document.createElement("td"),button=document.createElement("button");
