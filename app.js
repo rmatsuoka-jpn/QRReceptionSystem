@@ -122,7 +122,7 @@ function addEvent(fromId){
  const changeSource=()=>{
   const from=db.get(select.value),previousName=$("newEventName").value;
   $("newEventCopyOptions").hidden=!from;
-  if(!from)return;
+  if(!from){if($("newEventName").value===lastAutoName)$("newEventName").value="";lastAutoName="";$("newEventCategory").value="training";return;}
   const auto=from.name+"（複製）";
   if(!previousName||previousName===lastAutoName)$("newEventName").value=auto;
   lastAutoName=auto;
@@ -584,11 +584,13 @@ function quickReceptionCancel(id,sessionId){
 function openClearAttendanceDialog(){
  const e=current(),session=curSession();
  if(!day||!e||!session)return;
+ resetCameraPaused=true;
+ if(CAM.running&&!CAM.busy)stopCamera();
  const originId=e.id,originSessionId=session.id;
  const panel=document.createElement("div");panel.className="rx-clear-dialog";
  panel.innerHTML=
   '<p class="rx-clear-warning">選んだ範囲の受付時刻・受付済み状態・取消／再受付履歴を完全に削除します。元には戻せません。</p>'+
-  '<p class="hint">イベント名・参加者名簿・職員番号・参加予定の設定は残ります。テストで追加した飛び入り参加者も削除されません。</p>'+
+  '<p class="hint">イベント名・参加者名簿・職員番号・参加予定の設定は残ります。テストで追加した飛び入り参加者も削除されません。誤って再受付しないようカメラは停止します。次のテスト時に手動で起動してください。</p>'+
   '<fieldset class="rx-clear-scope"><legend>クリアする範囲</legend>'+
   '<label class="check"><input type="radio" name="clearAttendanceScope" value="session" checked> 現在の受付区分だけ</label>'+
   '<label class="check"><input type="radio" name="clearAttendanceScope" value="all"> このイベントの全受付区分</label>'+
@@ -672,13 +674,14 @@ function renderReception(){
  }
  showReceptionTab(receptionTab);
  renderDayCheck();
- if(!CAM.running&&!CAM.busy&&meta.cameraId)startCamera();
+ if(!CAM.running&&!CAM.busy&&meta.cameraId&&!resetCameraPaused)startCamera();
 }
 /* Camera scanning with Html5Qrcode directly (own Japanese UI).
    The library decodes the qrbox at its on-screen CSS size, so the reader is laid out at the camera's native width
    and only visually scaled down. That keeps the decode canvas at full camera resolution (HD when available),
    which lets fixed-focus laptop cameras read cards held 30-40cm away instead of only very close and blurry. */
 const CAM={qr:null,running:false,busy:false,width:1280,frames:0,native:null,timer:null};
+let resetCameraPaused=false;
 // Only use the browser's built-in detector when it really lists qr_code; otherwise the JS decoder (ZXing) is used.
 async function nativeQrSupported(){if(CAM.native!==null)return CAM.native;try{CAM.native=!!(window.BarcodeDetector&&(await BarcodeDetector.getSupportedFormats()).includes("qr_code"));}catch{CAM.native=false;}return CAM.native;}
 function camRate(){clearInterval(CAM.timer);CAM.frames=0;let last=Date.now();CAM.timer=setInterval(()=>{if(!CAM.running){clearInterval(CAM.timer);return;}const now=Date.now(),rate=Math.round(CAM.frames*1000/(now-last));CAM.frames=0;last=now;const el=$("camStats");if(el)el.textContent="解析 "+rate+"回/秒・"+(CAM.native?"内蔵検出":"JS解析");},1000);}
@@ -694,9 +697,10 @@ function camError(err){const n=err?.name||"",m=String(err?.message||err||"");
  if(n==="NotReadableError"||/NotReadable|Could not start video source/i.test(m))return "カメラを開始できません。Teams・Zoomなど他のアプリがカメラを使っていないか確認してください。";
  return "カメラを開始できません："+m;}
 async function loadCameras(){const cams=await Html5Qrcode.getCameras(),sel=$("cameraSelect");sel.replaceChildren();cams.forEach((c,i)=>sel.add(new Option(c.label||"カメラ "+(i+1),c.id)));if(!cams.length)throw {name:"NotFoundError"};if(cams.some(c=>c.id===meta.cameraId))sel.value=meta.cameraId;sel.hidden=cams.length<2;}
-function onScan(text){const code=String(text).trim(),now=Date.now();if(code===lastScan&&now-lastScanAt<3000){lastScanAt=now;return;}lastScan=code;lastScanAt=now;if(!day||view!=="event")return;checkInByToken(code);}
+function onScan(text){if(!$("dialogBackdrop").hidden||resetCameraPaused)return;const code=String(text).trim(),now=Date.now();if(code===lastScan&&now-lastScanAt<3000){lastScanAt=now;return;}lastScan=code;lastScanAt=now;if(!day||view!=="event")return;checkInByToken(code);}
 async function startCamera(){
  if(CAM.busy||CAM.running)return;
+ resetCameraPaused=false;
  if(typeof Html5Qrcode!=="function")return camHint("QR読み取りライブラリが見つかりません。vendor/ を確認してください。","error");
  CAM.busy=true;camUI();camHint("カメラを起動中…（初回は許可を求める表示が出ます）");
  try{
@@ -1401,7 +1405,7 @@ function promptReceptionBackup(){
  const later=document.createElement("button");later.type="button";later.className="btn";later.textContent="あとで";later.onclick=closeDialog;
  const save=document.createElement("button");save.type="button";save.className="btn main";save.textContent="⇩ JSONを保存（推奨）";save.onclick=()=>{closeDialog();backup();};
  row.append(later,save);body.append(row);openDialog("受付記録をバックアップしましょう",body);save.focus();}
-function render({keepScroll=false}={}){const home=view==="home",nowDay=!home&&day;const leavingReception=inReception&&!nowDay&&meta.lastChangeAt!==receptionChangeMark&&needsBackup();if(nowDay&&!inReception)receptionChangeMark=meta.lastChangeAt;inReception=nowDay;document.body.classList.toggle("day-mode",nowDay);document.body.classList.toggle("event-mode",!home&&!day);if((home||!day)&&CAM.running)stopCamera();$("homeView").hidden=!home;$("eventView").hidden=home;if(home)renderHome();else renderEvent(keepScroll);renderBackupStatus();if(leavingReception)promptReceptionBackup();}
+function render({keepScroll=false}={}){const home=view==="home",nowDay=!home&&day;const leavingReception=inReception&&!nowDay&&meta.lastChangeAt!==receptionChangeMark&&needsBackup();if(nowDay&&!inReception){receptionChangeMark=meta.lastChangeAt;resetCameraPaused=false;}inReception=nowDay;document.body.classList.toggle("day-mode",nowDay);document.body.classList.toggle("event-mode",!home&&!day);if((home||!day)&&CAM.running)stopCamera();$("homeView").hidden=!home;$("eventView").hidden=home;if(home)renderHome();else renderEvent(keepScroll);renderBackupStatus();if(leavingReception)promptReceptionBackup();}
 function delegate(){document.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
 if(b.dataset.ptPage!==undefined){setParticipantPage(Number(b.dataset.ptPage));return;}
 if(b.dataset.outputHelp!==undefined){
