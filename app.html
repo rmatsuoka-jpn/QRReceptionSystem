@@ -41,7 +41,7 @@
   </div>
  </section>
  <section id="homeCross" class="hm-cross" hidden>
-  <div class="panel"><h3>横断参加者検索</h3><div class="fields"><label class="field">期間<select id="crossPeriod"><option value="fiscal">年度（4月〜翌3月）</option><option value="calendar">暦年</option><option value="all">全期間</option></select></label><label class="field">年<input id="crossYear" type="number" min="2000" max="2100" value="2026"></label><label class="field">イベント分類<select id="crossCategory"><option value="all">すべて</option><option value="training">研修</option><option value="briefing">説明会</option><option value="other">その他</option></select></label><label class="field">受付状況<select id="crossStatus"><option value="all">すべて</option><option value="checked">受付実績あり</option><option value="partial">一部受付</option><option value="pending">未受付</option></select></label><label class="field">氏名・番号・所属・グループ・イベント名<input id="crossQuery" placeholder="キーワード"></label></div></div>
+  <div class="panel"><h3>横断参加者検索</h3><div class="fields"><label class="field">期間<select id="crossPeriod"><option value="fiscal">年度（4月〜翌3月）</option><option value="calendar">暦年</option><option value="all">全期間</option></select></label><label class="field">年<input id="crossYear" type="number" min="2000" max="2100" value="2026"></label><label class="field">イベント分類<select id="crossCategory"><option value="all">すべて</option><option value="training">研修</option><option value="briefing">説明会</option><option value="other">その他</option></select></label><label class="field">受付状況<select id="crossStatus"><option value="all">すべて</option><option value="checked">受付実績あり</option><option value="partial">一部受付</option><option value="pending">未受付</option></select></label><label class="field">氏名・番号・所属・グループ・イベント名<input id="crossQuery" placeholder="氏名・職員番号・所属・追加項目などで検索"></label></div></div>
   <div id="crossSummary" class="summary"></div>
   <div class="panel"><div class="row"><h3>参加者一覧 <span id="crossCount" class="tag"></span></h3><div class="buttons"><button id="exportCross" class="btn main">⇩ 参加者一覧CSV</button><button id="exportCrossDetail" class="btn">⇩ 区分別詳細CSV</button></div></div><div class="tablewrap"><table><thead><tr><th>イベントID</th><th>開催日</th><th>イベント名</th><th>参加者ID</th><th>職員番号</th><th>氏名</th><th>所属</th><th>グループ</th><th>受付状況</th></tr></thead><tbody id="crossRows"></tbody></table></div></div>
  </section>
@@ -173,7 +173,7 @@
   <div class="pt-list-header">
    <div class="pt-list-name"><h4 id="ptListTitle">参加者一覧</h4><span id="peopleCount" class="tag">0名</span></div>
    <div class="pt-list-tools">
-    <input type="search" class="search" id="personQuery" placeholder="氏名・職員番号・所属・グループ・参加者IDで検索" aria-label="参加者を検索">
+    <input type="search" class="search" id="personQuery" placeholder="氏名・職員番号・所属・グループ・追加項目・参加者IDで検索" aria-label="参加者を検索">
     <label for="personSessionFilter">参加区分</label><select id="personSessionFilter" aria-label="参加区分で絞り込み"><option value="all">すべて</option></select>
    </div>
   </div>
@@ -225,9 +225,10 @@
         <strong id="qrPersonName"></strong>
         <span id="qrPersonStaff" class="qr-card-staff"></span>
         <span id="qrPersonGroup" class="qr-card-group" hidden></span>
+         <div id="qrPersonCustom" class="qr-card-custom" hidden></div>
        </div>
       </div>
-      <div class="qr-preview-note">このカードをそのままPNG保存できます。QR・氏名・番号・グループをまとめて配布できます。</div>
+      <div class="qr-preview-note">このカードをそのままPNG保存できます。QR・氏名・番号・グループ・設定済みの追加項目をまとめて配布できます。</div>
      </div>
      <div class="qr-studio-actions">
       <button type="button" id="printSingleQR" class="btn main qr-main-action"><svg class="qr-button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="6" y="14" width="12" height="7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/></svg><span>このQRを印刷<small>選択中の1名分を印刷</small></span></button>
