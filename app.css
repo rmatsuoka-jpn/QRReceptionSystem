@@ -918,3 +918,27 @@ body.day-mode #eventView>.ev-bar{display:none}
  body[data-print-mode="roster"] .roster-print-table tr:has(.roster-custom){height:13mm}
  body[data-print-mode="roster"] .roster-custom{display:block;font-size:7.1pt!important;line-height:1.08;font-weight:400;color:#43545a;margin-top:.7mm;overflow-wrap:anywhere}
 }
+
+
+/* Event creation: clearly distinguish configuration-only and participant copy. */
+.ev-create-dialog{display:flex;flex-direction:column;gap:12px}
+.ev-create-dialog>.field{margin:0}
+.ev-copy-options{display:flex;flex-direction:column;gap:8px;padding:13px 15px;border:1px solid #cbdfe7;border-radius:10px;background:#f3f9fa}
+.ev-copy-options[hidden]{display:none!important}
+.ev-copy-heading{font-size:.84rem;font-weight:850;color:#1b4a5d}
+.ev-copy-options .check{display:flex;gap:9px;align-items:flex-start;line-height:1.4;font-size:.85rem}
+.ev-copy-options .check input{margin-top:3px;flex:none}
+.ev-copy-options .hint{margin:2px 0 0;line-height:1.5}
+/* Attendance reset is deliberately low-emphasis until the confirmation dialog. */
+.rx .rx-clear-footer{display:flex;justify-content:flex-end;flex:none;border-top:1px solid #e3ecf0;padding:8px 0 10px;margin:0 -2px}
+.rx .rx-clear-trigger{background:transparent;border:1px solid transparent;border-radius:8px;padding:5px 9px;font-size:.75rem;color:#788895;font-weight:750}
+.rx .rx-clear-trigger:hover,.rx .rx-clear-trigger:focus-visible{background:#fff4f1;border-color:#f1d5cf;color:#a3474b}
+.rx-clear-dialog{display:flex;flex-direction:column;gap:13px}
+.rx-clear-dialog .field{margin:0}
+.rx-clear-warning{margin:0;padding:11px 13px;border:1px solid #f0c4c4;border-radius:9px;background:#fff6f4;color:#8b3239;font-weight:780;line-height:1.55}
+.rx-clear-dialog>.hint{margin:0;line-height:1.6}
+.rx-clear-scope{border:1px solid #d3e1e8;border-radius:9px;padding:11px 13px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.rx-clear-scope legend{font-size:.84rem;font-weight:850;padding:0 5px}
+.rx-clear-scope .check{display:flex;gap:9px;align-items:center;font-size:.85rem}
+.rx-clear-count{margin:0;font-size:.87rem;font-weight:800;color:#244f62}
+.rx-clear-dialog .delete-dialog-buttons{margin-top:3px}

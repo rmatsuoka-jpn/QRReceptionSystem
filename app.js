@@ -82,17 +82,75 @@ function curSession(){const e=current();return e?.sessions.find(s=>s.id===$("che
 function checked(p,s){const c=p.checkins?.[s];return !!(c&&c.active!==false);}
 function statusFor(e,p){const planned=e.sessions.filter(s=>p.planned[s.id]);const done=planned.filter(s=>checked(p,s.id));if(!planned.length)return "対象外";if(!done.length)return "未受付";return done.length===planned.length?"受付済み":"一部受付";}
 function evCounts(e){let target=0,done=0;for(const p of e.participants.filter(p=>!p.removed)){for(const s of e.sessions){if(p.planned[s.id]){target++;if(checked(p,s.id))done++;}}}return {target,done,percent:target?Math.round(done/target*100):0};}
-function makeEvent(from){const id=eventId(),sessions=from?from.sessions.map(s=>({id:sessionId(),name:s.name})):[{id:sessionId(),name:"共通受付"}];return {id,name:from?from.name+"（複製）":"新規イベント",date:"",category:from?.category||"training",sessions,customLabels:from?.customLabels?.slice(0,2)||["",""],customTypes:from?.customTypes?.slice(0,2)||["text","text"],customOptions:from?.customOptions?.map(opts=>opts.slice())||[[],[]],nextParticipant:1,participants:[],createdAt:iso()};}
-function addEvent(fromId){let e;try{e=makeEvent(fromId?db.get(fromId):null);}catch(err){announce(err.message,"error");return;}
- const box=document.createElement("div");
- box.innerHTML='<p class="hint" style="margin-top:0">'+(fromId?"受付区分と追加の登録項目の設定だけを引き継ぎます（名簿・受付結果はコピーしません）。":"あとから「① イベント設定」で変更できます。")+'</p><label class="field">イベント名（必須）<input id="newEventName"></label><label class="field">開催日<input id="newEventDate" type="date"></label><label class="field">分類<select id="newEventCategory"><option value="training">研修</option><option value="briefing">説明会</option><option value="other">その他</option></select></label><div class="delete-dialog-buttons"><button type="button" class="btn" id="newEventCancel">キャンセル</button><button type="button" class="btn main" id="newEventCreate">作成して準備を始める →</button></div>';
- openDialog(fromId?"設定を複製して新規作成":"新規イベントの作成",box);
- $("newEventName").value=fromId?e.name:"";$("newEventCategory").value=e.category;$("newEventName").focus();
- $("newEventCancel").onclick=closeDialog;
- const create=()=>{const name=$("newEventName").value.trim();if(!name){$("newEventName").focus();return announce("イベント名を入力してください。","warn");}e.name=name;e.date=$("newEventDate").value;e.category=$("newEventCategory").value;closeDialog();commitNewEvent(e);};
- $("newEventCreate").onclick=create;$("newEventName").onkeydown=ev=>{if(ev.key==="Enter")create();};
+/* Clone event configuration with fresh session IDs; optionally copy the active roster, never check-in history. */
+function makeEvent(from,copyParticipants=false){
+ const id=eventId(),sessions=from?from.sessions.map(s=>({id:sessionId(),name:s.name})):[{id:sessionId(),name:"共通受付"}];
+ const out={id,name:from?from.name+"（複製）":"新規イベント",date:"",category:from?.category||"training",sessions,customLabels:from?.customLabels?.slice(0,2)||["",""],customTypes:from?.customTypes?.slice(0,2)||["text","text"],customOptions:from?.customOptions?.map(opts=>opts.slice())||[[],[]],nextParticipant:1,participants:[],createdAt:iso()};
+ if(from&&copyParticipants){
+  for(const p of from.participants.filter(x=>!x.removed)){
+   const planned=Object.fromEntries(from.sessions.map((old,i)=>[sessions[i].id,p.planned?.[old.id]===true]));
+   out.participants.push({
+    id:String(out.nextParticipant++).padStart(4,"0"),name:p.name,staffId:p.staffId||"",
+    department:p.department||"",group:p.group||"",customValues:[p.customValues?.[0]||"",p.customValues?.[1]||""],
+    planned,checkins:{},source:"pre",removed:false
+   });
+  }
+ }
+ return out;
 }
-function commitNewEvent(e){try{localStorage.setItem(key(e.id),JSON.stringify(e));if(!writeIndex([...order,e.id])){localStorage.removeItem(key(e.id));return;}db.set(e.id,e);openEvent(e.id,false,"settings");announce("イベントを作成しました。続けて「① イベント設定」で受付区分を確認し、「保存して次へ」を押してください。","success");}catch(err){try{localStorage.removeItem(key(e.id));}catch{}announce("イベントを保存できません："+err.message,"error");}}
+function addEvent(fromId){
+ const choices=[...order].reverse().map(id=>db.get(id)).filter(Boolean);
+ const box=document.createElement("div");box.className="ev-create-dialog";
+ box.innerHTML=
+  '<p class="hint" style="margin-top:0">既存のイベントから設定や参加者名簿を引用できます。新しいイベントIDを発行し、受付履歴・受付時刻は引き継ぎません。</p>'+
+  '<label class="field">引用元イベント（任意）<select id="newEventCopySource"><option value="">引用せずに新規作成</option></select></label>'+
+  '<div id="newEventCopyOptions" class="ev-copy-options" hidden>'+
+   '<span class="ev-copy-heading">引き継ぐ内容</span>'+
+   '<label class="check"><input type="radio" name="newEventCopyMode" value="settings"> 設定のみ（受付区分・追加項目）</label>'+
+   '<label class="check"><input type="radio" name="newEventCopyMode" value="people"> 設定＋参加者名簿（氏名・職員番号・所属・グループ・追加項目・参加予定）</label>'+
+   '<p id="newEventCopySummary" class="hint"></p>'+
+  '</div>'+
+  '<label class="field">イベント名（必須）<input id="newEventName" maxlength="200"></label>'+
+  '<label class="field">開催日<input id="newEventDate" type="date"></label>'+
+  '<label class="field">分類<select id="newEventCategory"><option value="training">研修</option><option value="briefing">説明会</option><option value="other">その他</option></select></label>'+
+  '<div class="delete-dialog-buttons"><button type="button" class="btn" id="newEventCancel">キャンセル</button><button type="button" class="btn main" id="newEventCreate">作成して準備を始める →</button></div>';
+ openDialog(fromId?"既存イベントをもとに新規作成":"新規イベントの作成",box);
+ const select=$("newEventCopySource"),mode=box.querySelector('input[name="newEventCopyMode"][value="people"]'),
+ settingsMode=box.querySelector('input[name="newEventCopyMode"][value="settings"]');
+ for(const e of choices)select.add(new Option((e.date?e.date+" ｜ ":"")+e.name+"（"+e.participants.filter(p=>!p.removed).length+"名）",e.id));
+ let lastAutoName="";
+ const changeSource=()=>{
+  const from=db.get(select.value),previousName=$("newEventName").value;
+  $("newEventCopyOptions").hidden=!from;
+  if(!from){if($("newEventName").value===lastAutoName)$("newEventName").value="";lastAutoName="";$("newEventCategory").value="training";return;}
+  const auto=from.name+"（複製）";
+  if(!previousName||previousName===lastAutoName)$("newEventName").value=auto;
+  lastAutoName=auto;
+  $("newEventCategory").value=from.category;
+  const n=from.participants.filter(p=>!p.removed).length;
+  $("newEventCopySummary").textContent=(mode.checked?n+"名の参加者をコピーします。":"参加者はコピーしません。")+
+   " 受付履歴・時刻・当日受付のテスト結果はコピーしません。元のイベントは変更されません。";
+ };
+ select.value=fromId&&db.has(fromId)?fromId:"";
+ if(select.value){settingsMode.checked=true;}else{mode.checked=true;}
+ select.addEventListener("change",()=>{if(select.value)mode.checked=true;changeSource();});
+ for(const radio of box.querySelectorAll('input[name="newEventCopyMode"]'))radio.addEventListener("change",changeSource);
+ changeSource();
+ if(!select.value)$("newEventName").focus();
+ $("newEventCancel").onclick=closeDialog;
+ const create=()=>{
+  const name=$("newEventName").value.trim();
+  if(!name){$("newEventName").focus();return announce("イベント名を入力してください。","warn");}
+  const from=select.value?db.get(select.value):null;
+  if(select.value&&!from)return announce("引用元イベントが見つかりません。選び直してください。","error");
+  let e;try{e=makeEvent(from,!!from&&mode.checked);}catch(err){return announce("イベントを作成できません："+err.message,"error");}
+  e.name=name;e.date=$("newEventDate").value;e.category=$("newEventCategory").value;
+  try{validateEvent(e);}catch(err){return announce("複製した名簿に問題があります："+err.message,"error");}
+  if(commitNewEvent(e))closeDialog();
+ };
+ $("newEventCreate").onclick=create;$("newEventName").onkeydown=ev=>{if(ev.key==="Enter"){ev.preventDefault();create();}};
+}
+function commitNewEvent(e){try{validateEvent(e);localStorage.setItem(key(e.id),JSON.stringify(e));if(!writeIndex([...order,e.id])){localStorage.removeItem(key(e.id));return false;}db.set(e.id,e);openEvent(e.id,false,"settings");announce("イベントを作成しました。受付区分と参加者名簿を確認してください。","success");return true;}catch(err){try{localStorage.removeItem(key(e.id));}catch{}announce("イベントを保存できません："+err.message,"error");return false;}}
 function deleteEvent(id){const e=db.get(id);if(!e)return;if(!confirm("「"+e.name+"」を削除します。\n事前に全イベントJSONをバックアップしましたか？\n削除するとこのブラウザから名簿・受付履歴が消えます。"))return;if(!confirm("最終確認：イベント「"+e.name+"」を削除しますか？"))return;const next=order.filter(x=>x!==id);if(!writeIndex(next))return;try{localStorage.removeItem(key(id));db.delete(id);if(meta.steps?.[id]||meta.dayCheck?.[id]){delete meta.steps?.[id];delete meta.dayCheck?.[id];saveMeta();}if(activeId===id){activeId=null;view="home";}render();announce("イベントを削除しました。","warn");}catch(err){writeIndex([...next,id]);announce("削除に失敗しました："+err.message,"error");}}
 function openEvent(id,goDay=false,tab){if(!db.has(id))return;if(!tab){const n=nextStep(db.get(id));tab=n?n.tab:"results";}activeId=id;view="event";day=goDay;prepTab=tab;receptionTab="pending";render();}
 function openHome(tab="events"){view="home";homeTab=tab;render();}
@@ -522,6 +580,51 @@ function quickReceptionCancel(id,sessionId){
  if(curSession()?.id!==sessionId){announce("受付区分が変更されました。表示を確認してください。","warn");return;}
  cancelAttendance(id,sessionId);
 }
+/* Explicit, scoped reset for test check-ins. Deletes attendance records and audit history, not participants. */
+function openClearAttendanceDialog(){
+ const e=current(),session=curSession();
+ if(!day||!e||!session)return;
+ resetCameraPaused=true;
+ if(CAM.running&&!CAM.busy)stopCamera();
+ const originId=e.id,originSessionId=session.id;
+ const panel=document.createElement("div");panel.className="rx-clear-dialog";
+ panel.innerHTML=
+  '<p class="rx-clear-warning">選んだ範囲の受付時刻・受付済み状態・取消／再受付履歴を完全に削除します。元には戻せません。</p>'+
+  '<p class="hint">イベント名・参加者名簿・職員番号・参加予定の設定は残ります。テストで追加した飛び入り参加者も削除されません。誤って再受付しないようカメラは停止します。次のテスト時に手動で起動してください。</p>'+
+  '<fieldset class="rx-clear-scope"><legend>クリアする範囲</legend>'+
+  '<label class="check"><input type="radio" name="clearAttendanceScope" value="session" checked> 現在の受付区分だけ</label>'+
+  '<label class="check"><input type="radio" name="clearAttendanceScope" value="all"> このイベントの全受付区分</label>'+
+  '</fieldset>'+
+  '<p class="rx-clear-count" id="clearAttendanceCount"></p>'+
+  '<label class="field">確認のため「クリア」と入力してください<input type="text" id="clearAttendancePhrase" autocomplete="off" placeholder="クリア"></label>'+
+  '<div class="delete-dialog-buttons"><button type="button" class="btn" id="clearAttendanceBackup">⇩ 先にJSONを保存</button><button type="button" class="btn" id="clearAttendanceCancel">キャンセル</button><button type="button" class="btn danger" id="clearAttendanceCommit" disabled>受付記録を削除する</button></div>';
+ openDialog("受付状況を一括クリア",panel);
+ const phrase=$("clearAttendancePhrase"),commit=$("clearAttendanceCommit");
+ const scope=()=>panel.querySelector('input[name="clearAttendanceScope"]:checked')?.value==="all"?"all":"session";
+ const update=()=>{
+  const all=scope()==="all";
+  const records=e.participants.reduce((sum,p)=>sum+(all?Object.keys(p.checkins||{}).length:Number(!!p.checkins?.[originSessionId])),0);
+  const active=e.participants.reduce((sum,p)=>sum+(all?e.sessions.filter(s=>checked(p,s.id)).length:Number(checked(p,originSessionId))),0);
+  $("clearAttendanceCount").textContent="対象："+(all?"全受付区分":session.name)+" ／ 受付記録 "+records+"件（うち受付済み "+active+"件）";
+  commit.disabled=phrase.value.trim()!=="クリア"||records===0;
+ };
+ phrase.addEventListener("input",update);
+ for(const radio of panel.querySelectorAll('input[name="clearAttendanceScope"]'))radio.addEventListener("change",update);
+ $("clearAttendanceCancel").onclick=closeDialog;
+ $("clearAttendanceBackup").onclick=backup;
+ commit.onclick=()=>{
+  if(phrase.value.trim()!=="クリア"||commit.disabled)return;
+  if(activeId!==originId||!day)return announce("対象イベントが変更されたため、もう一度操作してください。","warn");
+  const all=scope()==="all";
+  const done=mutate(next=>{for(const p of next.participants){if(all)p.checkins={};else if(p.checkins)delete p.checkins[originSessionId];}});
+  if(!done)return;
+  lastScan="";lastScanAt=0;
+  closeDialog();showResult(null,"QRコードをかざしてください","");
+  announce("受付記録をクリアしました（"+(all?"全受付区分":session.name)+"）。参加者名簿は残っています。","warn");
+ };
+ update();
+ phrase.focus();
+}
 function renderReception(){
  const e=current(),sel=$("checkinSession"),existing=sel.value;
  sel.replaceChildren();
@@ -571,13 +674,14 @@ function renderReception(){
  }
  showReceptionTab(receptionTab);
  renderDayCheck();
- if(!CAM.running&&!CAM.busy&&meta.cameraId)startCamera();
+ if(!CAM.running&&!CAM.busy&&meta.cameraId&&!resetCameraPaused)startCamera();
 }
 /* Camera scanning with Html5Qrcode directly (own Japanese UI).
    The library decodes the qrbox at its on-screen CSS size, so the reader is laid out at the camera's native width
    and only visually scaled down. That keeps the decode canvas at full camera resolution (HD when available),
    which lets fixed-focus laptop cameras read cards held 30-40cm away instead of only very close and blurry. */
 const CAM={qr:null,running:false,busy:false,width:1280,frames:0,native:null,timer:null};
+let resetCameraPaused=false;
 // Only use the browser's built-in detector when it really lists qr_code; otherwise the JS decoder (ZXing) is used.
 async function nativeQrSupported(){if(CAM.native!==null)return CAM.native;try{CAM.native=!!(window.BarcodeDetector&&(await BarcodeDetector.getSupportedFormats()).includes("qr_code"));}catch{CAM.native=false;}return CAM.native;}
 function camRate(){clearInterval(CAM.timer);CAM.frames=0;let last=Date.now();CAM.timer=setInterval(()=>{if(!CAM.running){clearInterval(CAM.timer);return;}const now=Date.now(),rate=Math.round(CAM.frames*1000/(now-last));CAM.frames=0;last=now;const el=$("camStats");if(el)el.textContent="解析 "+rate+"回/秒・"+(CAM.native?"内蔵検出":"JS解析");},1000);}
@@ -593,9 +697,10 @@ function camError(err){const n=err?.name||"",m=String(err?.message||err||"");
  if(n==="NotReadableError"||/NotReadable|Could not start video source/i.test(m))return "カメラを開始できません。Teams・Zoomなど他のアプリがカメラを使っていないか確認してください。";
  return "カメラを開始できません："+m;}
 async function loadCameras(){const cams=await Html5Qrcode.getCameras(),sel=$("cameraSelect");sel.replaceChildren();cams.forEach((c,i)=>sel.add(new Option(c.label||"カメラ "+(i+1),c.id)));if(!cams.length)throw {name:"NotFoundError"};if(cams.some(c=>c.id===meta.cameraId))sel.value=meta.cameraId;sel.hidden=cams.length<2;}
-function onScan(text){const code=String(text).trim(),now=Date.now();if(code===lastScan&&now-lastScanAt<3000){lastScanAt=now;return;}lastScan=code;lastScanAt=now;if(!day||view!=="event")return;checkInByToken(code);}
+function onScan(text){if(!$("dialogBackdrop").hidden||resetCameraPaused)return;const code=String(text).trim(),now=Date.now();if(code===lastScan&&now-lastScanAt<3000){lastScanAt=now;return;}lastScan=code;lastScanAt=now;if(!day||view!=="event")return;checkInByToken(code);}
 async function startCamera(){
  if(CAM.busy||CAM.running)return;
+ resetCameraPaused=false;
  if(typeof Html5Qrcode!=="function")return camHint("QR読み取りライブラリが見つかりません。vendor/ を確認してください。","error");
  CAM.busy=true;camUI();camHint("カメラを起動中…（初回は許可を求める表示が出ます）");
  try{
@@ -1300,7 +1405,7 @@ function promptReceptionBackup(){
  const later=document.createElement("button");later.type="button";later.className="btn";later.textContent="あとで";later.onclick=closeDialog;
  const save=document.createElement("button");save.type="button";save.className="btn main";save.textContent="⇩ JSONを保存（推奨）";save.onclick=()=>{closeDialog();backup();};
  row.append(later,save);body.append(row);openDialog("受付記録をバックアップしましょう",body);save.focus();}
-function render({keepScroll=false}={}){const home=view==="home",nowDay=!home&&day;const leavingReception=inReception&&!nowDay&&meta.lastChangeAt!==receptionChangeMark&&needsBackup();if(nowDay&&!inReception)receptionChangeMark=meta.lastChangeAt;inReception=nowDay;document.body.classList.toggle("day-mode",nowDay);document.body.classList.toggle("event-mode",!home&&!day);if((home||!day)&&CAM.running)stopCamera();$("homeView").hidden=!home;$("eventView").hidden=home;if(home)renderHome();else renderEvent(keepScroll);renderBackupStatus();if(leavingReception)promptReceptionBackup();}
+function render({keepScroll=false}={}){const home=view==="home",nowDay=!home&&day;const leavingReception=inReception&&!nowDay&&meta.lastChangeAt!==receptionChangeMark&&needsBackup();if(nowDay&&!inReception){receptionChangeMark=meta.lastChangeAt;resetCameraPaused=false;}inReception=nowDay;document.body.classList.toggle("day-mode",nowDay);document.body.classList.toggle("event-mode",!home&&!day);if((home||!day)&&CAM.running)stopCamera();$("homeView").hidden=!home;$("eventView").hidden=home;if(home)renderHome();else renderEvent(keepScroll);renderBackupStatus();if(leavingReception)promptReceptionBackup();}
 function delegate(){document.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
 if(b.dataset.ptPage!==undefined){setParticipantPage(Number(b.dataset.ptPage));return;}
 if(b.dataset.outputHelp!==undefined){
@@ -1358,7 +1463,7 @@ document.addEventListener("click",ev=>{
   if(help.contains(ev.target))continue;
   help.classList.remove("is-open");help.querySelector(".out-info-trigger").setAttribute("aria-expanded","false");
  }
-});$("printRosterDay").onclick=()=>printReceptionRoster(curSession()?.id);$("checkinSession").onchange=()=>{showResult(null,"QRコードをかざしてください","");renderReception();};
+});$("printRosterDay").onclick=()=>printReceptionRoster(curSession()?.id);$("clearAttendance").onclick=openClearAttendanceDialog;$("checkinSession").onchange=()=>{showResult(null,"QRコードをかざしてください","");renderReception();};
 $("cameraStart").onclick=startCamera;$("cameraSnapshot").onclick=saveCameraFrame;$("cameraStop").onclick=stopCamera;$("cameraSelect").onchange=async()=>{if(CAM.running){await stopCamera();}startCamera();};
 if(window.ResizeObserver){const ro=new ResizeObserver(()=>fitReader());ro.observe($("readerViewport"));ro.observe($("reader"));}
 $("mirrorToggle").checked=meta.mirror!==false;$("reader").classList.toggle("mirror",meta.mirror!==false);$("mirrorToggle").onchange=()=>{meta.mirror=$("mirrorToggle").checked;saveMeta();$("reader").classList.toggle("mirror",meta.mirror);};
