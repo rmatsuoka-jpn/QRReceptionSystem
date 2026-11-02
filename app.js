@@ -168,6 +168,16 @@ for(const name of ["settings","participants","qr","results"]){$(name+"Panel").hi
 if(prepTab==="settings")renderSettings();if(prepTab==="participants")renderParticipants();if(prepTab==="qr")renderQRSelect();if(prepTab==="results")renderResults();renderSteps();if(!keepScroll)window.scrollTo?.({top:0});}
 function getCustomType(e,i){return e.customTypes?.[i]||"text";}
 function getCustomOptions(e,i){return e.customOptions?.[i]||[];}
+/* Consistent labels and readable values across participant views. */
+function customColumnIndices(e){return [0,1].filter(i=>String(e.customLabels?.[i]||"").trim());}
+function customDisplayValue(e,p,i){const v=String(p?.customValues?.[i]??"").trim();return getCustomType(e,i)==="bool"?(v==="有"?"はい":v==="無"?"いいえ":v):v;}
+function customEntries(e,p){return customColumnIndices(e).map(i=>({index:i,label:String(e.customLabels[i]).trim(),value:customDisplayValue(e,p,i)})).filter(x=>x.value);}
+function customSearchText(e,p){return customEntries(e,p).flatMap(x=>[x.label,x.value]).join(" ");}
+function appendCustomDetails(root,e,p,cssClass){
+ const fields=customEntries(e,p);
+ for(const x of fields){const el=document.createElement("span");el.className=cssClass;el.textContent=x.label+"："+x.value;el.title=x.label+"："+x.value;root.append(el);}
+ return fields.length;
+}
 function normalizeCustom(e,i,value){
  const v=String(value??"").trim(),type=getCustomType(e,i);
  if(!v)return "";
@@ -298,18 +308,24 @@ function renderParticipants(){
  select.add(new Option("参加予定なし","none"));
  select.value=[...select.options].some(o=>o.value===oldFilter)?oldFilter:"all";
  const filter=select.value,q=$("personQuery").value.trim().toLowerCase();
- const people=all.filter(p=>[p.name,p.staffId,p.department,p.group,p.id].join(" ").toLowerCase().includes(q)
+ const people=all.filter(p=>[p.name,p.staffId,p.department,p.group,p.id,customSearchText(e,p)].join(" ").toLowerCase().includes(q)
   &&(filter==="all"||(filter==="none"?!e.sessions.some(s=>p.planned[s.id]):!!p.planned[filter])));
  const pages=Math.max(1,Math.ceil(people.length/participantPageSize));
  participantPage=Math.min(Math.max(1,participantPage),pages);
  const start=(participantPage-1)*participantPageSize,shown=people.slice(start,start+participantPageSize),tbody=$("participantRows");
+ const customCols=customColumnIndices(e),header=document.querySelector("#ptTableViewport thead tr");
+ for(const th of header.querySelectorAll("[data-pt-custom]"))th.remove();
+ const before=header.children[header.children.length-2];
+ for(const i of customCols){const th=document.createElement("th");th.scope="col";th.dataset.ptCustom=String(i);th.textContent=e.customLabels[i];header.insertBefore(th,before);}
  tbody.replaceChildren();
  for(const p of shown){
   const tr=document.createElement("tr"),sessions=e.sessions.filter(s=>p.planned[s.id]).map(s=>s.name).join(" / ");
-  tr.innerHTML="<td>"+esc(p.id)+"</td><td>"+esc(p.name)+"</td><td>"+esc(p.staffId||"—")+"</td><td>"+esc(p.department||"—")+"</td><td>"+esc(p.group||"—")+'</td><td><span class="tag">'+esc(sessions||"対象外")+'</span></td><td><button class="btn small" data-action="edit-person" data-person="'+esc(p.id)+'">編集</button></td>';
+  tr.innerHTML="<td>"+esc(p.id)+"</td><td>"+esc(p.name)+"</td><td>"+esc(p.staffId||"—")+"</td><td>"+esc(p.department||"—")+"</td><td>"+esc(p.group||"—")+"</td>"+
+ customCols.map(i=>'<td class="pt-custom-cell" title="'+esc(customDisplayValue(e,p,i))+'">'+esc(customDisplayValue(e,p,i)||"—")+"</td>").join("")+
+ '<td><span class="tag">'+esc(sessions||"対象外")+'</span></td><td><button class="btn small" data-action="edit-person" data-person="'+esc(p.id)+'">編集</button></td>';
   tbody.append(tr);
  }
- if(!people.length){const tr=document.createElement("tr");tr.innerHTML='<td colspan="7" class="pt-empty">該当する参加者がいません。</td>';tbody.append(tr);}
+ if(!people.length){const tr=document.createElement("tr");tr.innerHTML='<td colspan="'+(7+customCols.length)+'" class="pt-empty">該当する参加者がいません。</td>';tbody.append(tr);}
  $("ptPageInfo").textContent=people.length?(start+1)+"–"+Math.min(start+participantPageSize,people.length)+" / "+people.length+"名"+(people.length!==all.length?"（全"+all.length+"名）":""):"0 / 0名";
  $("ptPagePrev").disabled=participantPage<=1;
  $("ptPageNext").disabled=participantPage>=pages;
@@ -417,12 +433,14 @@ function cancelAttendance(personId,sessionId,closeOnSuccess=false){
 }
 /* 手動受付: 検索を保ったまま見出しで昇順／降順に並び替え。 */
 const MANUAL_SORT_COLUMNS=[["id","ID"],["name","氏名"],["staffId","職員番号"],["department","所属"]];
+function manualColumns(e){return [...MANUAL_SORT_COLUMNS,...customColumnIndices(e).map(i=>["custom"+i,e.customLabels[i]])];}
+function manualSortValue(e,p,field){return /^custom[01]$/.test(field)?customDisplayValue(e,p,Number(field.slice(-1))):p[field];}
 let manualSortField="id",manualSortDirection=1;
 function openManual(){
  manualSortField="id";manualSortDirection=1;
  const panel=document.createElement("div");
- const headings=MANUAL_SORT_COLUMNS.map(([field,label])=>'<th scope="col" data-manual-sort-column="'+field+'" aria-sort="none"><button type="button" class="manual-sort" data-manual-sort="'+field+'">'+label+' <span class="manual-sort-arrow" aria-hidden="true">↕</span></button></th>').join("");
- panel.innerHTML='<input id="manualQuery" class="search" aria-label="参加者を検索" placeholder="氏名・職員番号・所属・参加者IDを検索" autofocus>'+
+ const headings=manualColumns(current()).map(([field,label])=>'<th scope="col" data-manual-sort-column="'+field+'" aria-sort="none"><button type="button" class="manual-sort" data-manual-sort="'+field+'">'+esc(label)+' <span class="manual-sort-arrow" aria-hidden="true">↕</span></button></th>').join("");
+ panel.innerHTML='<input id="manualQuery" class="search" aria-label="参加者を検索" placeholder="氏名・職員番号・所属・追加項目・参加者IDを検索" autofocus>'+
   '<div class="tablewrap manual-tablewrap"><table class="manual-table" aria-label="名前から受付の参加者一覧"><thead><tr>'+headings+
   '<th scope="col">状況</th><th scope="col">受付</th></tr></thead><tbody id="manualRows"></tbody></table></div>';
  openDialog("名前から受付・変更",panel);
@@ -431,22 +449,22 @@ function openManual(){
  $("manualQuery").focus();
 }
 function changeManualSort(field){
- if(!MANUAL_SORT_COLUMNS.some(([key])=>key===field))return;
+ if(!manualColumns(current()).some(([key])=>key===field))return;
  if(manualSortField===field)manualSortDirection*=-1;
  else{manualSortField=field;manualSortDirection=1;}
  renderManual();
 }
 function renderManual(){
  const q=$("manualQuery").value.toLowerCase().trim(),e=current(),s=curSession(),tbody=$("manualRows");
- const people=e.participants.filter(p=>!p.removed&&[p.name,p.staffId,p.department,p.group,p.id].join(" ").toLowerCase().includes(q))
+ const people=e.participants.filter(p=>!p.removed&&[p.name,p.staffId,p.department,p.group,p.id,customSearchText(e,p)].join(" ").toLowerCase().includes(q))
   .sort((a,b)=>{
-   const av=String(a[manualSortField]??""),bv=String(b[manualSortField]??"");
+   const av=String(manualSortValue(e,a,manualSortField)??""),bv=String(manualSortValue(e,b,manualSortField)??"");
    return av.localeCompare(bv,"ja",{numeric:true,sensitivity:"base"})*manualSortDirection||a.id.localeCompare(b.id,"ja",{numeric:true});
   }).slice(0,100);
  tbody.replaceChildren();
  for(const p of people){
   const tr=document.createElement("tr");
-  for(const v of [p.id,p.name,p.staffId||"—",p.department||"—",checked(p,s.id)?"受付済み":p.planned[s.id]?"未受付":"対象外"]){
+  for(const v of [p.id,p.name,p.staffId||"—",p.department||"—",...customColumnIndices(e).map(i=>customDisplayValue(e,p,i)||"—"),checked(p,s.id)?"受付済み":p.planned[s.id]?"未受付":"対象外"]){
    const td=document.createElement("td");td.textContent=v;tr.append(td);
   }
   const td=document.createElement("td"),button=document.createElement("button");
@@ -469,7 +487,7 @@ function checkInByToken(code){
 }
 function checkIn(id,method,allowPlan){const e=current(),s=curSession();let result=null;const person=e.participants.find(p=>p.id===id);if(!person||person.removed){showResult(person,"受付できません","error");return false;}if(checked(person,s.id)){const c=person.checkins[s.id];showResult(person,"受付済み（重複）","warn",s.name,c.lastAt||c.at);return false;}if(!person.planned[s.id]&&!allowPlan){showResult(person,"この区分は参加対象外です","warn",s.name);const action=document.createElement("button");action.type="button";action.className="btn soft";action.style.marginTop="12px";action.textContent="この区分を参加対象に変更して受付";action.onclick=()=>{if(!confirm(person.name+" さんを「"+s.name+"」の参加対象に変更して受付しますか？"))return;checkIn(id,method,true);};$("checkinResult").append(action);return false;}
 const ok=mutate(next=>{const p=next.participants.find(p=>p.id===id),at=iso();if(allowPlan)p.planned[s.id]=true;const c=p.checkins[s.id];if(c){c.active=true;c.lastAt=at;c.method=method;(c.history||(c.history=[])).push({type:"recheck",at,method});}else p.checkins[s.id]={at,lastAt:at,method,initialMethod:method,active:true,history:[]};result={person:p,at};});if(!ok){showResult(person,"保存に失敗しました","error");return false;}showResult(result.person,"受付完了","success",s.name,result.at);return true;}
-function showResult(person,txt,level="warn",session="",at=""){const d=$("checkinResult");d.className="result "+level;if(level){void d.offsetWidth;d.classList.add("flash");}d.replaceChildren();const head=document.createElement("div");head.className="outcome";head.textContent=({success:"✓ ",warn:"！ ",error:"✕ "}[level]||"")+txt;feedback(level);d.append(head);if(person){const name=document.createElement("div");name.className="person-name";name.textContent=person.name;d.append(name);const meta=document.createElement("div");meta.className="person-meta";meta.textContent=[person.department,person.group,session,at?localDate(at):""].filter(Boolean).join("　/　");d.append(meta);}}
+function showResult(person,txt,level="warn",session="",at=""){const d=$("checkinResult");d.className="result "+level;if(level){void d.offsetWidth;d.classList.add("flash");}d.replaceChildren();const head=document.createElement("div");head.className="outcome";head.textContent=({success:"✓ ",warn:"！ ",error:"✕ "}[level]||"")+txt;feedback(level);d.append(head);if(person){const name=document.createElement("div");name.className="person-name";name.textContent=person.name;d.append(name);const meta=document.createElement("div");meta.className="person-meta";meta.textContent=[person.department,person.group,session,at?localDate(at):""].filter(Boolean).join("　/　");d.append(meta);const custom=document.createElement("div");custom.className="rx-result-custom";if(appendCustomDetails(custom,current(),person,"rx-custom-pill"))d.append(custom);}}
 function showReceptionTab(tab){
  receptionTab=tab==="checked"?"checked":"pending";
  $("pendingRows").hidden=receptionTab!=="pending";
@@ -533,7 +551,7 @@ function renderReception(){
   const row=document.createElement("div");row.className="pending-person";
   const text=document.createElement("div"),title=document.createElement("b"),sub=document.createElement("small");
   text.className="rx-person-info";
-  title.textContent=p.name;sub.textContent=[p.department,p.group].filter(Boolean).join(" ／ ")||"所属未登録";text.append(title,sub);
+  title.textContent=p.name;sub.textContent=[p.department,p.group].filter(Boolean).join(" ／ ")||"所属未登録";text.append(title,sub);appendCustomDetails(text,e,p,"rx-custom-line");
   row.append(text,receptionRowActions(p,s,false));waiting.append(row);
  }
  if(!attended.length)arrived.textContent="まだ受付済みの参加者はいません。";
@@ -548,7 +566,7 @@ function renderReception(){
   method.textContent=p.source==="walkin"?"当日登録":record.method==="manual"?"手動受付":"QR受付";
   const clock=document.createElement("span");clock.className="checkin-time";
   clock.textContent=localDate(record.lastAt||record.at);
-  detail.append(method,clock);text.append(title,sub,detail);
+  detail.append(method,clock);text.append(title,sub);appendCustomDetails(text,e,p,"rx-custom-line");text.append(detail);
   row.append(text,receptionRowActions(p,s,true));arrived.append(row);
  }
  showReceptionTab(receptionTab);
@@ -631,7 +649,7 @@ function renderQRSelect(){
  switchQrMode(qrMode);
  if(!people.length){
   qrRendered="";$("qrCanvas").replaceChildren();$("qrPersonName").textContent="発行対象者がいません";
-  $("qrPersonStaff").textContent="";$("qrPersonGroup").textContent="";$("qrPersonGroup").hidden=true;
+  $("qrPersonStaff").textContent="";$("qrPersonGroup").textContent="";$("qrPersonGroup").hidden=true;$("qrPersonCustom").replaceChildren();$("qrPersonCustom").hidden=true;
   $("qrPosition").textContent="0 / 0";
   for(const id of ["qrPrevious","qrNext","downloadQR","printSingleQR","printQRs","exportQRZip"])$(id).disabled=true;
   return;
@@ -656,6 +674,7 @@ function renderOneQR(){
  $("qrPersonStaff").textContent=p.staffId;
  $("qrPersonGroup").textContent=p.group||"";
  $("qrPersonGroup").hidden=!p.group;
+ $("qrPersonCustom").replaceChildren();$("qrPersonCustom").hidden=!appendCustomDetails($("qrPersonCustom"),current(),p,"qr-custom-line");
  if(typeof QRCode!=="function")return announce("QRコード生成ライブラリがありません。","error");
  try{
   const tmp=document.createElement("div");
@@ -684,7 +703,7 @@ function qrDataURL(root){
 }
 /* Printed cards measure 91×55mm. Keep the individual/ZIP PNG at the same aspect ratio,
    with the same 36mm QR area and its embedded quiet zone. */
-async function qrCardDataURL(p,qrImageData){
+async function qrCardDataURL(p,qrImageData,e=current()){
  const image=new Image();
  await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=()=>reject(Error("QR画像を読み込めません"));image.src=qrImageData;});
  const scale=10,canvas=document.createElement("canvas");canvas.width=91*scale;canvas.height=55*scale;
@@ -705,6 +724,16 @@ async function qrCardDataURL(p,qrImageData){
   ctx.fillStyle="#3e5667";ctx.font='31px '+font;
   ctx.fillText(p.group,x,38*scale,maxWidth);
  }
+ ctx.fillStyle="#355468";ctx.font='24px '+font;
+ for(const [i,entry] of customEntries(e,p).entries()){
+  const full=entry.label+"："+entry.value;
+  let shown=full;
+  if(ctx.measureText(shown).width>maxWidth){
+   while(shown&&ctx.measureText(shown+"…").width>maxWidth)shown=shown.slice(0,-1);
+   shown=shown?shown+"…":"…";
+  }
+  ctx.fillText(shown,x,(p.group?44.7:36.9)*scale+i*5.2*scale,maxWidth);
+ }
  return canvas.toDataURL("image/png");
 }
 async function downloadOneQR(){
@@ -712,7 +741,7 @@ async function downloadOneQR(){
  if(!p||!img?.src||p.id!==qrRendered)return announce("QR画像が準備できていません。","warn");
  const btn=$("downloadQR");btn.disabled=true;
  try{
-  const data=await qrCardDataURL(p,img.src);
+  const data=await qrCardDataURL(p,img.src,e);
   downloadLink(data,"QR_card_"+fileSafe(p.staffId)+".png");markStep(e.id,"qr");
  }catch(err){announce("PNG保存に失敗しました："+err.message,"error");}
  finally{btn.disabled=false;}
@@ -732,7 +761,7 @@ async function printQRCards(people){
    const title=document.createElement("div");title.className="print-name";title.textContent=p.name;
    const staff=document.createElement("div");staff.className="print-staff";staff.textContent=p.staffId;
    meta.append(title,staff);
-   if(p.group){const g=document.createElement("div");g.className="print-group";g.textContent=p.group;meta.append(g);}
+   if(p.group){const g=document.createElement("div");g.className="print-group";g.textContent=p.group;meta.append(g);}appendCustomDetails(meta,e,p,"print-custom");
    card.append(holder,meta);page.append(card);count++;
   }
  }catch(err){return announce("QR印刷の準備に失敗しました："+err.message,"error");}
@@ -755,7 +784,8 @@ function printReceptionRoster(sessionID){
  const participants=e.participants.filter(p=>!p.removed&&p.planned?.[session.id])
   .sort((a,b)=>a.name.localeCompare(b.name,"ja")||String(a.staffId||"").localeCompare(String(b.staffId||""),"ja",{numeric:true})||a.id.localeCompare(b.id,"ja",{numeric:true}));
  const rows=[...participants.map(p=>({person:p})),...Array.from({length:ROSTER_BLANK_ROWS},(_,i)=>({extra:i+1}))];
- const pageCount=Math.ceil(rows.length/ROSTER_ROWS_PER_PAGE),root=$("receptionPrint");
+ const rowsPerPage=participants.some(p=>customEntries(e,p).length)?16:ROSTER_ROWS_PER_PAGE;
+ const pageCount=Math.ceil(rows.length/rowsPerPage),root=$("receptionPrint");
  root.replaceChildren();
  const printTime=localDate(iso());
  for(let pageNo=0;pageNo<pageCount;pageNo++){
@@ -782,7 +812,7 @@ function printReceptionRoster(sessionID){
   }
   thead.append(trhead);table.append(thead);
   const tbody=document.createElement("tbody");
-  for(const item of rows.slice(pageNo*ROSTER_ROWS_PER_PAGE,(pageNo+1)*ROSTER_ROWS_PER_PAGE)){
+  for(const item of rows.slice(pageNo*rowsPerPage,(pageNo+1)*rowsPerPage)){
    const tr=document.createElement("tr");if(item.extra)tr.className="roster-extra-row";
    const tdCheck=document.createElement("td");const box=document.createElement("span");box.className="roster-checkbox";box.setAttribute("aria-label","手書きチェック欄");tdCheck.append(box);tr.append(tdCheck);
    const p=item.person;
@@ -791,7 +821,7 @@ function printReceptionRoster(sessionID){
    for(let ci=0;ci<values.length;ci++){
     const td=document.createElement("td");
     td.textContent=values[ci];
-    if(ci===2)td.className="roster-name-cell";
+    if(ci===2){td.className="roster-name-cell";if(p)appendCustomDetails(td,e,p,"roster-custom");}
     if(ci===5)td.className=isDone?"roster-existing-done":"roster-existing-pending";
     tr.append(td);
    }
@@ -854,22 +884,22 @@ async function exportQRZip(){
  if(typeof QRCode!=="function"||typeof JSZip!=="function")return announce("QR/ZIPライブラリがありません。配信ファイルを確認してください。","error");
  button.disabled=true;button.textContent="QRを生成中…";
  try{
-  const zip=new JSZip(),csv=[["participant_id","name","staff_id","department","group","qr_png_filename"]];
+  const customCols=customColumnIndices(e),zip=new JSZip(),csv=[["participant_id","name","staff_id","department","group",...customCols.map(i=>e.customLabels[i]),"qr_png_filename"]];
   const imgSize=360;
   for(let i=0;i<people.length;i++){
    const p=people[i],qr=document.createElement("div");
    new QRCode(qr,{text:p.staffId,width:imgSize,height:imgSize,correctLevel:QRCode.CorrectLevel.M});
    const qrImage=qrDataURL(qr);
    if(!qrImage)throw Error(p.name+" のQR画像を生成できません");
-   const png=await qrCardDataURL(p,qrImage);
+   const png=await qrCardDataURL(p,qrImage,e);
    const filename="QR_"+fileSafe(e.id)+"_"+p.id+".png";
    if(!/^data:image\/png;base64,/.test(png))throw Error(p.name+" のQR画像を読み取れません");
    zip.file(filename,png.slice(png.indexOf(",")+1),{base64:true});
-   csv.push([p.id,p.name,p.staffId,p.department||"",p.group||"",filename]);
+   csv.push([p.id,p.name,p.staffId,p.department||"",p.group||"",...customCols.map(i=>customDisplayValue(e,p,i)),filename]);
    if((i+1)%20===0){button.textContent="生成中 "+(i+1)+"/"+people.length;await new Promise(resolve=>setTimeout(resolve,0));}
   }
   zip.file("qr_mapping.csv","\uFEFF"+csv.map(row=>row.map(csvCell).join(",")).join("\r\n")+"\r\n");
-  zip.file("README.txt","QR受付システム　QR配布用\nイベント: "+e.name+"\n開催日: "+e.date+"\n発行数: "+people.length+"\n\n画像はQR・氏名・職員番号・グループが一体になった名刺型カードです。\n画像ファイル名と参加者の対応はqr_mapping.csvを確認してください。\nQRの内容は職員番号だけです。職員番号未登録者は発行対象外です。\n");
+  zip.file("README.txt","QR受付システム　QR配布用\nイベント: "+e.name+"\n開催日: "+e.date+"\n発行数: "+people.length+"\n\n画像はQR・氏名・職員番号・グループ・設定済みの追加項目が一体になった名刺型カードです。\n画像ファイル名と参加者の対応はqr_mapping.csvを確認してください。\nQRの内容は職員番号だけです。職員番号未登録者は発行対象外です。\n");
   const archive=await zip.generateAsync({type:"blob",mimeType:"application/zip",compression:"STORE"});
   downloadBlob(archive,"QR_reception_"+fileSafe(e.id)+"_"+stamp()+".zip");
   markStep(current().id,"qr");announce(people.length+"名分のQRと対応表をZIP出力しました。職員番号なし "+skipped+"名は除外しました。","success");
@@ -916,8 +946,8 @@ function renderResults(){
  for(const s of e.sessions)select.add(new Option(s.name,s.id));
  select.value=e.sessions.some(s=>s.id===previous)?previous:e.sessions[0].id;
 }
-function filteredCross(){const type=$("crossPeriod").value,year=+$("crossYear").value,cat=$("crossCategory").value,status=$("crossStatus").value,q=$("crossQuery").value.trim().toLowerCase();const records=[];for(const e of db.values()){if(cat!=="all"&&e.category!==cat)continue;if(type!=="all"){if(!Number.isInteger(year)||year<2000||year>2100||!e.date)continue;const a=type==="fiscal"?year+"-04-01":year+"-01-01",b=type==="fiscal"?(year+1)+"-04-01":(year+1)+"-01-01";if(e.date<a||e.date>=b)continue;}for(const p of e.participants.filter(p=>!p.removed)){const st=statusFor(e,p);if(status==="checked"&&st!=="受付済み"&&st!=="一部受付")continue;if(status==="partial"&&st!=="一部受付")continue;if(status==="pending"&&st!=="未受付")continue;if(q&&![e.name,e.id,p.id,p.name,p.staffId,p.department,p.group].join(" ").toLowerCase().includes(q))continue;records.push({e,p,status:st});}}return records.sort((a,b)=>b.e.date.localeCompare(a.e.date)||a.e.id.localeCompare(b.e.id)||a.p.id.localeCompare(b.p.id));}
-function renderCross(){const records=filteredCross(),tbody=$("crossRows");tbody.replaceChildren();for(const {e,p,status} of records){const tr=document.createElement("tr");for(const x of [e.id,e.date,e.name,p.id,p.staffId,p.name,p.department,p.group,status]){const td=document.createElement("td");td.textContent=x||"—";tr.append(td);}tr.lastChild.innerHTML='<span class="cross-status '+(status==="受付済み"?"done":status==="一部受付"?"partial":"pending")+'">'+esc(status||"—")+'</span>';tr.firstChild.className="code";tbody.append(tr);}$("crossCount").textContent=records.length+"件";const people=new Set(records.filter(({p})=>p.staffId).map(({p})=>p.staffId));$("crossSummary").innerHTML=summaryMetric("イベント",new Set(records.map(({e})=>e.id)).size)+summaryMetric("参加記録",records.length)+summaryMetric("職員番号あり・実人数",people.size);}
+function filteredCross(){const type=$("crossPeriod").value,year=+$("crossYear").value,cat=$("crossCategory").value,status=$("crossStatus").value,q=$("crossQuery").value.trim().toLowerCase();const records=[];for(const e of db.values()){if(cat!=="all"&&e.category!==cat)continue;if(type!=="all"){if(!Number.isInteger(year)||year<2000||year>2100||!e.date)continue;const a=type==="fiscal"?year+"-04-01":year+"-01-01",b=type==="fiscal"?(year+1)+"-04-01":(year+1)+"-01-01";if(e.date<a||e.date>=b)continue;}for(const p of e.participants.filter(p=>!p.removed)){const st=statusFor(e,p);if(status==="checked"&&st!=="受付済み"&&st!=="一部受付")continue;if(status==="partial"&&st!=="一部受付")continue;if(status==="pending"&&st!=="未受付")continue;if(q&&![e.name,e.id,p.id,p.name,p.staffId,p.department,p.group,customSearchText(e,p)].join(" ").toLowerCase().includes(q))continue;records.push({e,p,status:st});}}return records.sort((a,b)=>b.e.date.localeCompare(a.e.date)||a.e.id.localeCompare(b.e.id)||a.p.id.localeCompare(b.p.id));}
+function renderCross(){const records=filteredCross(),tbody=$("crossRows");tbody.replaceChildren();for(const {e,p,status} of records){const tr=document.createElement("tr");for(const x of [e.id,e.date,e.name,p.id,p.staffId,p.name,p.department,p.group,status]){const td=document.createElement("td");td.textContent=x||"—";tr.append(td);}tr.lastChild.innerHTML='<span class="cross-status '+(status==="受付済み"?"done":status==="一部受付"?"partial":"pending")+'">'+esc(status||"—")+'</span>';tr.firstChild.className="code";const custom=customEntries(e,p);if(custom.length){const details=document.createElement("div");details.className="cross-custom";for(const x of custom){const line=document.createElement("small");line.textContent=x.label+"："+x.value;details.append(line);}tr.children[5].append(details);}tbody.append(tr);}$("crossCount").textContent=records.length+"件";const people=new Set(records.filter(({p})=>p.staffId).map(({p})=>p.staffId));$("crossSummary").innerHTML=summaryMetric("イベント",new Set(records.map(({e})=>e.id)).size)+summaryMetric("参加記録",records.length)+summaryMetric("職員番号あり・実人数",people.size);}
 function exportCross(detail){const found=filteredCross();if(detail){csvDownload([detailHeader(),...found.flatMap(({e,p})=>detailRows(e,p))],"cross_sessions_"+stamp()+".csv");}else{const head=["event_id","event_name","event_date","category","participant_id","staff_id","name","department","group","planned_sessions","checked_sessions","status"];const rows=found.map(({e,p,status})=>[e.id,e.name,e.date,e.category,p.id,p.staffId,p.name,p.department,p.group||"",e.sessions.filter(s=>p.planned[s.id]).length,e.sessions.filter(s=>checked(p,s.id)).length,status]);csvDownload([head,...rows],"cross_participants_"+stamp()+".csv");}}
 function backup(){const payload={schema_version:SCHEMA,exported_at:iso(),events:[...order].filter(x=>db.has(x)).map(x=>clone(db.get(x)))};downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:"application/json;charset=utf-8"}),"QRReception_backup_"+stamp()+".json");meta.lastBackupAt=iso();saveMeta();renderBackupStatus();announce(payload.events.length+"件のJSONダウンロードを開始しました。ファイルが保存されたことを確認してください。","success");}
 
