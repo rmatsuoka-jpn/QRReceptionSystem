@@ -1175,7 +1175,7 @@ function applyAttendanceImport(e,data,plan,useIncomingConflicts=false){
  const install=item=>{people.get(item.participant.id).checkins[item.sessionId]=clone(item.checkin);};
  for(const item of [...plan.add,...plan.update])install(item);
  if(useIncomingConflicts)for(const item of plan.conflict)install(item);
- next.attendanceImports||={};next.attendanceImports[data.source_device_id]=data.revision;
+ next.attendanceImports||={};if(useIncomingConflicts||!plan.conflict.length)next.attendanceImports[data.source_device_id]=data.revision;
  validateEvent(next);
  return {event:next,added:plan.add.length,updated:plan.update.length+(useIncomingConflicts?plan.conflict.length:0),
   conflicts:useIncomingConflicts?0:plan.conflict.length,unchanged:plan.same.length};
@@ -1231,7 +1231,7 @@ async function importAttendanceFile(file){
 function backup(){const payload={schema_version:SCHEMA,exported_at:iso(),events:[...order].filter(x=>db.has(x)).map(x=>clone(db.get(x)))};downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:"application/json;charset=utf-8"}),"QRReception_backup_"+stamp()+".json");meta.lastBackupAt=iso();saveMeta();renderBackupStatus();announce(payload.events.length+"件のJSONダウンロードを開始しました。ファイルが保存されたことを確認してください。","success");}
 
 // Removes only the current application namespace. Do not touch browser-wide or legacy prototype data.
-function deleteAllStoredData(){
+function deleteAllStoredData(){if(!checkMaster("全データ削除"))return;
  const entries=[];
  try{
   for(let i=0;i<localStorage.length;i++){
@@ -1413,7 +1413,7 @@ function commitCsvImport(){
  $("participantImportDetails").open=false;setParticipantPage(1);
  announce("参加者登録完了：新規 "+plan.adds+"名、更新 "+plan.updates+"名、スキップ "+plan.skip+"名","success");}
 }
-async function importParticipants(){
+async function importParticipants(){if(!checkMaster("参加者取り込み"))return;
  const file=$("participantFile").files?.[0];if(!file)return announce("CSVファイルを選択してください。","warn");
  if(file.size>5*1024*1024)return announce("CSVが大きすぎます。5MB以下に分けてください。","warn");
  let rows;try{
@@ -1594,8 +1594,8 @@ if(b.dataset.outputHelp!==undefined){
  return;
 }
 if(b.dataset.home){homeTab=b.dataset.home;announce("");render();return;}
-if(b.dataset.mode){day=b.dataset.mode==="day";announce("");render();return;}
-if(b.dataset.prep){prepTab=b.dataset.prep;announce("");render();return;}
+if(b.dataset.mode){if(!isMaster()&&b.dataset.mode!=="day")return checkMaster("事前準備");day=b.dataset.mode==="day";announce("");render();return;}
+if(b.dataset.prep){if(!checkMaster("事前準備"))return;prepTab=b.dataset.prep;announce("");render();return;}
 if(b.dataset.backup!==undefined){backup();return;}
 if(b.dataset.newEvent!==undefined){addEvent();return;}
 if(b.dataset.receptionTab){showReceptionTab(b.dataset.receptionTab);return;}
@@ -1605,8 +1605,25 @@ if(b.dataset.receptionCheckin){quickReceptionCheckIn(b.dataset.receptionCheckin,
 if(b.dataset.receptionCancel){quickReceptionCancel(b.dataset.receptionCancel,b.dataset.sessionId);return;}
 if(b.dataset.menu){openEventMenu(b);return;}
 if(b.dataset.listTab){listTab=b.dataset.listTab;renderEventList();return;}
-if(b.dataset.action){closeEventMenu();const id=b.dataset.id;switch(b.dataset.action){case "results":return openEvent(id,false,"results");case "prep":return openEvent(id,false);case "day":return openEvent(id,true);case "clone":return addEvent(id);case "delete":return deleteEvent(id);case "edit-person":return openPerson(b.dataset.person,false);case "remove-session":return removeSession(b.dataset.session);}return;}
+if(b.dataset.action){closeEventMenu();if(!isMaster()&&b.dataset.action!=="day")return checkMaster("このイベント操作");const id=b.dataset.id;switch(b.dataset.action){case "results":return openEvent(id,false,"results");case "prep":return openEvent(id,false);case "day":return openEvent(id,true);case "clone":return addEvent(id);case "delete":return deleteEvent(id);case "edit-person":return openPerson(b.dataset.person,false);case "remove-session":return removeSession(b.dataset.session);}return;}
 });
+$("operatingMode").onchange=()=>{
+ const next=$("operatingMode").value==="worker"?"worker":"master";
+ if(next===operatingMode())return;
+ meta.operatingMode=next;saveMeta();
+ if(next==="worker"&&view==="event"){day=true;prepTab="settings";}
+ announce(next==="worker"?"受付PCモードに切り替えました。受付・受付取消・実績書き出しを行えます。":"マスターPCモードに切り替えました。受付実績の取り込み・名簿管理が可能です。","success");
+ render();
+};
+$("exportAttendance").onclick=exportAttendanceSnapshot;
+$("importAttendance").onclick=()=>{
+ if(!checkMaster("受付実績の取り込み"))return;
+ const input=$("attendanceImportFiles");input.value="";input.click();
+};
+$("attendanceImportFiles").onchange=async()=>{
+ const f=$("attendanceImportFiles").files?.[0];
+ if(f)await importAttendanceFile(f);
+};
 $("newEvent").onclick=()=>addEvent();$("backHome").onclick=()=>openHome();$("rxBack").onclick=()=>openHome();document.addEventListener("click",ev=>{const d=$("dayCheck");if(d.open&&!d.contains(ev.target))d.open=false;});$("resetEvents").onclick=()=>{for(const id of ["eventQuery","dateFrom","dateTo"])$(id).value="";$("sortKey").value="auto";$("sortOrder").value="asc";showOlderPast=false;renderEventList();};
 $("restoreFile").addEventListener("change",()=>{const f=$("restoreFile").files[0];$("restoreFileName").textContent=f?f.name:"選択されていません";$("restoreFileName").classList.toggle("on",!!f);});
 
@@ -1646,7 +1663,7 @@ if(window.ResizeObserver){const ro=new ResizeObserver(()=>fitReader());ro.observ
 $("mirrorToggle").checked=meta.mirror!==false;$("reader").classList.toggle("mirror",meta.mirror!==false);$("mirrorToggle").onchange=()=>{meta.mirror=$("mirrorToggle").checked;saveMeta();$("reader").classList.toggle("mirror",meta.mirror);};
 $("soundToggle").checked=meta.sound!==false;$("soundToggle").onchange=()=>{meta.sound=$("soundToggle").checked;saveMeta();if(meta.sound){primeAudio();setTimeout(()=>feedback("success"),60);}};
 document.addEventListener("pointerdown",primeAudio,{passive:true});document.addEventListener("keydown",primeAudio);
-$("walkinBtn").onclick=()=>openPerson(null,true);$("manualBtn").onclick=openManual;$("closeDialog").onclick=closeDialog;
+$("walkinBtn").onclick=()=>{if(checkMaster("飛び入り登録"))openPerson(null,true);};$("manualBtn").onclick=openManual;$("closeDialog").onclick=closeDialog;
 $("dialogBackdrop").addEventListener("click",e=>{if(e.target===$("dialogBackdrop"))closeDialog();});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("dialogBackdrop").hidden)closeDialog();});}
 window.addEventListener("afterprint",()=>{document.body.removeAttribute("data-print-mode");$("receptionPrint").hidden=true;});
 loadMeta();loadAll();delegate();render();
