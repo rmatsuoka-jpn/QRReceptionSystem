@@ -1144,10 +1144,10 @@ function validateAttendanceSnapshot(e,data,localDeviceId=deviceId()){
   if(!p||!sessions.has(sid)||staffKey(rec.staff_id)!==staffKey(p.staffId))throw Error("参加者ID・職員番号・受付区分IDがマスターと一致しません。");
   const k=p.id+"|"+sid;if(seen.has(k))throw Error("同一参加者・区分の記録が重複しています。");seen.add(k);
   if(!checkin||typeof checkin!=="object"||Array.isArray(checkin)||typeof checkin.at!=="string"
-    ||!Number.isFinite(Date.parse(checkin.at))||!Array.isArray(checkin.history)
+    ||!Number.isFinite(Date.parse(checkin.at))||(checkin.history!==undefined&&!Array.isArray(checkin.history))
     ||(checkin.active!==undefined&&typeof checkin.active!=="boolean")
     ||(checkin.syncOrigin&&checkin.syncOrigin!==data.source_device_id))throw Error("受付履歴のデータ形式が不正です。");
-  records.push({participant:p,sessionId:sid,checkin:{...clone(checkin),syncOrigin:data.source_device_id}});
+  records.push({participant:p,sessionId:sid,checkin:{history:[],...clone(checkin),syncOrigin:data.source_device_id}});
  }
  return records;
 }
@@ -1216,9 +1216,11 @@ async function importAttendanceFile(file){
   if(!checkMaster("受付実績の取り込み"))return;
   if(activeId!==e.id)return announce("イベントが変更されています。取り込みをやり直してください。","warn");
   const useIncoming=!!panel.querySelector("#importUseIncomingConflicts")?.checked;
-  if(useIncoming&&!confirm("要確認の記録 "+plan.conflict.length+"件を、ファイル側の状態で上書きします。よろしいですか？"))return;
   let fresh;
-  try{const currentEvent=current();const currentPlan=planAttendanceImport(currentEvent,data);if(currentPlan.stale)throw Error("取り込み済みのファイルです。");
+  try{
+    const currentEvent=current(),currentPlan=planAttendanceImport(currentEvent,data);
+    if(currentPlan.stale)throw Error("取り込み済みのファイルです。");
+    if(useIncoming&&currentPlan.conflict.length&&!confirm("要確認の記録 "+currentPlan.conflict.length+"件を、ファイル側の状態で上書きします。よろしいですか？"))return;
     fresh=applyAttendanceImport(currentEvent,data,currentPlan,useIncoming);
   }catch(err){return announce("取り込みに失敗しました："+err.message,"error");}
   if(!fresh.event||!writeEvent(fresh.event))return;
