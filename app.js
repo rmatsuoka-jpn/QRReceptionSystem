@@ -34,6 +34,27 @@ const QUOTA_MSG="ブラウザの保存容量が上限に達したため保存で
 function isQuota(err){return err&&(err.name==="QuotaExceededError"||err.name==="NS_ERROR_DOM_QUOTA_REACHED"||err.code===22||err.code===1014);}
 function loadMeta(){try{const m=JSON.parse(localStorage.getItem(META)||"{}");meta=m&&typeof m==="object"&&!Array.isArray(m)?m:{};}catch{meta={};}}
 function saveMeta(){try{localStorage.setItem(META,JSON.stringify(meta));}catch{}}
+function operatingMode(){return meta.operatingMode==="worker"?"worker":"master";}
+function isMaster(){return operatingMode()==="master";}
+function deviceId(){
+ if(!meta.deviceId){meta.deviceId="PC-"+randomHex(8).toUpperCase();saveMeta();}
+ return meta.deviceId;
+}
+function localSyncRevision(id){return Number(meta.syncRevisions?.[id]||0);}
+function bumpSyncRevision(id){
+ meta.syncRevisions||={};meta.syncRevisions[id]=localSyncRevision(id)+1;saveMeta();
+}
+function checkMaster(action="この操作"){
+ if(isMaster())return true;
+ announce(action+"はマスターPCモードで行ってください。","warn");return false;
+}
+function attendanceEpoch(e){return e.attendanceEpoch||"legacy:"+e.id;}
+function applyOperatingModeUI(){
+ const select=$("operatingMode");if(select)select.value=operatingMode();
+ document.body.dataset.operatingMode=operatingMode();
+ const state=$("operatingModeState");if(state)state.textContent=isMaster()?"マスターPC":"受付PC";
+}
+
 function markChanged(){meta.lastChangeAt=iso();saveMeta();renderBackupStatus();}
 function needsBackup(){return db.size>0&&(!meta.lastBackupAt||(!!meta.lastChangeAt&&meta.lastChangeAt>meta.lastBackupAt));}
 function storageInfo(){let n=0;try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i)||"";n+=k.length+(localStorage.getItem(k)||"").length;}}catch{}return {kb:Math.ceil(n*2/1024),pct:Math.min(100,Math.round(n/STORAGE_BUDGET*100))};}
@@ -76,7 +97,7 @@ function renderSteps(){const e=current();if(!e)return;const st=stepStates(e),nx=
 function dayCheckState(){const e=current(),today=new Date().toLocaleDateString("ja-JP"),d=meta.dayCheck?.[e.id];return d&&d.date===today?d.items:[];}
 function renderDayCheck(){const items=dayCheckState(),all=["session","camera","sound","paper"],ok=all.every(x=>items.includes(x));for(const c of document.querySelectorAll("[data-day-check]"))c.checked=items.includes(c.dataset.dayCheck);$("dayCheckSession").textContent=curSession()?.name||"";const st=$("dayCheckStatus");st.textContent=ok?"✓ 準備OK":"未確認 "+items.length+"/4";st.className="tag"+(ok?"":" warn");if(ok&&!$("dayCheck").dataset.userOpened)$("dayCheck").open=false;}
 function saveDayCheck(){const e=current();meta.dayCheck||={};meta.dayCheck[e.id]={date:new Date().toLocaleDateString("ja-JP"),items:[...document.querySelectorAll("[data-day-check]:checked")].map(c=>c.dataset.dayCheck)};saveMeta();renderDayCheck();}
-function mutate(fn){const old=db.get(activeId);if(!old)return false;const next=clone(old);try{fn(next)}catch(err){announce(err.message,"error");return false;}if(!writeEvent(next))return false;render({keepScroll:true});return true;}
+function mutate(fn){const old=db.get(activeId);if(!old)return false;const next=clone(old);try{fn(next)}catch(err){announce(err.message,"error");return false;}if(!writeEvent(next))return false;bumpSyncRevision(next.id);render({keepScroll:true});return true;}
 function current(){return db.get(activeId);}
 function curSession(){const e=current();return e?.sessions.find(s=>s.id===$("checkinSession").value)||e?.sessions[0];}
 function checked(p,s){const c=p.checkins?.[s];return !!(c&&c.active!==false);}
@@ -85,7 +106,7 @@ function evCounts(e){let target=0,done=0;for(const p of e.participants.filter(p=
 /* Clone event configuration with fresh session IDs; optionally copy the active roster, never check-in history. */
 function makeEvent(from,copyParticipants=false){
  const id=eventId(),sessions=from?from.sessions.map(s=>({id:sessionId(),name:s.name})):[{id:sessionId(),name:"共通受付"}];
- const out={id,name:from?from.name+"（複製）":"新規イベント",date:"",category:from?.category||"training",sessions,customLabels:from?.customLabels?.slice(0,2)||["",""],customTypes:from?.customTypes?.slice(0,2)||["text","text"],customOptions:from?.customOptions?.map(opts=>opts.slice())||[[],[]],nextParticipant:1,participants:[],createdAt:iso()};
+ const out={id,name:from?from.name+"（複製）":"新規イベント",date:"",category:from?.category||"training",sessions,customLabels:from?.customLabels?.slice(0,2)||["",""],customTypes:from?.customTypes?.slice(0,2)||["text","text"],customOptions:from?.customOptions?.map(opts=>opts.slice())||[[],[]],nextParticipant:1,participants:[],attendanceEpoch:"A-"+randomHex(8),createdAt:iso()};
  if(from&&copyParticipants){
   for(const p of from.participants.filter(x=>!x.removed)){
    const planned=Object.fromEntries(from.sessions.map((old,i)=>[sessions[i].id,p.planned?.[old.id]===true]));
@@ -98,7 +119,7 @@ function makeEvent(from,copyParticipants=false){
  }
  return out;
 }
-function addEvent(fromId){
+function addEvent(fromId){if(!checkMaster("イベント作成"))return;
  const choices=[...order].reverse().map(id=>db.get(id)).filter(Boolean);
  const box=document.createElement("div");box.className="ev-create-dialog";
  box.innerHTML=
@@ -151,8 +172,8 @@ function addEvent(fromId){
  $("newEventCreate").onclick=create;$("newEventName").onkeydown=ev=>{if(ev.key==="Enter"){ev.preventDefault();create();}};
 }
 function commitNewEvent(e){try{validateEvent(e);localStorage.setItem(key(e.id),JSON.stringify(e));if(!writeIndex([...order,e.id])){localStorage.removeItem(key(e.id));return false;}db.set(e.id,e);openEvent(e.id,false,"settings");announce("イベントを作成しました。受付区分と参加者名簿を確認してください。","success");return true;}catch(err){try{localStorage.removeItem(key(e.id));}catch{}announce("イベントを保存できません："+err.message,"error");return false;}}
-function deleteEvent(id){const e=db.get(id);if(!e)return;if(!confirm("「"+e.name+"」を削除します。\n事前に全イベントJSONをバックアップしましたか？\n削除するとこのブラウザから名簿・受付履歴が消えます。"))return;if(!confirm("最終確認：イベント「"+e.name+"」を削除しますか？"))return;const next=order.filter(x=>x!==id);if(!writeIndex(next))return;try{localStorage.removeItem(key(id));db.delete(id);if(meta.steps?.[id]||meta.dayCheck?.[id]){delete meta.steps?.[id];delete meta.dayCheck?.[id];saveMeta();}if(activeId===id){activeId=null;view="home";}render();announce("イベントを削除しました。","warn");}catch(err){writeIndex([...next,id]);announce("削除に失敗しました："+err.message,"error");}}
-function openEvent(id,goDay=false,tab){if(!db.has(id))return;if(!tab){const n=nextStep(db.get(id));tab=n?n.tab:"results";}activeId=id;view="event";day=goDay;prepTab=tab;receptionTab="pending";render();}
+function deleteEvent(id){if(!checkMaster("イベント削除"))return;const e=db.get(id);if(!e)return;if(!confirm("「"+e.name+"」を削除します。\n事前に全イベントJSONをバックアップしましたか？\n削除するとこのブラウザから名簿・受付履歴が消えます。"))return;if(!confirm("最終確認：イベント「"+e.name+"」を削除しますか？"))return;const next=order.filter(x=>x!==id);if(!writeIndex(next))return;try{localStorage.removeItem(key(id));db.delete(id);if(meta.steps?.[id]||meta.dayCheck?.[id]){delete meta.steps?.[id];delete meta.dayCheck?.[id];saveMeta();}if(activeId===id){activeId=null;view="home";}render();announce("イベントを削除しました。","warn");}catch(err){writeIndex([...next,id]);announce("削除に失敗しました："+err.message,"error");}}
+function openEvent(id,goDay=false,tab){if(!db.has(id))return;if(!isMaster())goDay=true;if(!tab){const n=nextStep(db.get(id));tab=n?n.tab:"results";}activeId=id;view="event";day=goDay;prepTab=tab;receptionTab="pending";render();}
 function openHome(tab="events"){view="home";homeTab=tab;render();}
 function todayStr(){return new Date().toLocaleDateString("sv-SE");}
 function nextBadge(e){const n=nextStep(e);return n?'<span class="tag warn">次：'+"①②③④"[n.index]+" "+esc(n.label)+'</span>':'<span class="tag">✓ 準備完了</span>';}
@@ -1419,6 +1440,8 @@ function closeDialog(){$("dialogBackdrop").hidden=true;$("dialogBody").replaceCh
 let inReception=false;
 /* Backup remains available from the header and Data Management, without unsolicited dialogs. */
 function render({keepScroll=false}={}){
+ if(!isMaster()&&view==="event")day=true;
+ applyOperatingModeUI();
  const home=view==="home",nowDay=!home&&day;
  if(nowDay&&!inReception)resetCameraPaused=false;
  inReception=nowDay;
