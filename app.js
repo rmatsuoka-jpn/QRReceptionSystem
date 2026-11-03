@@ -34,6 +34,27 @@ const QUOTA_MSG="ブラウザの保存容量が上限に達したため保存で
 function isQuota(err){return err&&(err.name==="QuotaExceededError"||err.name==="NS_ERROR_DOM_QUOTA_REACHED"||err.code===22||err.code===1014);}
 function loadMeta(){try{const m=JSON.parse(localStorage.getItem(META)||"{}");meta=m&&typeof m==="object"&&!Array.isArray(m)?m:{};}catch{meta={};}}
 function saveMeta(){try{localStorage.setItem(META,JSON.stringify(meta));}catch{}}
+function operatingMode(){return meta.operatingMode==="worker"?"worker":"master";}
+function isMaster(){return operatingMode()==="master";}
+function deviceId(){
+ if(!meta.deviceId){meta.deviceId="PC-"+randomHex(8).toUpperCase();saveMeta();}
+ return meta.deviceId;
+}
+function localSyncRevision(id){return Number(meta.syncRevisions?.[id]||0);}
+function bumpSyncRevision(id){
+ meta.syncRevisions||={};meta.syncRevisions[id]=localSyncRevision(id)+1;saveMeta();
+}
+function checkMaster(action="この操作"){
+ if(isMaster())return true;
+ announce(action+"はマスターPCモードで行ってください。","warn");return false;
+}
+function attendanceEpoch(e){return e.attendanceEpoch||"legacy:"+e.id;}
+function applyOperatingModeUI(){
+ const select=$("operatingMode");if(select)select.value=operatingMode();
+ document.body.dataset.operatingMode=operatingMode();
+ const state=$("operatingModeState");if(state)state.textContent=isMaster()?"マスターPC":"受付PC";
+}
+
 function markChanged(){meta.lastChangeAt=iso();saveMeta();renderBackupStatus();}
 function needsBackup(){return db.size>0&&(!meta.lastBackupAt||(!!meta.lastChangeAt&&meta.lastChangeAt>meta.lastBackupAt));}
 function storageInfo(){let n=0;try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i)||"";n+=k.length+(localStorage.getItem(k)||"").length;}}catch{}return {kb:Math.ceil(n*2/1024),pct:Math.min(100,Math.round(n/STORAGE_BUDGET*100))};}
@@ -76,7 +97,7 @@ function renderSteps(){const e=current();if(!e)return;const st=stepStates(e),nx=
 function dayCheckState(){const e=current(),today=new Date().toLocaleDateString("ja-JP"),d=meta.dayCheck?.[e.id];return d&&d.date===today?d.items:[];}
 function renderDayCheck(){const items=dayCheckState(),all=["session","camera","sound","paper"],ok=all.every(x=>items.includes(x));for(const c of document.querySelectorAll("[data-day-check]"))c.checked=items.includes(c.dataset.dayCheck);$("dayCheckSession").textContent=curSession()?.name||"";const st=$("dayCheckStatus");st.textContent=ok?"✓ 準備OK":"未確認 "+items.length+"/4";st.className="tag"+(ok?"":" warn");if(ok&&!$("dayCheck").dataset.userOpened)$("dayCheck").open=false;}
 function saveDayCheck(){const e=current();meta.dayCheck||={};meta.dayCheck[e.id]={date:new Date().toLocaleDateString("ja-JP"),items:[...document.querySelectorAll("[data-day-check]:checked")].map(c=>c.dataset.dayCheck)};saveMeta();renderDayCheck();}
-function mutate(fn){const old=db.get(activeId);if(!old)return false;const next=clone(old);try{fn(next)}catch(err){announce(err.message,"error");return false;}if(!writeEvent(next))return false;render({keepScroll:true});return true;}
+function mutate(fn){const old=db.get(activeId);if(!old)return false;const next=clone(old);try{fn(next)}catch(err){announce(err.message,"error");return false;}if(!writeEvent(next))return false;bumpSyncRevision(next.id);render({keepScroll:true});return true;}
 function current(){return db.get(activeId);}
 function curSession(){const e=current();return e?.sessions.find(s=>s.id===$("checkinSession").value)||e?.sessions[0];}
 function checked(p,s){const c=p.checkins?.[s];return !!(c&&c.active!==false);}
@@ -85,7 +106,7 @@ function evCounts(e){let target=0,done=0;for(const p of e.participants.filter(p=
 /* Clone event configuration with fresh session IDs; optionally copy the active roster, never check-in history. */
 function makeEvent(from,copyParticipants=false){
  const id=eventId(),sessions=from?from.sessions.map(s=>({id:sessionId(),name:s.name})):[{id:sessionId(),name:"共通受付"}];
- const out={id,name:from?from.name+"（複製）":"新規イベント",date:"",category:from?.category||"training",sessions,customLabels:from?.customLabels?.slice(0,2)||["",""],customTypes:from?.customTypes?.slice(0,2)||["text","text"],customOptions:from?.customOptions?.map(opts=>opts.slice())||[[],[]],nextParticipant:1,participants:[],createdAt:iso()};
+ const out={id,name:from?from.name+"（複製）":"新規イベント",date:"",category:from?.category||"training",sessions,customLabels:from?.customLabels?.slice(0,2)||["",""],customTypes:from?.customTypes?.slice(0,2)||["text","text"],customOptions:from?.customOptions?.map(opts=>opts.slice())||[[],[]],nextParticipant:1,participants:[],attendanceEpoch:"A-"+randomHex(8),createdAt:iso()};
  if(from&&copyParticipants){
   for(const p of from.participants.filter(x=>!x.removed)){
    const planned=Object.fromEntries(from.sessions.map((old,i)=>[sessions[i].id,p.planned?.[old.id]===true]));
@@ -98,7 +119,7 @@ function makeEvent(from,copyParticipants=false){
  }
  return out;
 }
-function addEvent(fromId){
+function addEvent(fromId){if(!checkMaster("イベント作成"))return;
  const choices=[...order].reverse().map(id=>db.get(id)).filter(Boolean);
  const box=document.createElement("div");box.className="ev-create-dialog";
  box.innerHTML=
@@ -151,8 +172,8 @@ function addEvent(fromId){
  $("newEventCreate").onclick=create;$("newEventName").onkeydown=ev=>{if(ev.key==="Enter"){ev.preventDefault();create();}};
 }
 function commitNewEvent(e){try{validateEvent(e);localStorage.setItem(key(e.id),JSON.stringify(e));if(!writeIndex([...order,e.id])){localStorage.removeItem(key(e.id));return false;}db.set(e.id,e);openEvent(e.id,false,"settings");announce("イベントを作成しました。受付区分と参加者名簿を確認してください。","success");return true;}catch(err){try{localStorage.removeItem(key(e.id));}catch{}announce("イベントを保存できません："+err.message,"error");return false;}}
-function deleteEvent(id){const e=db.get(id);if(!e)return;if(!confirm("「"+e.name+"」を削除します。\n事前に全イベントJSONをバックアップしましたか？\n削除するとこのブラウザから名簿・受付履歴が消えます。"))return;if(!confirm("最終確認：イベント「"+e.name+"」を削除しますか？"))return;const next=order.filter(x=>x!==id);if(!writeIndex(next))return;try{localStorage.removeItem(key(id));db.delete(id);if(meta.steps?.[id]||meta.dayCheck?.[id]){delete meta.steps?.[id];delete meta.dayCheck?.[id];saveMeta();}if(activeId===id){activeId=null;view="home";}render();announce("イベントを削除しました。","warn");}catch(err){writeIndex([...next,id]);announce("削除に失敗しました："+err.message,"error");}}
-function openEvent(id,goDay=false,tab){if(!db.has(id))return;if(!tab){const n=nextStep(db.get(id));tab=n?n.tab:"results";}activeId=id;view="event";day=goDay;prepTab=tab;receptionTab="pending";render();}
+function deleteEvent(id){if(!checkMaster("イベント削除"))return;const e=db.get(id);if(!e)return;if(!confirm("「"+e.name+"」を削除します。\n事前に全イベントJSONをバックアップしましたか？\n削除するとこのブラウザから名簿・受付履歴が消えます。"))return;if(!confirm("最終確認：イベント「"+e.name+"」を削除しますか？"))return;const next=order.filter(x=>x!==id);if(!writeIndex(next))return;try{localStorage.removeItem(key(id));db.delete(id);if(meta.steps?.[id]||meta.dayCheck?.[id]){delete meta.steps?.[id];delete meta.dayCheck?.[id];saveMeta();}if(activeId===id){activeId=null;view="home";}render();announce("イベントを削除しました。","warn");}catch(err){writeIndex([...next,id]);announce("削除に失敗しました："+err.message,"error");}}
+function openEvent(id,goDay=false,tab){if(!db.has(id))return;if(!isMaster())goDay=true;if(!tab){const n=nextStep(db.get(id));tab=n?n.tab:"results";}activeId=id;view="event";day=goDay;prepTab=tab;receptionTab="pending";render();}
 function openHome(tab="events"){view="home";homeTab=tab;render();}
 function todayStr(){return new Date().toLocaleDateString("sv-SE");}
 function nextBadge(e){const n=nextStep(e);return n?'<span class="tag warn">次：'+"①②③④"[n.index]+" "+esc(n.label)+'</span>':'<span class="tag">✓ 準備完了</span>';}
@@ -171,7 +192,7 @@ function renderHero(ev){const box=$("todayEvents"),h=heroEvents(ev);box.replaceC
   const steps=stepStates(e).map((st,i)=>'<span class="hm-step'+(st.done?" done":"")+'"><i>'+(st.done?"✓":i+1)+'</i>'+esc(STEPS[i].label)+'</span>').join("");
   const body=h.today?'<div class="hm-bigprog"><div class="row"><span>受付進捗（全区分）</span><strong>'+x.done+' / '+x.target+'</strong></div><div class="progress"><div style="width:'+x.percent+'%"></div></div></div>':'<div class="hm-steps">'+steps+'</div>';
   const n=nextStep(e);
-  const acts=h.today?'<button type="button" class="btn main hm-big" data-action="day" data-id="'+esc(e.id)+'">▣ 受付を開始 →</button><button type="button" class="btn" data-action="prep" data-id="'+esc(e.id)+'">⚙ 準備を確認</button>'
+  const acts=!isMaster()?'<button type="button" class="btn main hm-big" data-action="day" data-id="'+esc(e.id)+'">▣ 受付画面を開く →</button>':h.today?'<button type="button" class="btn main hm-big" data-action="day" data-id="'+esc(e.id)+'">▣ 受付を開始 →</button><button type="button" class="btn" data-action="prep" data-id="'+esc(e.id)+'">⚙ 準備を確認</button>'
    :'<button type="button" class="btn main hm-big" data-action="prep" data-id="'+esc(e.id)+'">⚙ '+(n?"準備を続ける":"準備を確認")+'</button><button type="button" class="btn" data-action="results" data-id="'+esc(e.id)+'">▤ 紙名簿を印刷</button>';
   card.innerHTML='<div class="hm-dblock"><span class="m">'+(d.getMonth()+1)+'月</span><span class="d">'+d.getDate()+'</span><span class="w">（'+WEEK[d.getDay()]+'）</span></div><div class="hm-hero-body"><div class="hm-eyebrow">'+(h.today?'本日のイベント <span class="hm-pill today">今日</span>':'次のイベント <span class="hm-pill rel">'+relLabel(dayDiff(e.date))+'</span>')+'</div><h3>'+esc(e.name)+'</h3><div class="hm-meta">'+readyPill(e)+'<span>'+esc(catName(e.category))+'・'+liveCount(e)+'名 登録・'+e.sessions.length+'区分</span><span class="code">'+esc(e.id)+'</span></div>'+body+'</div><div class="hm-hero-acts">'+acts+'</div>';
   box.append(card);}
@@ -179,6 +200,11 @@ function renderHero(ev){const box=$("todayEvents"),h=heroEvents(ev);box.replaceC
 function renderHome(){const ev=[...db.values()];
  $("globalSummary").innerHTML='このPC：イベント<b>'+ev.length+'</b>件・延べ<b>'+ev.reduce((n,e)=>n+liveCount(e),0)+'</b>名';
  $("backupCount").textContent=ev.length+"イベントがバックアップ対象";$("firstGuide").hidden=ev.length>0;$("hmList").hidden=!ev.length;
+ if(!ev.length){
+  $("firstGuide").querySelector("h3").textContent=isMaster()?"はじめての方へ":"受付PCの準備";
+  $("firstGuide").querySelector("p").textContent=isMaster()?"まずは「＋ 新規イベント」からイベントを作成してください。":"マスターPCから渡された全イベントJSONを「データ管理 → JSONから復元」で読み込んでください。";
+  $("firstGuide").querySelector("ol").hidden=!isMaster();
+ }
  $("hmSearch").hidden=homeTab!=="events";
  for(const name of ["events","cross","data"]){$("home"+name[0].toUpperCase()+name.slice(1)).hidden=name!==homeTab;document.querySelector('[data-home="'+name+'"]')?.classList.toggle("active",name===homeTab);}
  if(homeTab==="events"){renderHero(ev);renderEventList();}if(homeTab==="cross")renderCross();}
@@ -186,7 +212,7 @@ function eventRow(e,past){const x=evCounts(e),row=document.createElement("articl
  let date='<div class="hm-sdate none"><span class="d">未設定</span></div>';
  if(e.date){const d=parseDay(e.date),y=d.getFullYear()!==new Date().getFullYear()?'<span class="y">'+d.getFullYear()+'</span>':'';date='<div class="hm-sdate">'+y+'<span class="d">'+(d.getMonth()+1)+'/'+d.getDate()+'</span><span class="w">'+WEEK[d.getDay()]+'</span></div>';}
  const n=nextStep(e),id=esc(e.id);
- const primary=past?'<button type="button" class="btn" data-action="results" data-id="'+id+'">▤ 結果・出力</button>':'<button type="button" class="btn'+(n?" main":"")+'" data-action="prep" data-id="'+id+'">⚙ '+(n?"準備を続ける":"準備を確認")+'</button>';
+ const primary=!isMaster()?'<button type="button" class="btn main" data-action="day" data-id="'+id+'">▣ 受付画面</button>':past?'<button type="button" class="btn" data-action="results" data-id="'+id+'">▤ 結果・出力</button>':'<button type="button" class="btn'+(n?" main":"")+'" data-action="prep" data-id="'+id+'">⚙ '+(n?"準備を続ける":"準備を確認")+'</button>';
  row.innerHTML=date+'<div class="hm-main"><div class="hm-name">'+esc(e.name)+'</div><div class="hm-sub"><span class="hm-pill cat">'+esc(catName(e.category))+'</span><span>'+liveCount(e)+'名 登録・'+e.sessions.length+'区分</span>'+(past?'':readyPill(e))+'<span class="code">'+id+'</span></div></div><div class="hm-prog"><div class="row"><span>受付</span><span>'+(x.target?x.done+' / '+x.target:'—')+'</span></div><div class="progress"><div style="width:'+x.percent+'%"></div></div></div><div class="hm-acts">'+primary+'<button type="button" class="hm-more" data-menu="'+id+'" aria-haspopup="menu" aria-label="'+esc(e.name)+'のその他の操作">⋯</button></div>';
  return row;}
 function renderEventList(){closeEventMenu();
@@ -219,7 +245,7 @@ function renderEventList(){closeEventMenu();
 function closeEventMenu(){const m=$("eventMenu");if(m&&!m.hidden){m.hidden=true;m.replaceChildren();document.querySelector("[data-menu][aria-expanded=true]")?.setAttribute("aria-expanded","false");}}
 function openEventMenu(btn){const m=$("eventMenu"),id=btn.dataset.menu;if(!m.hidden&&m.dataset.for===id)return closeEventMenu();closeEventMenu();
  m.dataset.for=id;const e=db.get(id),past=e?.date&&e.date<todayStr();
- m.innerHTML='<button type="button" role="menuitem" data-action="day" data-id="'+esc(id)+'">▣ 受付画面</button>'+(past?'<button type="button" role="menuitem" data-action="prep" data-id="'+esc(id)+'">⚙ 準備画面</button>':'<button type="button" role="menuitem" data-action="results" data-id="'+esc(id)+'">▤ 紙名簿・出力</button>')+'<button type="button" role="menuitem" data-action="clone" data-id="'+esc(id)+'">⧉ 複製</button><button type="button" role="menuitem" class="del" data-action="delete" data-id="'+esc(id)+'">削除</button>';
+ m.innerHTML=!isMaster()?'<button type="button" role="menuitem" data-action="day" data-id="'+esc(id)+'">▣ 受付画面</button>':'<button type="button" role="menuitem" data-action="day" data-id="'+esc(id)+'">▣ 受付画面</button>'+(past?'<button type="button" role="menuitem" data-action="prep" data-id="'+esc(id)+'">⚙ 準備画面</button>':'<button type="button" role="menuitem" data-action="results" data-id="'+esc(id)+'">▤ 紙名簿・出力</button>')+'<button type="button" role="menuitem" data-action="clone" data-id="'+esc(id)+'">⧉ 複製</button><button type="button" role="menuitem" class="del" data-action="delete" data-id="'+esc(id)+'">削除</button>';
  const r=btn.getBoundingClientRect();m.hidden=false;m.style.top=(window.scrollY+r.bottom+6)+"px";m.style.left=Math.max(8,window.scrollX+r.right-m.offsetWidth)+"px";btn.setAttribute("aria-expanded","true");m.querySelector("button")?.focus();}
 function renderEvent(keepScroll=false){const e=current();if(!e)return openHome();$("eventTitle").textContent=e.name;$("eventSubtitle").innerHTML='<span>'+esc(e.date||"開催日未設定")+'</span><span class="hm-pill cat">'+esc(catName(e.category))+'</span><span class="code">'+esc(e.id)+'</span>';$("crumbEvent").textContent=e.name;$("rxEventName").textContent=e.name;$("crumbMode").textContent=day?"当日受付":"事前準備";$("prepView").hidden=day;$("receptionView").hidden=!day;for(const mode of ["prep","day"])document.querySelector('[data-mode="'+mode+'"]').classList.toggle("active",(mode==="day")===day);if(day){renderReception();return;}
 for(const name of ["settings","participants","qr","results"]){$(name+"Panel").hidden=name!==prepTab;document.querySelector('[data-prep="'+name+'"]').classList.toggle("active",name===prepTab);}
@@ -300,7 +326,7 @@ function renderSettings(){
  e.sessions.forEach((s,i)=>{const line=document.createElement("div");line.className="session-row";line.innerHTML='<span class="tag">'+(i+1)+'</span><input aria-label="受付区分名" class="search" value="'+esc(s.name)+'" data-session-name="'+esc(s.id)+'"><button type="button" class="btn danger small" data-action="remove-session" data-session="'+esc(s.id)+'">削除</button>';root.append(line);});
  renderSessionPresets();renderCustomPresets();
 }
-function saveSettings(){
+function saveSettings(){if(!checkMaster("イベント設定"))return false;
  const name=$("editEventName").value.trim(),date=$("editEventDate").value;
  if(!name)return announce("イベント名は必須です。","warn");
  const names=[...document.querySelectorAll("[data-session-name]")].map(x=>x.value.trim());
@@ -318,7 +344,7 @@ function sessionLocalFeedback(message,type="success",id=null){
  const note=$("sessionInlineStatus");if(!note)return;note.textContent=message;note.hidden=false;note.className="es-session-inline-status "+type;
  for(const line of $("sessionEditor").children)line.classList.toggle("es-just-added",!!id&&line.querySelector("[data-session-name]")?.dataset.sessionName===id);
 }
-function addSession(preset=null){
+function addSession(preset=null){if(!checkMaster("受付区分の追加"))return;
  const name=(typeof preset==="string"?preset:$("newSessionName").value).trim();
  if(!name){sessionLocalFeedback("受付区分名を入力してください。","warn");return;}
  const snap=settingsSnapshot();
@@ -395,8 +421,8 @@ function renderParticipants(){
 }
 
 
-function savePersonFromForm(andCheck){const id=$("personId")?.value||"",name=$("personName").value.trim(),staffId=normStaff($("personStaff").value),department=$("personDept").value.trim(),group=$("personGroup").value.trim();if(staffId&&!validStaff(staffId))return announce("職員番号は半角英数字（ハイフンなし）で入力してください。","warn");if(!name)return announce("氏名は必須です。","warn");const e=current(),planned=Object.fromEntries(e.sessions.map(s=>[s.id,!!$("planned-"+s.id)?.checked]));let values;try{values=[0,1].map(i=>normalizeCustom(e,i,$("personCustom"+i)?.value||""));}catch(err){return announce(err.message,"warn");}if(andCheck)planned[curSession().id]=true;let checkResult=null;const ok=mutate(next=>{if(staffId&&next.participants.some(p=>p.id!==id&&!p.removed&&staffKey(p.staffId)===staffKey(staffId)))throw Error("同じ職員番号の人が登録されています");let p=id?next.participants.find(p=>p.id===id):null;if(id&&!p)throw Error("参加者が見つかりません");if(!p){p={id:String(next.nextParticipant++).padStart(4,"0"),name,staffId,department,group,customValues:values,planned,checkins:{},source:day?"walkin":"pre",removed:false};next.participants.push(p);}else{for(const s of next.sessions)if(!planned[s.id]&&checked(p,s.id))throw Error("受付済みの区分は参加対象外にできません。受付取消後に変更してください。");Object.assign(p,{name,staffId,department,group,customValues:values,planned});}
- if(andCheck){const s=curSession(),prior=p.checkins[s.id];if(prior?.active!==false&&prior){checkResult={duplicate:true,person:p,when:prior.lastAt||prior.at};}else{const at=iso();if(prior){prior.active=true;prior.lastAt=at;prior.method="manual";(prior.history||(prior.history=[])).push({type:"recheck",at,method:"manual"});}else p.checkins[s.id]={at,lastAt:at,method:"manual",initialMethod:"manual",active:true,history:[]};checkResult={person:p,when:at};}}
+function savePersonFromForm(andCheck){if(!checkMaster("参加者の登録・編集"))return;const id=$("personId")?.value||"",name=$("personName").value.trim(),staffId=normStaff($("personStaff").value),department=$("personDept").value.trim(),group=$("personGroup").value.trim();if(staffId&&!validStaff(staffId))return announce("職員番号は半角英数字（ハイフンなし）で入力してください。","warn");if(!name)return announce("氏名は必須です。","warn");const e=current(),planned=Object.fromEntries(e.sessions.map(s=>[s.id,!!$("planned-"+s.id)?.checked]));let values;try{values=[0,1].map(i=>normalizeCustom(e,i,$("personCustom"+i)?.value||""));}catch(err){return announce(err.message,"warn");}if(andCheck)planned[curSession().id]=true;let checkResult=null;const ok=mutate(next=>{if(staffId&&next.participants.some(p=>p.id!==id&&!p.removed&&staffKey(p.staffId)===staffKey(staffId)))throw Error("同じ職員番号の人が登録されています");let p=id?next.participants.find(p=>p.id===id):null;if(id&&!p)throw Error("参加者が見つかりません");if(!p){p={id:String(next.nextParticipant++).padStart(4,"0"),name,staffId,department,group,customValues:values,planned,checkins:{},source:day?"walkin":"pre",removed:false};next.participants.push(p);}else{for(const s of next.sessions)if(!planned[s.id]&&checked(p,s.id))throw Error("受付済みの区分は参加対象外にできません。受付取消後に変更してください。");Object.assign(p,{name,staffId,department,group,customValues:values,planned});}
+ if(andCheck){const s=curSession(),prior=p.checkins[s.id];if(prior?.active!==false&&prior){checkResult={duplicate:true,person:p,when:prior.lastAt||prior.at};}else{const at=iso();if(prior){prior.active=true;prior.lastAt=at;prior.method="manual";prior.syncOrigin=deviceId();(prior.history||(prior.history=[])).push({type:"recheck",at,method:"manual"});}else p.checkins[s.id]={at,lastAt:at,method:"manual",initialMethod:"manual",active:true,history:[],syncOrigin:deviceId()};checkResult={person:p,when:at};}}
  });if(!ok)return;closeDialog();if(andCheck){showResult(checkResult.person,checkResult.duplicate?"受付済み（重複）":"受付完了",checkResult.duplicate?"warn":"success",curSession()?.name,checkResult.when);announce("参加者情報を保存しました。","success");}else announce("参加者情報を保存しました。","success");}
 
 function customFieldHTML(e,p,i){
@@ -408,7 +434,7 @@ function customFieldHTML(e,p,i){
  if(value&&!values.includes(value))values.push(value);
  return '<label class="field">'+label+'<select id="'+id+'">'+values.map(v=>'<option value="'+esc(v)+'"'+(v===value?" selected":"")+'>'+esc(type==="bool"?(v==="有"?"はい":v==="無"?"いいえ":"未選択"):(v||"選択してください"))+'</option>').join("")+'</select></label>';
 }
-function openPerson(id=null,dayMode=day){
+function openPerson(id=null,dayMode=day){if(!checkMaster("参加者の登録・編集"))return;
  const e=current(),p=id?e.participants.find(x=>x.id===id):null;
  const session=curSession(),div=document.createElement("div");
  const planned=s=>p?p.planned[s.id]===true:(dayMode?s.id===session?.id:e.sessions.length===1);
@@ -483,7 +509,7 @@ function cancelAttendance(personId,sessionId,closeOnSuccess=false){
  const ok=mutate(next=>{
   const part=next.participants.find(x=>x.id===personId),hist=part?.checkins?.[sessionId];
   if(!part||part.removed||!hist||hist.active===false)throw Error("受付済み記録がないため取り消せません。");
-  hist.active=false;hist.canceledAt=iso();
+  hist.active=false;hist.canceledAt=iso();hist.syncOrigin=deviceId();
   (hist.history||(hist.history=[])).push({type:"cancel",at:hist.canceledAt,reason:reason.trim().slice(0,200)});
  });
  if(ok){if(closeOnSuccess)closeDialog();announce(p.name+" さんの受付取消を記録しました。","warn");}
@@ -535,7 +561,7 @@ function renderManual(){
   th.querySelector(".manual-sort-arrow").textContent=selected?(manualSortDirection===1?"▲":"▼"):"↕";
  }
 }
-function manualCheck(id){const e=current(),p=e.participants.find(x=>x.id===id),s=curSession();if(!p)return;if(checked(p,s.id))return openPerson(id,true);if(!p.planned[s.id]&&!confirm(p.name+" さんを「"+s.name+"」の参加対象にして受付しますか？"))return;const res=checkIn(id,"manual",true);if(res){closeDialog();}}
+function manualCheck(id){const e=current(),p=e.participants.find(x=>x.id===id),s=curSession();if(!p)return;if(checked(p,s.id)){if(!isMaster())return announce("受付済みの記録は右側の「受付済み」一覧から取消してください。","warn");return openPerson(id,true);}if(!p.planned[s.id]&&!isMaster())return announce("受付対象外です。参加予定の変更はマスターPCで行ってください。","warn");if(!p.planned[s.id]&&!confirm(p.name+" さんを「"+s.name+"」の参加対象にして受付しますか？"))return;const res=checkIn(id,"manual",true);if(res){closeDialog();}}
 function checkInByToken(code){
  const staffId=normStaff(code);
  if(!validStaff(staffId)){showResult(null,"職員番号以外のQRです","error");return;}
@@ -543,8 +569,8 @@ function checkInByToken(code){
  if(matched.length!==1){showResult(null,matched.length?"職員番号が重複しています":"名簿にない職員番号です","error");return;}
  checkIn(matched[0].id,"qr",false);
 }
-function checkIn(id,method,allowPlan){const e=current(),s=curSession();let result=null;const person=e.participants.find(p=>p.id===id);if(!person||person.removed){showResult(person,"受付できません","error");return false;}if(checked(person,s.id)){const c=person.checkins[s.id];showResult(person,"受付済み（重複）","warn",s.name,c.lastAt||c.at);return false;}if(!person.planned[s.id]&&!allowPlan){showResult(person,"この区分は参加対象外です","warn",s.name);const action=document.createElement("button");action.type="button";action.className="btn soft";action.style.marginTop="12px";action.textContent="この区分を参加対象に変更して受付";action.onclick=()=>{if(!confirm(person.name+" さんを「"+s.name+"」の参加対象に変更して受付しますか？"))return;checkIn(id,method,true);};$("checkinResult").append(action);return false;}
-const ok=mutate(next=>{const p=next.participants.find(p=>p.id===id),at=iso();if(allowPlan)p.planned[s.id]=true;const c=p.checkins[s.id];if(c){c.active=true;c.lastAt=at;c.method=method;(c.history||(c.history=[])).push({type:"recheck",at,method});}else p.checkins[s.id]={at,lastAt:at,method,initialMethod:method,active:true,history:[]};result={person:p,at};});if(!ok){showResult(person,"保存に失敗しました","error");return false;}showResult(result.person,"受付完了","success",s.name,result.at);return true;}
+function checkIn(id,method,allowPlan){if(allowPlan&&!isMaster())return announce("参加予定の変更はマスターPCで行ってください。","warn"),false;const e=current(),s=curSession();let result=null;const person=e.participants.find(p=>p.id===id);if(!person||person.removed){showResult(person,"受付できません","error");return false;}if(checked(person,s.id)){const c=person.checkins[s.id];showResult(person,"受付済み（重複）","warn",s.name,c.lastAt||c.at);return false;}if(!person.planned[s.id]&&!allowPlan){showResult(person,"この区分は参加対象外です","warn",s.name);if(!isMaster())return false;const action=document.createElement("button");action.type="button";action.className="btn soft";action.style.marginTop="12px";action.textContent="この区分を参加対象に変更して受付";action.onclick=()=>{if(!confirm(person.name+" さんを「"+s.name+"」の参加対象に変更して受付しますか？"))return;checkIn(id,method,true);};$("checkinResult").append(action);return false;}
+const ok=mutate(next=>{const p=next.participants.find(p=>p.id===id),at=iso();if(allowPlan)p.planned[s.id]=true;const c=p.checkins[s.id];if(c){c.active=true;c.lastAt=at;c.method=method;c.syncOrigin=deviceId();(c.history||(c.history=[])).push({type:"recheck",at,method});}else p.checkins[s.id]={at,lastAt:at,method,initialMethod:method,active:true,history:[],syncOrigin:deviceId()};result={person:p,at};});if(!ok){showResult(person,"保存に失敗しました","error");return false;}showResult(result.person,"受付完了","success",s.name,result.at);return true;}
 function showResult(person,txt,level="warn",session="",at=""){
  const d=$("checkinResult");d.className="result "+level;
  if(level){void d.offsetWidth;d.classList.add("flash");}
@@ -602,7 +628,7 @@ function quickReceptionCancel(id,sessionId){
  cancelAttendance(id,sessionId);
 }
 /* Explicit, scoped reset for test check-ins. Deletes attendance records and audit history, not participants. */
-function openClearAttendanceDialog(){
+function openClearAttendanceDialog(){if(!checkMaster("受付記録の一括クリア"))return;
  const e=current(),session=curSession();
  if(!day||!e||!session)return;
  resetCameraPaused=true;
@@ -611,7 +637,7 @@ function openClearAttendanceDialog(){
  const panel=document.createElement("div");panel.className="rx-clear-dialog";
  panel.innerHTML=
   '<p class="rx-clear-warning">選んだ範囲の受付時刻・受付済み状態・取消／再受付履歴を完全に削除します。元には戻せません。</p>'+
-  '<p class="hint">イベント名・参加者名簿・職員番号・参加予定の設定は残ります。テストで追加した飛び入り参加者も削除されません。誤って再受付しないようカメラは停止します。次のテスト時に手動で起動してください。</p>'+
+  '<p class="hint">イベント名・参加者名簿・職員番号・参加予定の設定は残ります。テストで追加した飛び入り参加者も削除されません。誤って再受付しないようカメラは停止します。次のテスト時に手動で起動してください。複数PCでの受付実績ファイルは古い世代のものがすべて無効になるため、最新の全イベントJSONを配布し直してください。</p>'+
   '<fieldset class="rx-clear-scope"><legend>クリアする範囲</legend>'+
   '<label class="check"><input type="radio" name="clearAttendanceScope" value="session" checked> 現在の受付区分だけ</label>'+
   '<label class="check"><input type="radio" name="clearAttendanceScope" value="all"> このイベントの全受付区分</label>'+
@@ -637,11 +663,15 @@ function openClearAttendanceDialog(){
   if(phrase.value.trim()!=="クリア"||commit.disabled)return;
   if(activeId!==originId||!day)return announce("対象イベントが変更されたため、もう一度操作してください。","warn");
   const all=scope()==="all";
-  const done=mutate(next=>{for(const p of next.participants){if(all)p.checkins={};else if(p.checkins)delete p.checkins[originSessionId];}});
+  const done=mutate(next=>{
+   for(const p of next.participants){if(all)p.checkins={};else if(p.checkins)delete p.checkins[originSessionId];}
+   // A cleared generation cannot accept an old attendance snapshot.
+   next.attendanceEpoch="A-"+randomHex(8);next.attendanceImports={};
+  });
   if(!done)return;
   lastScan="";lastScanAt=0;
   closeDialog();showResult(null,"QRコードをかざしてください","");
-  announce("受付記録をクリアしました（"+(all?"全受付区分":session.name)+"）。参加者名簿は残っています。","warn");
+  announce("受付記録をクリアしました（"+(all?"全受付区分":session.name)+"）。他PCの古い実績ファイルは取り込めません。受付PCへ最新の全イベントJSONを再配布してください。","warn");
  };
  update();
  phrase.focus();
@@ -1075,10 +1105,140 @@ function renderResults(){
 function filteredCross(){const type=$("crossPeriod").value,year=+$("crossYear").value,cat=$("crossCategory").value,status=$("crossStatus").value,q=$("crossQuery").value.trim().toLowerCase();const records=[];for(const e of db.values()){if(cat!=="all"&&e.category!==cat)continue;if(type!=="all"){if(!Number.isInteger(year)||year<2000||year>2100||!e.date)continue;const a=type==="fiscal"?year+"-04-01":year+"-01-01",b=type==="fiscal"?(year+1)+"-04-01":(year+1)+"-01-01";if(e.date<a||e.date>=b)continue;}for(const p of e.participants.filter(p=>!p.removed)){const st=statusFor(e,p);if(status==="checked"&&st!=="受付済み"&&st!=="一部受付")continue;if(status==="partial"&&st!=="一部受付")continue;if(status==="pending"&&st!=="未受付")continue;if(q&&![e.name,e.id,p.id,p.name,p.staffId,p.department,p.group,customSearchText(e,p)].join(" ").toLowerCase().includes(q))continue;records.push({e,p,status:st});}}return records.sort((a,b)=>b.e.date.localeCompare(a.e.date)||a.e.id.localeCompare(b.e.id)||a.p.id.localeCompare(b.p.id));}
 function renderCross(){const records=filteredCross(),tbody=$("crossRows");tbody.replaceChildren();for(const {e,p,status} of records){const tr=document.createElement("tr");for(const x of [e.id,e.date,e.name,p.id,p.staffId,p.name,p.department,p.group,status]){const td=document.createElement("td");td.textContent=x||"—";tr.append(td);}tr.lastChild.innerHTML='<span class="cross-status '+(status==="受付済み"?"done":status==="一部受付"?"partial":"pending")+'">'+esc(status||"—")+'</span>';tr.firstChild.className="code";const custom=customEntries(e,p);if(custom.length){const details=document.createElement("div");details.className="cross-custom";for(const x of custom){const line=document.createElement("small");line.textContent=x.label+"："+x.value;details.append(line);}tr.children[5].append(details);}tbody.append(tr);}$("crossCount").textContent=records.length+"件";const people=new Set(records.filter(({p})=>p.staffId).map(({p})=>p.staffId));$("crossSummary").innerHTML=summaryMetric("イベント",new Set(records.map(({e})=>e.id)).size)+summaryMetric("参加記録",records.length)+summaryMetric("職員番号あり・実人数",people.size);}
 function exportCross(detail){const found=filteredCross();if(detail){csvDownload([detailHeader(),...found.flatMap(({e,p})=>detailRows(e,p))],"cross_sessions_"+stamp()+".csv");}else{const head=["event_id","event_name","event_date","category","participant_id","staff_id","name","department","group","planned_sessions","checked_sessions","status"];const rows=found.map(({e,p,status})=>[e.id,e.name,e.date,e.category,p.id,p.staffId,p.name,p.department,p.group||"",e.sessions.filter(s=>p.planned[s.id]).length,e.sessions.filter(s=>checked(p,s.id)).length,status]);csvDownload([head,...rows],"cross_participants_"+stamp()+".csv");}}
+/* Manual, event-scoped attendance exchange. Source snapshots contain only records authored on this PC.
+   Master imports are repeat-safe by source device + revision, and never silently overwrite
+   a check-in or cancellation that was edited on another PC. */
+const ATTENDANCE_FORMAT="QRReception:attendance:v1";
+function buildAttendanceSnapshot(e,sourceId=deviceId(),revision=localSyncRevision(e.id),master=isMaster()){
+ const records=[];
+ for(const p of e.participants){
+  if(p.removed)continue;
+  for(const session of e.sessions){
+   const c=p.checkins?.[session.id];
+   if(!c||(c.syncOrigin!==sourceId&&!(master&&!c.syncOrigin)))continue;
+   records.push({participant_id:p.id,staff_id:p.staffId||"",session_id:session.id,checkin:clone(c)});
+  }
+ }
+ return {format:ATTENDANCE_FORMAT,event_id:e.id,event_name:e.name,
+  attendance_epoch:attendanceEpoch(e),source_device_id:sourceId,revision,
+  exported_at:iso(),session_ids:e.sessions.map(x=>x.id),records};
+}
+function exportAttendanceSnapshot(){
+ const e=current();if(!e)return;
+ const payload=buildAttendanceSnapshot(e);
+ if(!payload.records.length)return announce("このPCで記録した受付実績はまだありません。","warn");
+ downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:"application/json;charset=utf-8"}),
+ "QR_attendance_"+fileSafe(e.id)+"_"+fileSafe(deviceId())+"_"+stamp()+".json");
+ announce("このPCの受付実績 "+payload.records.length+"件を書き出しました。共有フォルダ等に保存してください。","success");
+}
+function validateAttendanceSnapshot(e,data,localDeviceId=deviceId()){
+ if(!data||data.format!==ATTENDANCE_FORMAT)throw Error("受付実績JSONの形式が正しくありません。");
+ if(data.event_id!==e.id)throw Error("イベントIDが異なります。最初に同じ全イベントJSONを配布してください。");
+ if(data.attendance_epoch!==attendanceEpoch(e))throw Error("受付データの世代が異なります。受付状況のクリア後などは、最新の全イベントJSONを各PCに再配布してください。");
+ if(typeof data.source_device_id!=="string"||!/^PC-[A-F0-9]{16}$/.test(data.source_device_id))throw Error("出力元PCの識別子が不正です。");
+ if(data.source_device_id===localDeviceId)throw Error("このPC自身の実績ファイルは取り込めません。");
+ if(!Number.isSafeInteger(data.revision)||data.revision<0)throw Error("受付実績の更新番号が不正です。");
+ if(!Array.isArray(data.session_ids)||data.session_ids.length!==e.sessions.length
+   ||data.session_ids.some((x,i)=>x!==e.sessions[i].id))throw Error("受付区分IDが一致しません。元の共通JSONから準備してください。");
+ if(!Array.isArray(data.records)||data.records.length>10000)throw Error("受付実績の件数が不正です。");
+ const participants=new Map(e.participants.filter(p=>!p.removed).map(p=>[p.id,p]));
+ const sessions=new Set(e.sessions.map(s=>s.id)),seen=new Set(),records=[];
+ for(const rec of data.records){
+  if(!rec||typeof rec!=="object")throw Error("受付実績の内容が不正です。");
+  const p=participants.get(rec.participant_id),sid=rec.session_id,checkin=rec.checkin;
+  if(!p||!sessions.has(sid)||staffKey(rec.staff_id)!==staffKey(p.staffId))throw Error("参加者ID・職員番号・受付区分IDがマスターと一致しません。");
+  const k=p.id+"|"+sid;if(seen.has(k))throw Error("同一参加者・区分の記録が重複しています。");seen.add(k);
+  if(!checkin||typeof checkin!=="object"||Array.isArray(checkin)||typeof checkin.at!=="string"
+    ||!Number.isFinite(Date.parse(checkin.at))||(checkin.history!==undefined&&!Array.isArray(checkin.history))
+    ||(checkin.active!==undefined&&typeof checkin.active!=="boolean")
+    ||(checkin.syncOrigin&&checkin.syncOrigin!==data.source_device_id))throw Error("受付履歴のデータ形式が不正です。");
+  records.push({participant:p,sessionId:sid,checkin:{history:[],...clone(checkin),syncOrigin:data.source_device_id}});
+ }
+ return records;
+}
+function planAttendanceImport(e,data,localDeviceId=deviceId()){
+ const records=validateAttendanceSnapshot(e,data,localDeviceId);
+ const lastRevision=Number(e.attendanceImports?.[data.source_device_id]??-1);
+ const stale=data.revision<=lastRevision;
+ const planned={add:[],update:[],same:[],conflict:[],stale,revision:data.revision,
+  previousRevision:lastRevision,source:data.source_device_id};
+ if(stale)return planned;
+ for(const item of records){
+  const currentRecord=item.participant.checkins?.[item.sessionId];
+  if(!currentRecord){planned.add.push(item);continue;}
+  const same=JSON.stringify({...currentRecord,syncOrigin:item.checkin.syncOrigin})===JSON.stringify(item.checkin);
+  if(currentRecord.syncOrigin===data.source_device_id){
+   (same?planned.same:planned.update).push(item);
+  }else if(same){planned.same.push(item);}
+  else planned.conflict.push(item);
+ }
+ return planned;
+}
+function applyAttendanceImport(e,data,plan,useIncomingConflicts=false){
+ if(plan.stale)return {added:0,updated:0,conflicts:0};
+ const next=clone(e),people=new Map(next.participants.map(p=>[p.id,p]));
+ const install=item=>{people.get(item.participant.id).checkins[item.sessionId]=clone(item.checkin);};
+ for(const item of [...plan.add,...plan.update])install(item);
+ if(useIncomingConflicts)for(const item of plan.conflict)install(item);
+ next.attendanceImports||={};if(useIncomingConflicts||!plan.conflict.length)next.attendanceImports[data.source_device_id]=data.revision;
+ validateEvent(next);
+ return {event:next,added:plan.add.length,updated:plan.update.length+(useIncomingConflicts?plan.conflict.length:0),
+  conflicts:useIncomingConflicts?0:plan.conflict.length,unchanged:plan.same.length};
+}
+async function importAttendanceFile(file){
+ if(!checkMaster("受付実績の取り込み"))return;
+ if(!file)return;
+ if(file.size>20*1024*1024)return announce("受付実績ファイルが大きすぎます（20MB以内）。","error");
+ const e=current();if(!e)return;
+ let data,plan;
+ try{data=JSON.parse(await file.text());plan=planAttendanceImport(e,data);}
+ catch(err){return announce("実績ファイルを取り込めません："+err.message,"error");}
+ const panel=document.createElement("div");panel.className="rx-import-preview";
+ const title=document.createElement("p");title.className="rx-import-file";title.textContent=file.name;panel.append(title);
+ const summary=document.createElement("p");summary.className="rx-import-summary";
+ summary.textContent="出力元："+data.source_device_id+" ／ 新規："+plan.add.length+"件・更新："+plan.update.length+
+  "件・変更なし："+plan.same.length+"件・要確認："+plan.conflict.length+"件";
+ panel.append(summary);
+ if(plan.stale){const note=document.createElement("p");note.className="hint";note.textContent="同じPCの同一版または古いファイルです。すでに取り込み済みのため変更しません。";panel.append(note);}
+ if(plan.conflict.length){
+  const warning=document.createElement("p");warning.className="rx-import-warning";
+  warning.textContent="異なるPCの操作が重なった記録があります。自動では上書きしません。";panel.append(warning);
+  const list=document.createElement("div");list.className="rx-import-conflict-list";
+  for(const item of plan.conflict.slice(0,30)){
+   const el=document.createElement("div");const existing=item.participant.checkins[item.sessionId];
+   const ss=e.sessions.find(x=>x.id===item.sessionId);
+   el.textContent=item.participant.name+" ／ "+ss.name+"：マスター側 "+(existing.active===false?"取消済み":"受付済み")+"、ファイル側 "+(item.checkin.active===false?"取消済み":"受付済み");list.append(el);
+  }
+  panel.append(list);
+  const choice=document.createElement("label");choice.className="check rx-import-override";
+  const ck=document.createElement("input");ck.type="checkbox";ck.id="importUseIncomingConflicts";
+  choice.append(ck,document.createTextNode("要確認の記録は、ファイル側の内容を優先して上書きする"));panel.append(choice);
+ }
+ const actions=document.createElement("div");actions.className="delete-dialog-buttons";
+ const cancel=document.createElement("button");cancel.type="button";cancel.className="btn";cancel.textContent="キャンセル";cancel.onclick=closeDialog;
+ const accept=document.createElement("button");accept.type="button";accept.className="btn main";accept.textContent="この実績を取り込む";accept.disabled=plan.stale||(!plan.add.length&&!plan.update.length&&!plan.conflict.length);
+ accept.onclick=()=>{
+  if(!checkMaster("受付実績の取り込み"))return;
+  if(activeId!==e.id)return announce("イベントが変更されています。取り込みをやり直してください。","warn");
+  const useIncoming=!!panel.querySelector("#importUseIncomingConflicts")?.checked;
+  let fresh;
+  try{
+    const currentEvent=current(),currentPlan=planAttendanceImport(currentEvent,data);
+    if(currentPlan.stale)throw Error("取り込み済みのファイルです。");
+    if(useIncoming&&currentPlan.conflict.length&&!confirm("要確認の記録 "+currentPlan.conflict.length+"件を、ファイル側の状態で上書きします。よろしいですか？"))return;
+    fresh=applyAttendanceImport(currentEvent,data,currentPlan,useIncoming);
+  }catch(err){return announce("取り込みに失敗しました："+err.message,"error");}
+  if(!fresh.event||!writeEvent(fresh.event))return;
+  closeDialog();render({keepScroll:true});
+  announce("受付実績を取り込みました：新規 "+fresh.added+"件、更新 "+fresh.updated+"件、競合保留 "+fresh.conflicts+"件。","success");
+ };
+ actions.append(cancel,accept);panel.append(actions);
+ openDialog("受付実績の取り込み確認",panel);
+}
 function backup(){const payload={schema_version:SCHEMA,exported_at:iso(),events:[...order].filter(x=>db.has(x)).map(x=>clone(db.get(x)))};downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:"application/json;charset=utf-8"}),"QRReception_backup_"+stamp()+".json");meta.lastBackupAt=iso();saveMeta();renderBackupStatus();announce(payload.events.length+"件のJSONダウンロードを開始しました。ファイルが保存されたことを確認してください。","success");}
 
 // Removes only the current application namespace. Do not touch browser-wide or legacy prototype data.
-function deleteAllStoredData(){
+function deleteAllStoredData(){if(!checkMaster("全データ削除"))return;
  const entries=[];
  try{
   for(let i=0;i<localStorage.length;i++){
@@ -1260,7 +1420,7 @@ function commitCsvImport(){
  $("participantImportDetails").open=false;setParticipantPage(1);
  announce("参加者登録完了：新規 "+plan.adds+"名、更新 "+plan.updates+"名、スキップ "+plan.skip+"名","success");}
 }
-async function importParticipants(){
+async function importParticipants(){if(!checkMaster("参加者取り込み"))return;
  const file=$("participantFile").files?.[0];if(!file)return announce("CSVファイルを選択してください。","warn");
  if(file.size>5*1024*1024)return announce("CSVが大きすぎます。5MB以下に分けてください。","warn");
  let rows;try{
@@ -1419,6 +1579,8 @@ function closeDialog(){$("dialogBackdrop").hidden=true;$("dialogBody").replaceCh
 let inReception=false;
 /* Backup remains available from the header and Data Management, without unsolicited dialogs. */
 function render({keepScroll=false}={}){
+ if(!isMaster()&&view==="event")day=true;
+ applyOperatingModeUI();
  const home=view==="home",nowDay=!home&&day;
  if(nowDay&&!inReception)resetCameraPaused=false;
  inReception=nowDay;
@@ -1439,8 +1601,8 @@ if(b.dataset.outputHelp!==undefined){
  return;
 }
 if(b.dataset.home){homeTab=b.dataset.home;announce("");render();return;}
-if(b.dataset.mode){day=b.dataset.mode==="day";announce("");render();return;}
-if(b.dataset.prep){prepTab=b.dataset.prep;announce("");render();return;}
+if(b.dataset.mode){if(!isMaster()&&b.dataset.mode!=="day")return checkMaster("事前準備");day=b.dataset.mode==="day";announce("");render();return;}
+if(b.dataset.prep){if(!checkMaster("事前準備"))return;prepTab=b.dataset.prep;announce("");render();return;}
 if(b.dataset.backup!==undefined){backup();return;}
 if(b.dataset.newEvent!==undefined){addEvent();return;}
 if(b.dataset.receptionTab){showReceptionTab(b.dataset.receptionTab);return;}
@@ -1450,8 +1612,25 @@ if(b.dataset.receptionCheckin){quickReceptionCheckIn(b.dataset.receptionCheckin,
 if(b.dataset.receptionCancel){quickReceptionCancel(b.dataset.receptionCancel,b.dataset.sessionId);return;}
 if(b.dataset.menu){openEventMenu(b);return;}
 if(b.dataset.listTab){listTab=b.dataset.listTab;renderEventList();return;}
-if(b.dataset.action){closeEventMenu();const id=b.dataset.id;switch(b.dataset.action){case "results":return openEvent(id,false,"results");case "prep":return openEvent(id,false);case "day":return openEvent(id,true);case "clone":return addEvent(id);case "delete":return deleteEvent(id);case "edit-person":return openPerson(b.dataset.person,false);case "remove-session":return removeSession(b.dataset.session);}return;}
+if(b.dataset.action){closeEventMenu();if(!isMaster()&&b.dataset.action!=="day")return checkMaster("このイベント操作");const id=b.dataset.id;switch(b.dataset.action){case "results":return openEvent(id,false,"results");case "prep":return openEvent(id,false);case "day":return openEvent(id,true);case "clone":return addEvent(id);case "delete":return deleteEvent(id);case "edit-person":return openPerson(b.dataset.person,false);case "remove-session":return removeSession(b.dataset.session);}return;}
 });
+$("operatingMode").onchange=()=>{
+ const next=$("operatingMode").value==="worker"?"worker":"master";
+ if(next===operatingMode())return;
+ meta.operatingMode=next;saveMeta();
+ if(next==="worker"&&view==="event"){day=true;prepTab="settings";}
+ announce(next==="worker"?"受付PCモードに切り替えました。受付・受付取消・実績書き出しを行えます。":"マスターPCモードに切り替えました。受付実績の取り込み・名簿管理が可能です。","success");
+ render();
+};
+$("exportAttendance").onclick=exportAttendanceSnapshot;
+$("importAttendance").onclick=()=>{
+ if(!checkMaster("受付実績の取り込み"))return;
+ const input=$("attendanceImportFiles");input.value="";input.click();
+};
+$("attendanceImportFiles").onchange=async()=>{
+ const f=$("attendanceImportFiles").files?.[0];
+ if(f)await importAttendanceFile(f);
+};
 $("newEvent").onclick=()=>addEvent();$("backHome").onclick=()=>openHome();$("rxBack").onclick=()=>openHome();document.addEventListener("click",ev=>{const d=$("dayCheck");if(d.open&&!d.contains(ev.target))d.open=false;});$("resetEvents").onclick=()=>{for(const id of ["eventQuery","dateFrom","dateTo"])$(id).value="";$("sortKey").value="auto";$("sortOrder").value="asc";showOlderPast=false;renderEventList();};
 $("restoreFile").addEventListener("change",()=>{const f=$("restoreFile").files[0];$("restoreFileName").textContent=f?f.name:"選択されていません";$("restoreFileName").classList.toggle("on",!!f);});
 
@@ -1491,7 +1670,7 @@ if(window.ResizeObserver){const ro=new ResizeObserver(()=>fitReader());ro.observ
 $("mirrorToggle").checked=meta.mirror!==false;$("reader").classList.toggle("mirror",meta.mirror!==false);$("mirrorToggle").onchange=()=>{meta.mirror=$("mirrorToggle").checked;saveMeta();$("reader").classList.toggle("mirror",meta.mirror);};
 $("soundToggle").checked=meta.sound!==false;$("soundToggle").onchange=()=>{meta.sound=$("soundToggle").checked;saveMeta();if(meta.sound){primeAudio();setTimeout(()=>feedback("success"),60);}};
 document.addEventListener("pointerdown",primeAudio,{passive:true});document.addEventListener("keydown",primeAudio);
-$("walkinBtn").onclick=()=>openPerson(null,true);$("manualBtn").onclick=openManual;$("closeDialog").onclick=closeDialog;
+$("walkinBtn").onclick=()=>{if(checkMaster("飛び入り登録"))openPerson(null,true);};$("manualBtn").onclick=openManual;$("closeDialog").onclick=closeDialog;
 $("dialogBackdrop").addEventListener("click",e=>{if(e.target===$("dialogBackdrop"))closeDialog();});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("dialogBackdrop").hidden)closeDialog();});}
 window.addEventListener("afterprint",()=>{document.body.removeAttribute("data-print-mode");$("receptionPrint").hidden=true;});
 loadMeta();loadAll();delegate();render();

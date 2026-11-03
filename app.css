@@ -948,3 +948,28 @@ body.day-mode #eventView>.ev-bar{display:none}
 .rx-clear-scope .check{display:flex;gap:9px;align-items:center;font-size:.85rem}
 .rx-clear-count{margin:0;font-size:.87rem;font-weight:800;color:#244f62}
 .rx-clear-dialog .delete-dialog-buttons{margin-top:3px}
+
+
+/* Offline master / receptionist operating roles and manual attendance exchange. */
+.hm-operating-mode{display:flex;align-items:center;gap:6px;padding:4px 7px;border:1px solid #c9dce3;border-radius:9px;background:#eef6f7;color:#376477;font-size:.73rem;font-weight:800;white-space:nowrap}
+.hm-operating-mode select{border:0;background:transparent;color:#18495c;font-size:.82rem;font-weight:850;cursor:pointer;max-width:130px}
+.rx-eyebrow #operatingModeState{background:#e0f0ef;color:#1a6970;padding:2px 6px;border-radius:5px;margin-left:5px;font-size:.7rem}
+.rx-attendance-share{display:flex;flex-wrap:wrap;gap:7px;margin:0 -2px;padding:10px 2px 8px;border-top:1px solid #e1eaed}
+.rx-share-button{flex:1;min-width:145px;font-size:.75rem!important;line-height:1.35!important;white-space:normal!important;text-align:center!important}
+.rx-import-preview{display:flex;flex-direction:column;gap:11px}
+.rx-import-file{margin:0;font-size:.88rem;color:#476a7b;overflow-wrap:anywhere}
+.rx-import-summary{font-weight:800;font-size:.9rem;background:#eef7f7;border-radius:9px;padding:11px 13px;margin:0;color:#1b5163;line-height:1.6}
+.rx-import-warning{border:1px solid #efbe8b;background:#fff5e9;color:#88521d;border-radius:8px;padding:9px 12px;margin:0;font-weight:750;font-size:.9rem}
+.rx-import-conflict-list{max-height:200px;overflow:auto;border:1px solid #d6e3e9;border-radius:8px;padding:8px 12px;font-size:.78rem;line-height:1.7}
+.rx-import-conflict-list>div+div{border-top:1px solid #e4ebef}
+.rx-import-override{font-size:.84rem;line-height:1.5;align-items:flex-start}
+body[data-operating-mode="worker"] #newEvent,
+body[data-operating-mode="worker"] [data-new-event],
+body[data-operating-mode="worker"] .rx-share-import,
+body[data-operating-mode="worker"] #walkinBtn,
+body[data-operating-mode="worker"] #clearAttendance,
+body[data-operating-mode="worker"] .rx-tools [data-mode="prep"],
+body[data-operating-mode="worker"] .ev-seg [data-mode="prep"],
+body[data-operating-mode="worker"] .hm-data .danger-zone{display:none!important}
+body[data-operating-mode="worker"] .rx .rx-clear-footer{display:none}
+@media(max-width:900px){.hm-operating-mode{font-size:.7rem}.hm-operating-mode span{display:none}.rx-share-button{min-width:0}}

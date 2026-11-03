@@ -11,6 +11,7 @@
   <div class="hm-seg" id="homeTabs"><button data-home="events" class="active">▦ イベント</button><button data-home="cross">⌕ 横断検索</button><button data-home="data">▣ データ管理</button></div>
   <div class="hm-spacer"></div>
   <span class="hm-stats" id="globalSummary"></span>
+  <label class="hm-operating-mode"><span>このPCの役割</span><select id="operatingMode" aria-label="このPCの運用モード"><option value="master">マスターPC</option><option value="worker">受付PC</option></select></label>
   <label class="hm-search" id="hmSearch"><span aria-hidden="true">⌕</span><input id="eventQuery" type="search" placeholder="イベント名で検索" aria-label="イベント名で検索"></label>
   <button id="newEvent" class="btn main">＋ 新規イベント</button>
  </div>
@@ -296,7 +297,7 @@
  <section id="receptionView" class="reception rx" hidden>
   <div class="rx-bar">
    <button type="button" class="rx-icon-btn" id="rxBack" title="総合管理へ戻る" aria-label="総合管理へ戻る">←</button>
-   <div class="rx-event"><span class="rx-eyebrow">当日受付</span><strong id="rxEventName"></strong></div>
+   <div class="rx-event"><span class="rx-eyebrow">当日受付 <span id="operatingModeState">マスターPC</span></span><strong id="rxEventName"></strong></div>
    <label class="rx-session"><span>受付区分</span><select id="checkinSession"></select></label>
    <div class="rx-tools">
     <details id="dayCheck" class="rx-pop day-check">
@@ -355,6 +356,11 @@
     </div>
     <div id="pendingRows" class="pending-list" role="tabpanel" aria-labelledby="tabPending"></div>
     <div id="checkedRows" class="pending-list" role="tabpanel" aria-labelledby="tabChecked" hidden></div>
+    <div class="rx-attendance-share" role="group" aria-label="受付実績の共有">
+      <button type="button" id="exportAttendance" class="btn small rx-share-button">⇩ このPCの受付実績を書き出す</button>
+      <button type="button" id="importAttendance" class="btn small rx-share-button rx-share-import">⇧ 他PCの受付実績を取り込む</button>
+      <input id="attendanceImportFiles" type="file" accept=".json,application/json" hidden>
+    </div>
     <div class="rx-clear-footer"><button type="button" class="rx-clear-trigger" id="clearAttendance" title="QR読取テスト後の受付記録を初期化します（確認あり）">↺ 受付状況を一括クリア</button></div>
    </aside>
   </div>
