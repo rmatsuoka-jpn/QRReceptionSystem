@@ -569,7 +569,7 @@ function checkInByToken(code){
  if(matched.length!==1){showResult(null,matched.length?"職員番号が重複しています":"名簿にない職員番号です","error");return;}
  checkIn(matched[0].id,"qr",false);
 }
-function checkIn(id,method,allowPlan){if(allowPlan&&!isMaster())return announce("参加予定の変更はマスターPCで行ってください。","warn"),false;const e=current(),s=curSession();let result=null;const person=e.participants.find(p=>p.id===id);if(!person||person.removed){showResult(person,"受付できません","error");return false;}if(checked(person,s.id)){const c=person.checkins[s.id];showResult(person,"受付済み（重複）","warn",s.name,c.lastAt||c.at);return false;}if(!person.planned[s.id]&&!allowPlan){showResult(person,"この区分は参加対象外です","warn",s.name);const action=document.createElement("button");action.type="button";action.className="btn soft";action.style.marginTop="12px";action.textContent="この区分を参加対象に変更して受付";action.onclick=()=>{if(!confirm(person.name+" さんを「"+s.name+"」の参加対象に変更して受付しますか？"))return;checkIn(id,method,true);};$("checkinResult").append(action);return false;}
+function checkIn(id,method,allowPlan){if(allowPlan&&!isMaster())return announce("参加予定の変更はマスターPCで行ってください。","warn"),false;const e=current(),s=curSession();let result=null;const person=e.participants.find(p=>p.id===id);if(!person||person.removed){showResult(person,"受付できません","error");return false;}if(checked(person,s.id)){const c=person.checkins[s.id];showResult(person,"受付済み（重複）","warn",s.name,c.lastAt||c.at);return false;}if(!person.planned[s.id]&&!allowPlan){showResult(person,"この区分は参加対象外です","warn",s.name);if(!isMaster())return false;const action=document.createElement("button");action.type="button";action.className="btn soft";action.style.marginTop="12px";action.textContent="この区分を参加対象に変更して受付";action.onclick=()=>{if(!confirm(person.name+" さんを「"+s.name+"」の参加対象に変更して受付しますか？"))return;checkIn(id,method,true);};$("checkinResult").append(action);return false;}
 const ok=mutate(next=>{const p=next.participants.find(p=>p.id===id),at=iso();if(allowPlan)p.planned[s.id]=true;const c=p.checkins[s.id];if(c){c.active=true;c.lastAt=at;c.method=method;c.syncOrigin=deviceId();(c.history||(c.history=[])).push({type:"recheck",at,method});}else p.checkins[s.id]={at,lastAt:at,method,initialMethod:method,active:true,history:[],syncOrigin:deviceId()};result={person:p,at};});if(!ok){showResult(person,"保存に失敗しました","error");return false;}showResult(result.person,"受付完了","success",s.name,result.at);return true;}
 function showResult(person,txt,level="warn",session="",at=""){
  const d=$("checkinResult");d.className="result "+level;
@@ -637,7 +637,7 @@ function openClearAttendanceDialog(){if(!checkMaster("受付記録の一括ク�
  const panel=document.createElement("div");panel.className="rx-clear-dialog";
  panel.innerHTML=
   '<p class="rx-clear-warning">選んだ範囲の受付時刻・受付済み状態・取消／再受付履歴を完全に削除します。元には戻せません。</p>'+
-  '<p class="hint">イベント名・参加者名簿・職員番号・参加予定の設定は残ります。テストで追加した飛び入り参加者も削除されません。誤って再受付しないようカメラは停止します。次のテスト時に手動で起動してください。</p>'+
+  '<p class="hint">イベント名・参加者名簿・職員番号・参加予定の設定は残ります。テストで追加した飛び入り参加者も削除されません。誤って再受付しないようカメラは停止します。次のテスト時に手動で起動してください。複数PCでの受付実績ファイルは古い世代のものがすべて無効になるため、最新の全イベントJSONを配布し直してください。</p>'+
   '<fieldset class="rx-clear-scope"><legend>クリアする範囲</legend>'+
   '<label class="check"><input type="radio" name="clearAttendanceScope" value="session" checked> 現在の受付区分だけ</label>'+
   '<label class="check"><input type="radio" name="clearAttendanceScope" value="all"> このイベントの全受付区分</label>'+
