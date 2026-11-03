@@ -1100,6 +1100,134 @@ function renderResults(){
 function filteredCross(){const type=$("crossPeriod").value,year=+$("crossYear").value,cat=$("crossCategory").value,status=$("crossStatus").value,q=$("crossQuery").value.trim().toLowerCase();const records=[];for(const e of db.values()){if(cat!=="all"&&e.category!==cat)continue;if(type!=="all"){if(!Number.isInteger(year)||year<2000||year>2100||!e.date)continue;const a=type==="fiscal"?year+"-04-01":year+"-01-01",b=type==="fiscal"?(year+1)+"-04-01":(year+1)+"-01-01";if(e.date<a||e.date>=b)continue;}for(const p of e.participants.filter(p=>!p.removed)){const st=statusFor(e,p);if(status==="checked"&&st!=="受付済み"&&st!=="一部受付")continue;if(status==="partial"&&st!=="一部受付")continue;if(status==="pending"&&st!=="未受付")continue;if(q&&![e.name,e.id,p.id,p.name,p.staffId,p.department,p.group,customSearchText(e,p)].join(" ").toLowerCase().includes(q))continue;records.push({e,p,status:st});}}return records.sort((a,b)=>b.e.date.localeCompare(a.e.date)||a.e.id.localeCompare(b.e.id)||a.p.id.localeCompare(b.p.id));}
 function renderCross(){const records=filteredCross(),tbody=$("crossRows");tbody.replaceChildren();for(const {e,p,status} of records){const tr=document.createElement("tr");for(const x of [e.id,e.date,e.name,p.id,p.staffId,p.name,p.department,p.group,status]){const td=document.createElement("td");td.textContent=x||"—";tr.append(td);}tr.lastChild.innerHTML='<span class="cross-status '+(status==="受付済み"?"done":status==="一部受付"?"partial":"pending")+'">'+esc(status||"—")+'</span>';tr.firstChild.className="code";const custom=customEntries(e,p);if(custom.length){const details=document.createElement("div");details.className="cross-custom";for(const x of custom){const line=document.createElement("small");line.textContent=x.label+"："+x.value;details.append(line);}tr.children[5].append(details);}tbody.append(tr);}$("crossCount").textContent=records.length+"件";const people=new Set(records.filter(({p})=>p.staffId).map(({p})=>p.staffId));$("crossSummary").innerHTML=summaryMetric("イベント",new Set(records.map(({e})=>e.id)).size)+summaryMetric("参加記録",records.length)+summaryMetric("職員番号あり・実人数",people.size);}
 function exportCross(detail){const found=filteredCross();if(detail){csvDownload([detailHeader(),...found.flatMap(({e,p})=>detailRows(e,p))],"cross_sessions_"+stamp()+".csv");}else{const head=["event_id","event_name","event_date","category","participant_id","staff_id","name","department","group","planned_sessions","checked_sessions","status"];const rows=found.map(({e,p,status})=>[e.id,e.name,e.date,e.category,p.id,p.staffId,p.name,p.department,p.group||"",e.sessions.filter(s=>p.planned[s.id]).length,e.sessions.filter(s=>checked(p,s.id)).length,status]);csvDownload([head,...rows],"cross_participants_"+stamp()+".csv");}}
+/* Manual, event-scoped attendance exchange. Source snapshots contain only records authored on this PC.
+   Master imports are repeat-safe by source device + revision, and never silently overwrite
+   a check-in or cancellation that was edited on another PC. */
+const ATTENDANCE_FORMAT="QRReception:attendance:v1";
+function buildAttendanceSnapshot(e,sourceId=deviceId(),revision=localSyncRevision(e.id),master=isMaster()){
+ const records=[];
+ for(const p of e.participants){
+  if(p.removed)continue;
+  for(const session of e.sessions){
+   const c=p.checkins?.[session.id];
+   if(!c||(c.syncOrigin!==sourceId&&!(master&&!c.syncOrigin)))continue;
+   records.push({participant_id:p.id,staff_id:p.staffId||"",session_id:session.id,checkin:clone(c)});
+  }
+ }
+ return {format:ATTENDANCE_FORMAT,event_id:e.id,event_name:e.name,
+  attendance_epoch:attendanceEpoch(e),source_device_id:sourceId,revision,
+  exported_at:iso(),session_ids:e.sessions.map(x=>x.id),records};
+}
+function exportAttendanceSnapshot(){
+ const e=current();if(!e)return;
+ const payload=buildAttendanceSnapshot(e);
+ if(!payload.records.length)return announce("このPCで記録した受付実績はまだありません。","warn");
+ downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:"application/json;charset=utf-8"}),
+ "QR_attendance_"+fileSafe(e.id)+"_"+fileSafe(deviceId())+"_"+stamp()+".json");
+ announce("このPCの受付実績 "+payload.records.length+"件を書き出しました。共有フォルダ等に保存してください。","success");
+}
+function validateAttendanceSnapshot(e,data,localDeviceId=deviceId()){
+ if(!data||data.format!==ATTENDANCE_FORMAT)throw Error("受付実績JSONの形式が正しくありません。");
+ if(data.event_id!==e.id)throw Error("イベントIDが異なります。最初に同じ全イベントJSONを配布してください。");
+ if(data.attendance_epoch!==attendanceEpoch(e))throw Error("受付データの世代が異なります。受付状況のクリア後などは、最新の全イベントJSONを各PCに再配布してください。");
+ if(typeof data.source_device_id!=="string"||!/^PC-[A-F0-9]{16}$/.test(data.source_device_id))throw Error("出力元PCの識別子が不正です。");
+ if(data.source_device_id===localDeviceId)throw Error("このPC自身の実績ファイルは取り込めません。");
+ if(!Number.isSafeInteger(data.revision)||data.revision<0)throw Error("受付実績の更新番号が不正です。");
+ if(!Array.isArray(data.session_ids)||data.session_ids.length!==e.sessions.length
+   ||data.session_ids.some((x,i)=>x!==e.sessions[i].id))throw Error("受付区分IDが一致しません。元の共通JSONから準備してください。");
+ if(!Array.isArray(data.records)||data.records.length>10000)throw Error("受付実績の件数が不正です。");
+ const participants=new Map(e.participants.filter(p=>!p.removed).map(p=>[p.id,p]));
+ const sessions=new Set(e.sessions.map(s=>s.id)),seen=new Set(),records=[];
+ for(const rec of data.records){
+  if(!rec||typeof rec!=="object")throw Error("受付実績の内容が不正です。");
+  const p=participants.get(rec.participant_id),sid=rec.session_id,checkin=rec.checkin;
+  if(!p||!sessions.has(sid)||staffKey(rec.staff_id)!==staffKey(p.staffId))throw Error("参加者ID・職員番号・受付区分IDがマスターと一致しません。");
+  const k=p.id+"|"+sid;if(seen.has(k))throw Error("同一参加者・区分の記録が重複しています。");seen.add(k);
+  if(!checkin||typeof checkin!=="object"||Array.isArray(checkin)||typeof checkin.at!=="string"
+    ||!Number.isFinite(Date.parse(checkin.at))||!Array.isArray(checkin.history)
+    ||(checkin.active!==undefined&&typeof checkin.active!=="boolean")
+    ||(checkin.syncOrigin&&checkin.syncOrigin!==data.source_device_id))throw Error("受付履歴のデータ形式が不正です。");
+  records.push({participant:p,sessionId:sid,checkin:{...clone(checkin),syncOrigin:data.source_device_id}});
+ }
+ return records;
+}
+function planAttendanceImport(e,data,localDeviceId=deviceId()){
+ const records=validateAttendanceSnapshot(e,data,localDeviceId);
+ const lastRevision=Number(e.attendanceImports?.[data.source_device_id]??-1);
+ const stale=data.revision<=lastRevision;
+ const planned={add:[],update:[],same:[],conflict:[],stale,revision:data.revision,
+  previousRevision:lastRevision,source:data.source_device_id};
+ if(stale)return planned;
+ for(const item of records){
+  const currentRecord=item.participant.checkins?.[item.sessionId];
+  if(!currentRecord){planned.add.push(item);continue;}
+  const same=JSON.stringify({...currentRecord,syncOrigin:item.checkin.syncOrigin})===JSON.stringify(item.checkin);
+  if(currentRecord.syncOrigin===data.source_device_id){
+   (same?planned.same:planned.update).push(item);
+  }else if(same){planned.same.push(item);}
+  else planned.conflict.push(item);
+ }
+ return planned;
+}
+function applyAttendanceImport(e,data,plan,useIncomingConflicts=false){
+ if(plan.stale)return {added:0,updated:0,conflicts:0};
+ const next=clone(e),people=new Map(next.participants.map(p=>[p.id,p]));
+ const install=item=>{people.get(item.participant.id).checkins[item.sessionId]=clone(item.checkin);};
+ for(const item of [...plan.add,...plan.update])install(item);
+ if(useIncomingConflicts)for(const item of plan.conflict)install(item);
+ next.attendanceImports||={};next.attendanceImports[data.source_device_id]=data.revision;
+ validateEvent(next);
+ return {event:next,added:plan.add.length,updated:plan.update.length+(useIncomingConflicts?plan.conflict.length:0),
+  conflicts:useIncomingConflicts?0:plan.conflict.length,unchanged:plan.same.length};
+}
+async function importAttendanceFile(file){
+ if(!checkMaster("受付実績の取り込み"))return;
+ if(!file)return;
+ if(file.size>20*1024*1024)return announce("受付実績ファイルが大きすぎます（20MB以内）。","error");
+ const e=current();if(!e)return;
+ let data,plan;
+ try{data=JSON.parse(await file.text());plan=planAttendanceImport(e,data);}
+ catch(err){return announce("実績ファイルを取り込めません："+err.message,"error");}
+ const panel=document.createElement("div");panel.className="rx-import-preview";
+ const title=document.createElement("p");title.className="rx-import-file";title.textContent=file.name;panel.append(title);
+ const summary=document.createElement("p");summary.className="rx-import-summary";
+ summary.textContent="出力元："+data.source_device_id+" ／ 新規："+plan.add.length+"件・更新："+plan.update.length+
+  "件・変更なし："+plan.same.length+"件・要確認："+plan.conflict.length+"件";
+ panel.append(summary);
+ if(plan.stale){const note=document.createElement("p");note.className="hint";note.textContent="同じPCの同一版または古いファイルです。すでに取り込み済みのため変更しません。";panel.append(note);}
+ if(plan.conflict.length){
+  const warning=document.createElement("p");warning.className="rx-import-warning";
+  warning.textContent="異なるPCの操作が重なった記録があります。自動では上書きしません。";panel.append(warning);
+  const list=document.createElement("div");list.className="rx-import-conflict-list";
+  for(const item of plan.conflict.slice(0,30)){
+   const el=document.createElement("div");const existing=item.participant.checkins[item.sessionId];
+   const ss=e.sessions.find(x=>x.id===item.sessionId);
+   el.textContent=item.participant.name+" ／ "+ss.name+"：マスター側 "+(existing.active===false?"取消済み":"受付済み")+"、ファイル側 "+(item.checkin.active===false?"取消済み":"受付済み");list.append(el);
+  }
+  panel.append(list);
+  const choice=document.createElement("label");choice.className="check rx-import-override";
+  const ck=document.createElement("input");ck.type="checkbox";ck.id="importUseIncomingConflicts";
+  choice.append(ck,document.createTextNode("要確認の記録は、ファイル側の内容を優先して上書きする"));panel.append(choice);
+ }
+ const actions=document.createElement("div");actions.className="delete-dialog-buttons";
+ const cancel=document.createElement("button");cancel.type="button";cancel.className="btn";cancel.textContent="キャンセル";cancel.onclick=closeDialog;
+ const accept=document.createElement("button");accept.type="button";accept.className="btn main";accept.textContent="この実績を取り込む";accept.disabled=plan.stale||(!plan.add.length&&!plan.update.length&&!plan.conflict.length);
+ accept.onclick=()=>{
+  if(!checkMaster("受付実績の取り込み"))return;
+  if(activeId!==e.id)return announce("イベントが変更されています。取り込みをやり直してください。","warn");
+  const useIncoming=!!panel.querySelector("#importUseIncomingConflicts")?.checked;
+  if(useIncoming&&!confirm("要確認の記録 "+plan.conflict.length+"件を、ファイル側の状態で上書きします。よろしいですか？"))return;
+  let fresh;
+  try{const currentEvent=current();const currentPlan=planAttendanceImport(currentEvent,data);if(currentPlan.stale)throw Error("取り込み済みのファイルです。");
+    fresh=applyAttendanceImport(currentEvent,data,currentPlan,useIncoming);
+  }catch(err){return announce("取り込みに失敗しました："+err.message,"error");}
+  if(!fresh.event||!writeEvent(fresh.event))return;
+  closeDialog();render({keepScroll:true});
+  announce("受付実績を取り込みました：新規 "+fresh.added+"件、更新 "+fresh.updated+"件、競合保留 "+fresh.conflicts+"件。","success");
+ };
+ actions.append(cancel,accept);panel.append(actions);
+ openDialog("受付実績の取り込み確認",panel);
+}
 function backup(){const payload={schema_version:SCHEMA,exported_at:iso(),events:[...order].filter(x=>db.has(x)).map(x=>clone(db.get(x)))};downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:"application/json;charset=utf-8"}),"QRReception_backup_"+stamp()+".json");meta.lastBackupAt=iso();saveMeta();renderBackupStatus();announce(payload.events.length+"件のJSONダウンロードを開始しました。ファイルが保存されたことを確認してください。","success");}
 
 // Removes only the current application namespace. Do not touch browser-wide or legacy prototype data.
