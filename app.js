@@ -545,7 +545,28 @@ function checkInByToken(code){
 }
 function checkIn(id,method,allowPlan){const e=current(),s=curSession();let result=null;const person=e.participants.find(p=>p.id===id);if(!person||person.removed){showResult(person,"受付できません","error");return false;}if(checked(person,s.id)){const c=person.checkins[s.id];showResult(person,"受付済み（重複）","warn",s.name,c.lastAt||c.at);return false;}if(!person.planned[s.id]&&!allowPlan){showResult(person,"この区分は参加対象外です","warn",s.name);const action=document.createElement("button");action.type="button";action.className="btn soft";action.style.marginTop="12px";action.textContent="この区分を参加対象に変更して受付";action.onclick=()=>{if(!confirm(person.name+" さんを「"+s.name+"」の参加対象に変更して受付しますか？"))return;checkIn(id,method,true);};$("checkinResult").append(action);return false;}
 const ok=mutate(next=>{const p=next.participants.find(p=>p.id===id),at=iso();if(allowPlan)p.planned[s.id]=true;const c=p.checkins[s.id];if(c){c.active=true;c.lastAt=at;c.method=method;(c.history||(c.history=[])).push({type:"recheck",at,method});}else p.checkins[s.id]={at,lastAt:at,method,initialMethod:method,active:true,history:[]};result={person:p,at};});if(!ok){showResult(person,"保存に失敗しました","error");return false;}showResult(result.person,"受付完了","success",s.name,result.at);return true;}
-function showResult(person,txt,level="warn",session="",at=""){const d=$("checkinResult");d.className="result "+level;if(level){void d.offsetWidth;d.classList.add("flash");}d.replaceChildren();const head=document.createElement("div");head.className="outcome";head.textContent=({success:"✓ ",warn:"！ ",error:"✕ "}[level]||"")+txt;feedback(level);d.append(head);if(person){const name=document.createElement("div");name.className="person-name";name.textContent=person.name;d.append(name);const meta=document.createElement("div");meta.className="person-meta";meta.textContent=[person.department,person.group,session,at?localDate(at):""].filter(Boolean).join("　/　");d.append(meta);const custom=document.createElement("div");custom.className="rx-result-custom";if(appendCustomDetails(custom,current(),person,"rx-custom-pill"))d.append(custom);}}
+function showResult(person,txt,level="warn",session="",at=""){
+ const d=$("checkinResult");d.className="result "+level;
+ if(level){void d.offsetWidth;d.classList.add("flash");}
+ d.replaceChildren();
+ const head=document.createElement("div");head.className="outcome";
+ head.textContent=({success:"✓ ",warn:"！ ",error:"✕ "}[level]||"")+txt;
+ feedback(level);d.append(head);
+ if(!person)return;
+ const name=document.createElement("div");name.className="person-name";name.textContent=person.name;d.append(name);
+ // Make group identification prominent for the person standing in front of the camera.
+ if(person.group){
+  const group=document.createElement("div");group.className="person-group";
+  const label=document.createElement("span");label.className="person-group-label";label.textContent="グループ";
+  const value=document.createElement("strong");value.className="person-group-value";value.textContent=person.group;
+  group.append(label,value);d.append(group);
+ }
+ const meta=document.createElement("div");meta.className="person-meta";
+ meta.textContent=[person.department,session,at?localDate(at):""].filter(Boolean).join("　/　");
+ if(meta.textContent)d.append(meta);
+ const custom=document.createElement("div");custom.className="rx-result-custom";
+ if(appendCustomDetails(custom,current(),person,"rx-custom-pill"))d.append(custom);
+}
 function showReceptionTab(tab){
  receptionTab=tab==="checked"?"checked":"pending";
  $("pendingRows").hidden=receptionTab!=="pending";
@@ -1395,17 +1416,18 @@ function showImportPreview(rows,source){
 }
 function openDialog(title,body){dialogReturnFocus=document.activeElement;$("dialogTitle").textContent=title;$("dialogBody").replaceChildren(body);$("dialogBackdrop").hidden=false;$("closeDialog").focus();}
 function closeDialog(){$("dialogBackdrop").hidden=true;$("dialogBody").replaceChildren();dialogReturnFocus?.focus?.();}
-let inReception=false,receptionChangeMark=null;
-function receptionChanged(){return inReception&&meta.lastChangeAt!==receptionChangeMark&&needsBackup();}
-/* 受付画面から離れたとき、受付中の変更が未バックアップならJSON保存を案内する（操作は止めない）。 */
-function promptReceptionBackup(){
- const body=document.createElement("div");body.className="backup-prompt";
- body.innerHTML='<p class="backup-prompt-lead">受付の記録は、このPCのブラウザにだけ保存されています。</p><p class="hint">PCの故障やブラウザのデータ消去に備えて、全イベントJSONを保存しておきましょう。保存先は庁内の保管ルールに従ってください。</p>';
- const row=document.createElement("div");row.className="delete-dialog-buttons";
- const later=document.createElement("button");later.type="button";later.className="btn";later.textContent="あとで";later.onclick=closeDialog;
- const save=document.createElement("button");save.type="button";save.className="btn main";save.textContent="⇩ JSONを保存（推奨）";save.onclick=()=>{closeDialog();backup();};
- row.append(later,save);body.append(row);openDialog("受付記録をバックアップしましょう",body);save.focus();}
-function render({keepScroll=false}={}){const home=view==="home",nowDay=!home&&day;const leavingReception=inReception&&!nowDay&&meta.lastChangeAt!==receptionChangeMark&&needsBackup();if(nowDay&&!inReception){receptionChangeMark=meta.lastChangeAt;resetCameraPaused=false;}inReception=nowDay;document.body.classList.toggle("day-mode",nowDay);document.body.classList.toggle("event-mode",!home&&!day);if((home||!day)&&CAM.running)stopCamera();$("homeView").hidden=!home;$("eventView").hidden=home;if(home)renderHome();else renderEvent(keepScroll);renderBackupStatus();if(leavingReception)promptReceptionBackup();}
+let inReception=false;
+/* Backup remains available from the header and Data Management, without unsolicited dialogs. */
+function render({keepScroll=false}={}){
+ const home=view==="home",nowDay=!home&&day;
+ if(nowDay&&!inReception)resetCameraPaused=false;
+ inReception=nowDay;
+ document.body.classList.toggle("day-mode",nowDay);document.body.classList.toggle("event-mode",!home&&!day);
+ if((home||!day)&&CAM.running)stopCamera();
+ $("homeView").hidden=!home;$("eventView").hidden=home;
+ if(home)renderHome();else renderEvent(keepScroll);
+ renderBackupStatus();
+}
 function delegate(){document.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
 if(b.dataset.ptPage!==undefined){setParticipantPage(Number(b.dataset.ptPage));return;}
 if(b.dataset.outputHelp!==undefined){
@@ -1432,7 +1454,7 @@ if(b.dataset.action){closeEventMenu();const id=b.dataset.id;switch(b.dataset.act
 });
 $("newEvent").onclick=()=>addEvent();$("backHome").onclick=()=>openHome();$("rxBack").onclick=()=>openHome();document.addEventListener("click",ev=>{const d=$("dayCheck");if(d.open&&!d.contains(ev.target))d.open=false;});$("resetEvents").onclick=()=>{for(const id of ["eventQuery","dateFrom","dateTo"])$(id).value="";$("sortKey").value="auto";$("sortOrder").value="asc";showOlderPast=false;renderEventList();};
 $("restoreFile").addEventListener("change",()=>{const f=$("restoreFile").files[0];$("restoreFileName").textContent=f?f.name:"選択されていません";$("restoreFileName").classList.toggle("on",!!f);});
-window.addEventListener("beforeunload",ev=>{if(receptionChanged()){ev.preventDefault();ev.returnValue="";}});
+
 $("toggleFilter").onclick=()=>{const p=$("filterPanel");p.hidden=!p.hidden;$("toggleFilter").setAttribute("aria-expanded",String(!p.hidden));};document.addEventListener("click",ev=>{if(!ev.target.closest("#eventMenu,[data-menu]"))closeEventMenu();});document.addEventListener("keydown",ev=>{if(ev.key==="Escape")closeEventMenu();});window.addEventListener("resize",closeEventMenu);
 $("filterToday").onclick=()=>{listTab="upcoming";$("dateFrom").value=$("dateTo").value=todayStr();renderEventList();};$("filterUpcoming").onclick=()=>{listTab="upcoming";$("dateFrom").value=todayStr();$("dateTo").value="";$("sortOrder").value="asc";renderEventList();};
 for(const id of ["eventQuery","dateFrom","dateTo","sortKey","sortOrder"])$(id).addEventListener(id==="eventQuery"?"input":"change",renderEventList);
