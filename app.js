@@ -200,6 +200,11 @@ function renderHero(ev){const box=$("todayEvents"),h=heroEvents(ev);box.replaceC
 function renderHome(){const ev=[...db.values()];
  $("globalSummary").innerHTML='このPC：イベント<b>'+ev.length+'</b>件・延べ<b>'+ev.reduce((n,e)=>n+liveCount(e),0)+'</b>名';
  $("backupCount").textContent=ev.length+"イベントがバックアップ対象";$("firstGuide").hidden=ev.length>0;$("hmList").hidden=!ev.length;
+ if(!ev.length){
+  $("firstGuide").querySelector("h3").textContent=isMaster()?"はじめての方へ":"受付PCの準備";
+  $("firstGuide").querySelector("p").textContent=isMaster()?"まずは「＋ 新規イベント」からイベントを作成してください。":"マスターPCから渡された全イベントJSONを「データ管理 → JSONから復元」で読み込んでください。";
+  $("firstGuide").querySelector("ol").hidden=!isMaster();
+ }
  $("hmSearch").hidden=homeTab!=="events";
  for(const name of ["events","cross","data"]){$("home"+name[0].toUpperCase()+name.slice(1)).hidden=name!==homeTab;document.querySelector('[data-home="'+name+'"]')?.classList.toggle("active",name===homeTab);}
  if(homeTab==="events"){renderHero(ev);renderEventList();}if(homeTab==="cross")renderCross();}
