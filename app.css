@@ -229,6 +229,14 @@ body.day-mode #notice{position:fixed;left:50%;bottom:18px;transform:translateX(-
 .rx .result:not(.success):not(.warn):not(.error) .outcome::before{content:"";display:block;width:44px;height:4px;border-radius:4px;background:#cfdde5;margin-bottom:14px}
 .rx .result .person-name{font-size:clamp(2.2rem,4.2vw,3.4rem);line-height:1.15;color:inherit;margin-top:6px;word-break:break-all}
 .rx .result .person-meta{font-size:.98rem;color:inherit;opacity:.85;margin-top:8px}
+
+/* Reception: make the attendee's group immediately identifiable below their name. */
+.rx .result .person-group{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;max-width:100%;margin-top:9px;padding:9px 13px;border-radius:10px;background:rgba(255,255,255,.17);line-height:1.25;overflow-wrap:anywhere}
+.rx .result .person-group-label{font-size:.84rem;font-weight:800;letter-spacing:.03em;opacity:.88;white-space:nowrap}
+.rx .result .person-group-value{font-size:clamp(1.4rem,2.8vw,2rem);line-height:1.24;font-weight:900;overflow-wrap:anywhere}
+.rx .result.warn .person-group{background:rgba(124,74,14,.08)}
+.rx .result .person-meta{margin-top:7px}
+
 .rx .result.success{background:#1f8a5b;color:#fff;box-shadow:none}
 .rx .result.warn{background:#fff3dd;color:#6b3f08;box-shadow:0 0 0 2px #f0b35c inset}
 .rx .result.error{background:#c2414a;color:#fff;box-shadow:none}
