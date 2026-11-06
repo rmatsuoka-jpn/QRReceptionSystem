@@ -316,6 +316,7 @@
     </div>
     <button type="button" class="rx-tool" id="printRosterDay" title="紙の受付名簿を印刷"><svg class="rx-tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="6" y="14" width="12" height="7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M18 12h.01"/></svg><span>紙名簿</span></button>
     <button type="button" class="rx-tool" data-mode="prep" title="設定・名簿・QR発行に戻る">⚙ 事前準備</button>
+    <button type="button" class="rx-tool rx-tool-export" id="exportCheckedCSV" title="選択中の受付区分で、現在受付済みの参加者をCSV出力します。未取り込みの他PCの実績は含みません。">⇩ 受付済みCSVを出力</button>
    </div>
   </div>
   <div class="reception-grid">
@@ -356,10 +357,6 @@
     </div>
     <div id="pendingRows" class="pending-list" role="tabpanel" aria-labelledby="tabPending"></div>
     <div id="checkedRows" class="pending-list" role="tabpanel" aria-labelledby="tabChecked" hidden></div>
-    <div class="rx-checked-export">
-      <button type="button" id="exportCheckedCSV" class="btn small main rx-checked-export-button">⇩ 受付済みCSVを出力</button>
-      <small>選択中の受付区分の受付済み参加者のみを出力します（このPCに反映済みの結果）。</small>
-    </div>
     <div class="rx-attendance-share" role="group" aria-label="受付実績の共有">
       <button type="button" id="exportAttendance" class="btn small rx-share-button">⇩ このPCの受付実績を書き出す</button>
       <button type="button" id="importAttendance" class="btn small rx-share-button rx-share-import">⇧ 他PCの受付実績を取り込む</button>
