@@ -1180,7 +1180,9 @@ function applyAttendanceImport(e,data,plan,useIncomingConflicts=false){
  const install=item=>{people.get(item.participant.id).checkins[item.sessionId]=clone(item.checkin);};
  for(const item of [...plan.add,...plan.update])install(item);
  if(useIncomingConflicts)for(const item of plan.conflict)install(item);
- next.attendanceImports||={};if(useIncomingConflicts||!plan.conflict.length)next.attendanceImports[data.source_device_id]=data.revision;
+ // An accepted import consumes its source revision even when conflicts keep the master copy.
+ // Otherwise a subsequently imported older snapshot could overwrite newer non-conflicting records.
+ next.attendanceImports||={};next.attendanceImports[data.source_device_id]=data.revision;
  validateEvent(next);
  return {event:next,added:plan.add.length,updated:plan.update.length+(useIncomingConflicts?plan.conflict.length:0),
   conflicts:useIncomingConflicts?0:plan.conflict.length,unchanged:plan.same.length};
@@ -1202,7 +1204,7 @@ async function importAttendanceFile(file){
  if(plan.stale){const note=document.createElement("p");note.className="hint";note.textContent="同じPCの同一版または古いファイルです。すでに取り込み済みのため変更しません。";panel.append(note);}
  if(plan.conflict.length){
   const warning=document.createElement("p");warning.className="rx-import-warning";
-  warning.textContent="異なるPCの操作が重なった記録があります。自動では上書きしません。";panel.append(warning);
+  warning.textContent="異なるPCの操作が重なった記録があります。初期状態ではマスター側を保持します。取り込むと、このファイルは処理済みになり、同じ版を再取り込みできません。";panel.append(warning);
   const list=document.createElement("div");list.className="rx-import-conflict-list";
   for(const item of plan.conflict.slice(0,30)){
    const el=document.createElement("div");const existing=item.participant.checkins[item.sessionId];
@@ -1230,7 +1232,7 @@ async function importAttendanceFile(file){
   }catch(err){return announce("取り込みに失敗しました："+err.message,"error");}
   if(!fresh.event||!writeEvent(fresh.event))return;
   closeDialog();render({keepScroll:true});
-  announce("受付実績を取り込みました：新規 "+fresh.added+"件、更新 "+fresh.updated+"件、競合保留 "+fresh.conflicts+"件。","success");
+  announce("受付実績を取り込みました：新規 "+fresh.added+"件、更新 "+fresh.updated+"件、競合（マスター側を保持） "+fresh.conflicts+"件。","success");
  };
  actions.append(cancel,accept);panel.append(actions);
  openDialog("受付実績の取り込み確認",panel);
