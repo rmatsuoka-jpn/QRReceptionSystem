@@ -936,6 +936,7 @@ async function downloadOneQR(){
  if(!p||!img?.src||p.id!==qrRendered)return announce("QR画像が準備できていません。","warn");
  const btn=$("downloadQR");btn.disabled=true;
  try{
+  await prepareOutputPermission();
   const data=await qrCardDataURL(p,img.src,e);
   const result=await downloadBlob(dataUrlToBlob(data),eventOutputFile(e,"QR受付票_"+p.name+"_"+p.staffId,"png"),"QR発行");if(result!=="failed")markStep(e.id,"qr");
  }catch(err){announce("PNG保存に失敗しました："+err.message,"error");}
@@ -1049,6 +1050,11 @@ async function downloadBlob(blob,filename,category){
   return "download";
  }catch(err){announce("ファイルを出力できません："+err.message,"error");return "failed";}
 }
+async function prepareOutputPermission(){
+ // ZIPや画像の生成に時間がかかる場合、クリック直後に権限を確認する。
+ const store=folderStore();if(!store?.status().configured)return;
+ try{await store.permission("readwrite",true);}catch{}
+}
 function dataUrlToBlob(dataUrl){
  const [header,base64]=String(dataUrl).split(","),mime=/^data:([^;]+)/.exec(header)?.[1]||"application/octet-stream";
  const raw=atob(base64),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
@@ -1091,7 +1097,7 @@ async function xlsxBlob(rows,textCols,sheetName){
 }
 async function downloadTemplateXlsx(){
  const e=current();if(typeof JSZip!=="function")return announce("ファイル作成ライブラリ（JSZip）がありません。配信ファイルを確認してください。","error");
- try{const result=await downloadBlob(await xlsxBlob(templateRows(e),[1],"参加者"),eventOutputFile(e,"参加者登録ひな形","xlsx"),"CSV・Excel");
+ try{await prepareOutputPermission();const result=await downloadBlob(await xlsxBlob(templateRows(e),[1],"参加者"),eventOutputFile(e,"参加者登録ひな形","xlsx"),"CSV・Excel");
   if(result==="folder"||result==="download")announce("Excelひな形を出力しました。職員番号の列は文字列設定済みです。","success");}
  catch(err){announce("ひな形を作成できません："+err.message,"error");}
 }
@@ -1102,6 +1108,7 @@ async function exportQRZip(){
  if(typeof QRCode!=="function"||typeof JSZip!=="function")return announce("QR/ZIPライブラリがありません。配信ファイルを確認してください。","error");
  button.disabled=true;button.textContent="QRを生成中…";
  try{
+  await prepareOutputPermission();
   const customCols=customColumnIndices(e),zip=new JSZip(),csv=[["参加者ID","氏名","職員番号","所属","グループ",...customCols.map(i=>e.customLabels[i]),"QR画像ファイル名"]];
   const imgSize=360;
   for(let i=0;i<people.length;i++){
