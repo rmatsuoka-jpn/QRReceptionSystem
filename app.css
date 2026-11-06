@@ -989,3 +989,19 @@ body[data-operating-mode="worker"] .rx .rx-clear-footer{display:none}
  .rx-bar{flex-wrap:wrap}
  .rx-tools{margin-left:auto;flex-wrap:wrap;justify-content:flex-end}
 }
+
+
+/* ローカル保存先設定・一括受付実績取り込み */
+.dm-file-folder{margin-bottom:15px;padding:20px 22px}
+.dm-folder-state{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin:12px 0;padding:12px 15px;border-radius:10px;background:#f0f6f8}
+.dm-folder-state strong{color:#184f60;word-break:break-all}
+.dm-folder-actions{display:flex;flex-wrap:wrap;gap:9px;align-items:center}
+.dm-device-field{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:13px 0}
+.dm-device-field label{display:flex;flex-direction:column;gap:3px;flex:1 1 180px}
+.dm-device-field input{flex:2 1 200px;max-width:360px;min-width:170px;padding:10px;border:1px solid #cbdce3;border-radius:9px}
+.dm-file-folder .hint{line-height:1.65}
+.rx-import-file-list{max-height:240px;overflow:auto;border:1px solid #dbe5e8;border-radius:10px;padding:8px 12px}
+.rx-import-file-row{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:6px 0;font-size:.84rem;border-bottom:1px solid #e9eff1}
+.rx-import-file-row:last-child{border-bottom:0}
+.rx-import-file-row span:first-child{overflow-wrap:anywhere}
+.rx-import-file-row small{color:#53717e;white-space:nowrap}
