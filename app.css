@@ -954,9 +954,6 @@ body.day-mode #eventView>.ev-bar{display:none}
 .hm-operating-mode{display:flex;align-items:center;gap:6px;padding:4px 7px;border:1px solid #c9dce3;border-radius:9px;background:#eef6f7;color:#376477;font-size:.73rem;font-weight:800;white-space:nowrap}
 .hm-operating-mode select{border:0;background:transparent;color:#18495c;font-size:.82rem;font-weight:850;cursor:pointer;max-width:130px}
 .rx-eyebrow #operatingModeState{background:#e0f0ef;color:#1a6970;padding:2px 6px;border-radius:5px;margin-left:5px;font-size:.7rem}
-.rx-checked-export{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:9px 2px 11px;margin:0 -2px;border-top:1px solid #e1eaed}
-.rx-checked-export-button{flex-shrink:0}
-.rx-checked-export small{font-size:.7rem;color:#546e79;line-height:1.4;flex:1;min-width:160px}
 .rx-attendance-share{display:flex;flex-wrap:wrap;gap:7px;margin:0 -2px;padding:10px 2px 8px;border-top:1px solid #e1eaed}
 .rx-share-button{flex:1;min-width:145px;font-size:.75rem!important;line-height:1.35!important;white-space:normal!important;text-align:center!important}
 .rx-import-preview{display:flex;flex-direction:column;gap:11px}
@@ -984,3 +981,11 @@ body[data-operating-mode="worker"] .ev-seg [data-mode="prep"],
 body[data-operating-mode="worker"] .hm-data .danger-zone{display:none!important}
 body[data-operating-mode="worker"] .rx .rx-clear-footer{display:none}
 @media(max-width:900px){.hm-operating-mode{font-size:.7rem}.hm-operating-mode span{display:none}.rx-share-button{min-width:0}}
+
+/* 受付済みCSVは事前準備の隣。狭い幅ではツール群を折り返して横はみ出しを防ぐ。 */
+.rx-tools .rx-tool-export{background:#e0f0ef;color:#126571}
+.rx-tools .rx-tool-export:hover{background:#cce8e5}
+@media(max-width:1300px){
+ .rx-bar{flex-wrap:wrap}
+ .rx-tools{margin-left:auto;flex-wrap:wrap;justify-content:flex-end}
+}
