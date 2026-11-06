@@ -770,7 +770,12 @@ let resetCameraPaused=false;
 // Only use the browser's built-in detector when it really lists qr_code; otherwise the JS decoder (ZXing) is used.
 async function nativeQrSupported(){if(CAM.native!==null)return CAM.native;try{CAM.native=!!(window.BarcodeDetector&&(await BarcodeDetector.getSupportedFormats()).includes("qr_code"));}catch{CAM.native=false;}return CAM.native;}
 function camRate(){clearInterval(CAM.timer);CAM.frames=0;let last=Date.now();CAM.timer=setInterval(()=>{if(!CAM.running){clearInterval(CAM.timer);return;}const now=Date.now(),rate=Math.round(CAM.frames*1000/(now-last));CAM.frames=0;last=now;const el=$("camStats");if(el)el.textContent="解析 "+rate+"回/秒・"+(CAM.native?"内蔵検出":"JS解析");},1000);}
-function saveCameraFrame(){const v=document.querySelector("#reader video");if(!v||!v.videoWidth)return announce("カメラが起動していません。","warn");const c=document.createElement("canvas");c.width=v.videoWidth;c.height=v.videoHeight;c.getContext("2d").drawImage(v,0,0);downloadLink(c.toDataURL("image/png"),"camera_frame_"+stamp()+".png");announce("カメラ映像の1コマを保存しました（調査用）。人物が写っている場合は取り扱いに注意してください。","success");}
+async function saveCameraFrame(){
+ const v=document.querySelector("#reader video");if(!v||!v.videoWidth)return announce("カメラが起動していません。","warn");
+ const c=document.createElement("canvas");c.width=v.videoWidth;c.height=v.videoHeight;c.getContext("2d").drawImage(v,0,0);
+ const result=await downloadBlob(dataUrlToBlob(c.toDataURL("image/png")),"カメラ画像_調査用_"+stamp()+".png","調査用");
+ if(result!=="failed")announce("カメラ画像を出力しました。人物が写っている場合は取り扱いに注意してください。","success");
+}
 function camHint(t,level=""){const h=$("cameraHint");h.textContent=t;h.className="hint"+(level?" cam-"+level:"");}
 function camUI(){$("cameraStart").hidden=CAM.running;$("cameraStop").hidden=!CAM.running;$("camDiag").hidden=!CAM.running;$("cameraStart").disabled=CAM.busy;$("cameraSelect").disabled=CAM.busy;$("receptionView").classList.toggle("cam-on",CAM.running);$("receptionView").classList.toggle("cam-busy",CAM.busy);}
 function fitReader(){const vp=$("readerViewport"),r=$("reader");if(!CAM.running){r.style.transform="";vp.style.height="";return;}const k=Math.min(1,vp.clientWidth/CAM.width),off=Math.max(0,(vp.clientWidth-CAM.width*k)/2);r.style.transform="translateX("+off+"px) scale("+k+")";vp.style.height=Math.ceil(r.offsetHeight*k)+"px";}
@@ -932,7 +937,7 @@ async function downloadOneQR(){
  const btn=$("downloadQR");btn.disabled=true;
  try{
   const data=await qrCardDataURL(p,img.src,e);
-  downloadLink(data,"QR_card_"+fileSafe(p.staffId)+".png");markStep(e.id,"qr");
+  await downloadBlob(dataUrlToBlob(data),eventOutputFile(e,"QR受付票_"+p.name+"_"+p.staffId,"png"),"QR発行");markStep(e.id,"qr");
  }catch(err){announce("PNG保存に失敗しました："+err.message,"error");}
  finally{btn.disabled=false;}
 }
@@ -1027,13 +1032,32 @@ function printReceptionRoster(sessionID){
  try{markStep(e.id,"roster");window.print();}catch(err){document.body.removeAttribute("data-print-mode");root.hidden=true;announce("印刷画面を開けませんでした："+err.message,"error");}
 }
 function csvCell(v){let x=String(v??"");if(/^[\s]*[=+\-@\t\r\n]/.test(x))x="'"+x;return '"'+x.replace(/"/g,'""')+'"';}
-function csvDownload(rows,filename){const text="\uFEFF"+rows.map(r=>r.map(csvCell).join(",")).join("\r\n")+"\r\n";downloadBlob(new Blob([text],{type:"text/csv;charset=utf-8"}),filename);}
+function csvDownload(rows,filename){
+ const text="\uFEFF"+rows.map(r=>r.map(csvCell).join(",")).join("\r\n")+"\r\n";
+ return downloadBlob(new Blob([text],{type:"text/csv;charset=utf-8"}),filename,"CSV・Excel");
+}
 function downloadLink(url,filename){const a=document.createElement("a");a.href=url;a.download=filename;document.body.append(a);a.click();a.remove();}
-function downloadBlob(blob,filename){const u=URL.createObjectURL(blob);downloadLink(u,filename);setTimeout(()=>URL.revokeObjectURL(u),3000);}
-function stamp(){return new Date().toISOString().replace(/[-:]/g,"").slice(0,15);}
-function fileSafe(s){return String(s).replace(/[^a-zA-Z0-9_-]/g,"_").slice(0,40);}
+async function downloadBlob(blob,filename,category){
+ if(folderStore()?.status().configured){
+  try{const result=await folderStore().save(blob,filename,category||"その他");if(result.saved)return "folder";}
+  catch(err){announce("指定したフォルダへ保存できません："+err.message+"。通常のダウンロードを開始します。","warn");}
+ }
+ try{const u=URL.createObjectURL(blob);downloadLink(u,filename);setTimeout(()=>URL.revokeObjectURL(u),10000);return "download";}
+ catch(err){announce("ファイルを出力できません："+err.message,"error");return "failed";}
+}
+function dataUrlToBlob(dataUrl){
+ const [header,base64]=String(dataUrl).split(","),mime=/^data:([^;]+)/.exec(header)?.[1]||"application/octet-stream";
+ const raw=atob(base64),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
+ return new Blob([bytes],{type:mime});
+}
+function stamp(){const d=new Date(),p=v=>String(v).padStart(2,"0");return d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+"-"+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());}
+function fileSafe(s){return String(s??"").replace(/[\\/:*?"<>|\x00-\x1f]/g,"_").replace(/[. ]+$/g,"").slice(0,55)||"名称なし";}
+function eventOutputFile(e,label,ext){
+ const day=(e?.date||"日付未設定").replace(/-/g,"");
+ return day+"_"+fileSafe(e?.name||"イベント")+"_"+fileSafe(label)+"_"+stamp()+"."+ext;
+}
 function participantRows(e){return e.participants.filter(p=>!p.removed).map(p=>[e.id,e.name,e.date,e.category,p.id,p.staffId,p.name,p.department,p.group||"",p.customValues?.[0],p.customValues?.[1],...e.sessions.map(s=>p.planned[s.id]?"○":"×")]);}
-function exportRoster(){const e=current();csvDownload([["イベントID","イベント名","開催日","イベント分類","参加者ID","職員番号","氏名","所属","グループ",e.customLabels[0]||"追加項目1",e.customLabels[1]||"追加項目2",...e.sessions.map(s=>s.name)],...participantRows(e)],"participants_"+fileSafe(e.id)+".csv");}
+function exportRoster(){const e=current();csvDownload([["イベントID","イベント名","開催日","イベント分類","参加者ID","職員番号","氏名","所属","グループ",e.customLabels[0]||"追加項目1",e.customLabels[1]||"追加項目2",...e.sessions.map(s=>s.name)],...participantRows(e)],eventOutputFile(e,"参加者名簿","csv"));}
 /* Registration template: header + one example row (names starting with （例） are skipped on import).
    Single-session events omit the session column: everyone is a target. */
 const EXAMPLE_RE=/^[（(]\s*(記入)?例\s*[）)]/;
@@ -1043,7 +1067,7 @@ function templateRows(e){
  if(e.sessions.length>1)for(const s of e.sessions){head.push("受付区分："+s.name);ex.push("○");}
  return [head,ex];
 }
-function downloadTemplate(){const e=current();csvDownload(templateRows(e),"template_"+fileSafe(e.id)+".csv");announce("CSV形式のひな形を出力しました。Excelで開くと職員番号の先頭の0が消えるため、Excel形式のひな形をおすすめします。","success");}
+function downloadTemplate(){const e=current();csvDownload(templateRows(e),eventOutputFile(e,"参加者登録ひな形","csv"));announce("CSV形式のひな形を出力しました。Excelで開くと職員番号の先頭の0が消えるため、Excel形式のひな形をおすすめします。","success");}
 function xmlEsc(v){return String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,"");}
 function colName(i){let s="";i++;while(i>0){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26);}return s;}
 async function xlsxBlob(rows,textCols,sheetName){
@@ -1063,7 +1087,7 @@ async function xlsxBlob(rows,textCols,sheetName){
 }
 async function downloadTemplateXlsx(){
  const e=current();if(typeof JSZip!=="function")return announce("ファイル作成ライブラリ（JSZip）がありません。配信ファイルを確認してください。","error");
- try{downloadBlob(await xlsxBlob(templateRows(e),[1],"参加者"),"template_"+fileSafe(e.id)+".xlsx");
+ try{await downloadBlob(await xlsxBlob(templateRows(e),[1],"参加者"),eventOutputFile(e,"参加者登録ひな形","xlsx"),"CSV・Excel");
   announce("Excel形式のひな形を出力しました。職員番号の列は文字列に設定済みです。記入後、表を見出しごとコピーして「Excelから貼り付け」に貼り付けてください。","success");}
  catch(err){announce("ひな形を作成できません："+err.message,"error");}
 }
@@ -1091,7 +1115,7 @@ async function exportQRZip(){
   zip.file("qr_mapping.csv","\uFEFF"+csv.map(row=>row.map(csvCell).join(",")).join("\r\n")+"\r\n");
   zip.file("README.txt","QR受付システム　QR配布用\nイベント: "+e.name+"\n開催日: "+e.date+"\n発行数: "+people.length+"\n\n画像はQR・氏名・職員番号・グループ・設定済みの追加項目が一体になった名刺型カードです。\n画像ファイル名と参加者の対応はqr_mapping.csvを確認してください。\nQRの内容は職員番号だけです。職員番号未登録者は発行対象外です。\n");
   const archive=await zip.generateAsync({type:"blob",mimeType:"application/zip",compression:"STORE"});
-  downloadBlob(archive,"QR_reception_"+fileSafe(e.id)+"_"+stamp()+".zip");
+  await downloadBlob(archive,eventOutputFile(e,"QR受付票一括","zip"),"QR発行");
   markStep(current().id,"qr");announce(people.length+"名分のQRと対応表をZIP出力しました。職員番号なし "+skipped+"名は除外しました。","success");
  }catch(err){announce("QRの一括発行に失敗しました："+err.message,"error");}
  finally{button.disabled=false;button.innerHTML=qrZipButtonLabel;}
@@ -1114,12 +1138,12 @@ function auditRows(e){
 }
 function exportAudit(){
  const e=current();
- csvDownload([["イベントID","イベント名","受付区分ID","受付区分","参加者ID","職員番号","氏名","所属","操作内容","操作日時（UTC）","受付方法","取消理由"],...auditRows(e)],"event_audit_"+fileSafe(e.id)+"_"+stamp()+".csv");
+ csvDownload([["イベントID","イベント名","受付区分ID","受付区分","参加者ID","職員番号","氏名","所属","操作内容","操作日時（UTC）","受付方法","取消理由"],...auditRows(e)],eventOutputFile(e,"受付操作履歴","csv"));
 }
 
 function detailHeader(){return ["イベントID","イベント名","開催日","イベント分類","受付区分ID","受付区分","参加者ID","職員番号","氏名","所属","グループ","追加項目1名称","追加項目1の値","追加項目2名称","追加項目2の値","参加予定","受付状況","初回受付日時","最終受付日時","受付方法"];}
 function detailRows(e,p){return e.sessions.map(s=>{const c=p.checkins[s.id],isChecked=checked(p,s.id);return [e.id,e.name,e.date,e.category,s.id,s.name,p.id,p.staffId,p.name,p.department,p.group||"",e.customLabels[0],p.customValues?.[0],e.customLabels[1],p.customValues?.[1],p.planned[s.id]?"1":"0",p.removed?"除外":isChecked?"受付済み":p.planned[s.id]?"未受付":"対象外",isChecked?localDate(c.at):"",isChecked?localDate(c.lastAt||c.at):"",isChecked?c.method:""];});}
-function eventDetailCSV(){const e=current();csvDownload([detailHeader(),...e.participants.flatMap(p=>detailRows(e,p))],"event_result_"+fileSafe(e.id)+".csv");}
+function eventDetailCSV(){const e=current();csvDownload([detailHeader(),...e.participants.flatMap(p=>detailRows(e,p))],eventOutputFile(e,"受付結果","csv"));}
 function exportCheckedInCSV(){
  const e=current(),session=curSession();if(!e||!session)return;
  const sessionIndex=e.sessions.findIndex(s=>s.id===session.id);
@@ -1127,7 +1151,7 @@ function exportCheckedInCSV(){
  if(!people.length)return announce("選択中の受付区分に受付済みの参加者はいません。","warn");
  people.sort((a,b)=>String(a.checkins[session.id].lastAt||a.checkins[session.id].at||"").localeCompare(String(b.checkins[session.id].lastAt||b.checkins[session.id].at||""))||a.name.localeCompare(b.name,"ja"));
  csvDownload([detailHeader(),...people.map(p=>detailRows(e,p)[sessionIndex])],
-  "checked_in_"+fileSafe(e.id)+"_"+fileSafe(session.id)+"_"+stamp()+".csv");
+  eventOutputFile(e,"受付済み一覧_"+session.name,"csv"));
  announce(session.name+"の受付済み "+people.length+"名をCSV出力しました。取り込まれていない他PCの受付結果は含まれません。","success");
 }
 function renderResults(){
@@ -1148,7 +1172,7 @@ function renderResults(){
 }
 function filteredCross(){const type=$("crossPeriod").value,year=+$("crossYear").value,cat=$("crossCategory").value,status=$("crossStatus").value,q=$("crossQuery").value.trim().toLowerCase();const records=[];for(const e of db.values()){if(cat!=="all"&&e.category!==cat)continue;if(type!=="all"){if(!Number.isInteger(year)||year<2000||year>2100||!e.date)continue;const a=type==="fiscal"?year+"-04-01":year+"-01-01",b=type==="fiscal"?(year+1)+"-04-01":(year+1)+"-01-01";if(e.date<a||e.date>=b)continue;}for(const p of e.participants.filter(p=>!p.removed)){const st=statusFor(e,p);if(status==="checked"&&st!=="受付済み"&&st!=="一部受付")continue;if(status==="partial"&&st!=="一部受付")continue;if(status==="pending"&&st!=="未受付")continue;if(q&&![e.name,e.id,p.id,p.name,p.staffId,p.department,p.group,customSearchText(e,p)].join(" ").toLowerCase().includes(q))continue;records.push({e,p,status:st});}}return records.sort((a,b)=>b.e.date.localeCompare(a.e.date)||a.e.id.localeCompare(b.e.id)||a.p.id.localeCompare(b.p.id));}
 function renderCross(){const records=filteredCross(),tbody=$("crossRows");tbody.replaceChildren();for(const {e,p,status} of records){const tr=document.createElement("tr");for(const x of [e.id,e.date,e.name,p.id,p.staffId,p.name,p.department,p.group,status]){const td=document.createElement("td");td.textContent=x||"—";tr.append(td);}tr.lastChild.innerHTML='<span class="cross-status '+(status==="受付済み"?"done":status==="一部受付"?"partial":"pending")+'">'+esc(status||"—")+'</span>';tr.firstChild.className="code";const custom=customEntries(e,p);if(custom.length){const details=document.createElement("div");details.className="cross-custom";for(const x of custom){const line=document.createElement("small");line.textContent=x.label+"："+x.value;details.append(line);}tr.children[5].append(details);}tbody.append(tr);}$("crossCount").textContent=records.length+"件";const people=new Set(records.filter(({p})=>p.staffId).map(({p})=>p.staffId));$("crossSummary").innerHTML=summaryMetric("イベント",new Set(records.map(({e})=>e.id)).size)+summaryMetric("参加記録",records.length)+summaryMetric("職員番号あり・実人数",people.size);}
-function exportCross(detail){const found=filteredCross();if(detail){csvDownload([detailHeader(),...found.flatMap(({e,p})=>detailRows(e,p))],"cross_sessions_"+stamp()+".csv");}else{const head=["イベントID","イベント名","開催日","イベント分類","参加者ID","職員番号","氏名","所属","グループ","参加予定区分数","受付済み区分数","受付状況"];const rows=found.map(({e,p,status})=>[e.id,e.name,e.date,e.category,p.id,p.staffId,p.name,p.department,p.group||"",e.sessions.filter(s=>p.planned[s.id]).length,e.sessions.filter(s=>checked(p,s.id)).length,status]);csvDownload([head,...rows],"cross_participants_"+stamp()+".csv");}}
+function exportCross(detail){const found=filteredCross();if(detail){csvDownload([detailHeader(),...found.flatMap(({e,p})=>detailRows(e,p))],"全イベント_受付区分別詳細_"+stamp()+".csv");}else{const head=["イベントID","イベント名","開催日","イベント分類","参加者ID","職員番号","氏名","所属","グループ","参加予定区分数","受付済み区分数","受付状況"];const rows=found.map(({e,p,status})=>[e.id,e.name,e.date,e.category,p.id,p.staffId,p.name,p.department,p.group||"",e.sessions.filter(s=>p.planned[s.id]).length,e.sessions.filter(s=>checked(p,s.id)).length,status]);csvDownload([head,...rows],"全イベント_参加者一覧_"+stamp()+".csv");}}
 /* Manual, event-scoped attendance exchange. Source snapshots contain only records authored on this PC.
    Master imports are repeat-safe by source device + revision, and never silently overwrite
    a check-in or cancellation that was edited on another PC. */
@@ -1313,7 +1337,13 @@ async function importAttendanceFile(file){
  actions.append(cancel,accept);panel.append(actions);
  openDialog("受付実績の取り込み確認",panel);
 }
-function backup(){const payload={schema_version:SCHEMA,exported_at:iso(),events:[...order].filter(x=>db.has(x)).map(x=>clone(db.get(x)))};downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:"application/json;charset=utf-8"}),"QRReception_backup_"+stamp()+".json");meta.lastBackupAt=iso();saveMeta();renderBackupStatus();announce(payload.events.length+"件のJSONダウンロードを開始しました。ファイルが保存されたことを確認してください。","success");}
+async function backup(){
+ const payload={schema_version:SCHEMA,exported_at:iso(),events:[...order].filter(x=>db.has(x)).map(x=>clone(db.get(x)))};
+ const result=await downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:"application/json;charset=utf-8"}),"全イベント_バックアップ_"+stamp()+".json","バックアップ");
+ if(result==="failed")return;
+ meta.lastBackupAt=iso();saveMeta();renderBackupStatus();
+ announce(result==="folder"?payload.events.length+"件の全イベントJSONを保存先へ保存しました。":payload.events.length+"件のJSONダウンロードを開始しました。保存できたことを確認してください。","success");
+}
 
 // Removes only the current application namespace. Do not touch browser-wide or legacy prototype data.
 function deleteAllStoredData(){if(!checkMaster("全データ削除"))return;
