@@ -774,7 +774,7 @@ async function saveCameraFrame(){
  const v=document.querySelector("#reader video");if(!v||!v.videoWidth)return announce("カメラが起動していません。","warn");
  const c=document.createElement("canvas");c.width=v.videoWidth;c.height=v.videoHeight;c.getContext("2d").drawImage(v,0,0);
  const result=await downloadBlob(dataUrlToBlob(c.toDataURL("image/png")),"カメラ画像_調査用_"+stamp()+".png","調査用");
- if(result!=="failed")announce("カメラ画像を出力しました。人物が写っている場合は取り扱いに注意してください。","success");
+ if(result==="folder"||result==="download")announce("カメラ画像を出力しました。人物が写っている場合は取り扱いに注意してください。","success");
 }
 function camHint(t,level=""){const h=$("cameraHint");h.textContent=t;h.className="hint"+(level?" cam-"+level:"");}
 function camUI(){$("cameraStart").hidden=CAM.running;$("cameraStop").hidden=!CAM.running;$("camDiag").hidden=!CAM.running;$("cameraStart").disabled=CAM.busy;$("cameraSelect").disabled=CAM.busy;$("receptionView").classList.toggle("cam-on",CAM.running);$("receptionView").classList.toggle("cam-busy",CAM.busy);}
@@ -937,7 +937,7 @@ async function downloadOneQR(){
  const btn=$("downloadQR");btn.disabled=true;
  try{
   const data=await qrCardDataURL(p,img.src,e);
-  await downloadBlob(dataUrlToBlob(data),eventOutputFile(e,"QR受付票_"+p.name+"_"+p.staffId,"png"),"QR発行");markStep(e.id,"qr");
+  const result=await downloadBlob(dataUrlToBlob(data),eventOutputFile(e,"QR受付票_"+p.name+"_"+p.staffId,"png"),"QR発行");if(result!=="failed")markStep(e.id,"qr");
  }catch(err){announce("PNG保存に失敗しました："+err.message,"error");}
  finally{btn.disabled=false;}
 }
@@ -1038,12 +1038,16 @@ function csvDownload(rows,filename){
 }
 function downloadLink(url,filename){const a=document.createElement("a");a.href=url;a.download=filename;document.body.append(a);a.click();a.remove();}
 async function downloadBlob(blob,filename,category){
+ let folderError="";
  if(folderStore()?.status().configured){
   try{const result=await folderStore().save(blob,filename,category||"その他");if(result.saved)return "folder";}
-  catch(err){announce("指定したフォルダへ保存できません："+err.message+"。通常のダウンロードを開始します。","warn");}
+  catch(err){folderError=err.message||String(err);}
  }
- try{const u=URL.createObjectURL(blob);downloadLink(u,filename);setTimeout(()=>URL.revokeObjectURL(u),10000);return "download";}
- catch(err){announce("ファイルを出力できません："+err.message,"error");return "failed";}
+ try{
+  const u=URL.createObjectURL(blob);downloadLink(u,filename);setTimeout(()=>URL.revokeObjectURL(u),10000);
+  if(folderError){announce("共有フォルダへ保存できません："+folderError+"。通常のダウンロードを開始しました。保存場所を確認してください。","warn");return "fallback";}
+  return "download";
+ }catch(err){announce("ファイルを出力できません："+err.message,"error");return "failed";}
 }
 function dataUrlToBlob(dataUrl){
  const [header,base64]=String(dataUrl).split(","),mime=/^data:([^;]+)/.exec(header)?.[1]||"application/octet-stream";
@@ -1087,8 +1091,8 @@ async function xlsxBlob(rows,textCols,sheetName){
 }
 async function downloadTemplateXlsx(){
  const e=current();if(typeof JSZip!=="function")return announce("ファイル作成ライブラリ（JSZip）がありません。配信ファイルを確認してください。","error");
- try{await downloadBlob(await xlsxBlob(templateRows(e),[1],"参加者"),eventOutputFile(e,"参加者登録ひな形","xlsx"),"CSV・Excel");
-  announce("Excel形式のひな形を出力しました。職員番号の列は文字列に設定済みです。記入後、表を見出しごとコピーして「Excelから貼り付け」に貼り付けてください。","success");}
+ try{const result=await downloadBlob(await xlsxBlob(templateRows(e),[1],"参加者"),eventOutputFile(e,"参加者登録ひな形","xlsx"),"CSV・Excel");
+  if(result==="folder"||result==="download")announce("Excelひな形を出力しました。職員番号の列は文字列設定済みです。","success");}
  catch(err){announce("ひな形を作成できません："+err.message,"error");}
 }
 const qrZipButtonLabel=document.getElementById("exportQRZip")?.innerHTML||"⇩ 一括ダウンロード（ZIP）";
@@ -1115,8 +1119,9 @@ async function exportQRZip(){
   zip.file("qr_mapping.csv","\uFEFF"+csv.map(row=>row.map(csvCell).join(",")).join("\r\n")+"\r\n");
   zip.file("README.txt","QR受付システム　QR配布用\nイベント: "+e.name+"\n開催日: "+e.date+"\n発行数: "+people.length+"\n\n画像はQR・氏名・職員番号・グループ・設定済みの追加項目が一体になった名刺型カードです。\n画像ファイル名と参加者の対応はqr_mapping.csvを確認してください。\nQRの内容は職員番号だけです。職員番号未登録者は発行対象外です。\n");
   const archive=await zip.generateAsync({type:"blob",mimeType:"application/zip",compression:"STORE"});
-  await downloadBlob(archive,eventOutputFile(e,"QR受付票一括","zip"),"QR発行");
-  markStep(current().id,"qr");announce(people.length+"名分のQRと対応表をZIP出力しました。職員番号なし "+skipped+"名は除外しました。","success");
+  const result=await downloadBlob(archive,eventOutputFile(e,"QR受付票一括","zip"),"QR発行");
+  if(result!=="failed")markStep(current().id,"qr");
+  if(result==="folder"||result==="download")announce(people.length+"名分のQRと対応表をZIP出力しました。職員番号なし "+skipped+"名は除外しました。","success");
  }catch(err){announce("QRの一括発行に失敗しました："+err.message,"error");}
  finally{button.disabled=false;button.innerHTML=qrZipButtonLabel;}
 }
@@ -1197,7 +1202,7 @@ async function exportAttendanceSnapshot(){
  if(!payload.records.length)return announce("このPCで記録した受付実績はまだありません。","warn");
  const name=eventOutputFile(e,"受付実績_"+(meta.deviceLabel||deviceId())+"_"+deviceId().slice(-4)+"_第"+String(payload.revision).padStart(6,"0")+"版","json");
  const result=await downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:"application/json;charset=utf-8"}),name,"受付実績");
- if(result!=="failed")announce(result==="folder"?"このPCの受付実績 "+payload.records.length+"件を保存しました。":"受付実績JSONのダウンロードを開始しました。保存先を確認してください。","success");
+ if(result==="folder"||result==="download")announce(result==="folder"?"このPCの受付実績 "+payload.records.length+"件を保存しました。":"受付実績JSONのダウンロードを開始しました。保存先を確認してください。","success");
 }
 function validateAttendanceSnapshot(e,data,localDeviceId=deviceId()){
  if(!data||data.format!==ATTENDANCE_FORMAT)throw Error("受付実績JSONの形式が正しくありません。");
@@ -1461,7 +1466,7 @@ async function backup(){
  const result=await downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:"application/json;charset=utf-8"}),"全イベント_バックアップ_"+stamp()+".json","バックアップ");
  if(result==="failed")return;
  meta.lastBackupAt=iso();saveMeta();renderBackupStatus();
- announce(result==="folder"?payload.events.length+"件の全イベントJSONを保存先へ保存しました。":payload.events.length+"件のJSONダウンロードを開始しました。保存できたことを確認してください。","success");
+ if(result==="folder"||result==="download")announce(result==="folder"?payload.events.length+"件の全イベントJSONを保存先へ保存しました。":payload.events.length+"件のJSONダウンロードを開始しました。保存できたことを確認してください。","success");
 }
 
 // Removes only the current application namespace. Do not touch browser-wide or legacy prototype data.
