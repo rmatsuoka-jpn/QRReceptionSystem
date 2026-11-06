@@ -999,7 +999,7 @@ function downloadBlob(blob,filename){const u=URL.createObjectURL(blob);downloadL
 function stamp(){return new Date().toISOString().replace(/[-:]/g,"").slice(0,15);}
 function fileSafe(s){return String(s).replace(/[^a-zA-Z0-9_-]/g,"_").slice(0,40);}
 function participantRows(e){return e.participants.filter(p=>!p.removed).map(p=>[e.id,e.name,e.date,e.category,p.id,p.staffId,p.name,p.department,p.group||"",p.customValues?.[0],p.customValues?.[1],...e.sessions.map(s=>p.planned[s.id]?"○":"×")]);}
-function exportRoster(){const e=current();csvDownload([["event_id","event_name","event_date","category","participant_id","staff_id","氏名","所属","グループ",e.customLabels[0]||"custom_1",e.customLabels[1]||"custom_2",...e.sessions.map(s=>s.name)],...participantRows(e)],"participants_"+fileSafe(e.id)+".csv");}
+function exportRoster(){const e=current();csvDownload([["イベントID","イベント名","開催日","イベント分類","参加者ID","職員番号","氏名","所属","グループ",e.customLabels[0]||"追加項目1",e.customLabels[1]||"追加項目2",...e.sessions.map(s=>s.name)],...participantRows(e)],"participants_"+fileSafe(e.id)+".csv");}
 /* Registration template: header + one example row (names starting with （例） are skipped on import).
    Single-session events omit the session column: everyone is a target. */
 const EXAMPLE_RE=/^[（(]\s*(記入)?例\s*[）)]/;
@@ -1040,7 +1040,7 @@ async function exportQRZip(){
  if(typeof QRCode!=="function"||typeof JSZip!=="function")return announce("QR/ZIPライブラリがありません。配信ファイルを確認してください。","error");
  button.disabled=true;button.textContent="QRを生成中…";
  try{
-  const customCols=customColumnIndices(e),zip=new JSZip(),csv=[["participant_id","name","staff_id","department","group",...customCols.map(i=>e.customLabels[i]),"qr_png_filename"]];
+  const customCols=customColumnIndices(e),zip=new JSZip(),csv=[["参加者ID","氏名","職員番号","所属","グループ",...customCols.map(i=>e.customLabels[i]),"QR画像ファイル名"]];
   const imgSize=360;
   for(let i=0;i<people.length;i++){
    const p=people[i],qr=document.createElement("div");
@@ -1080,12 +1080,22 @@ function auditRows(e){
 }
 function exportAudit(){
  const e=current();
- csvDownload([["event_id","event_name","session_id","session_name","participant_id","staff_id","name","department","action","timestamp_utc","method","reason"],...auditRows(e)],"event_audit_"+fileSafe(e.id)+"_"+stamp()+".csv");
+ csvDownload([["イベントID","イベント名","受付区分ID","受付区分","参加者ID","職員番号","氏名","所属","操作内容","操作日時（UTC）","受付方法","取消理由"],...auditRows(e)],"event_audit_"+fileSafe(e.id)+"_"+stamp()+".csv");
 }
 
-function detailHeader(){return ["event_id","event_name","event_date","category","session_id","session_name","participant_id","staff_id","name","department","group","custom_1_label","custom_1_value","custom_2_label","custom_2_value","planned","status","checked_in_at","last_checkin_at","method"];}
+function detailHeader(){return ["イベントID","イベント名","開催日","イベント分類","受付区分ID","受付区分","参加者ID","職員番号","氏名","所属","グループ","追加項目1名称","追加項目1の値","追加項目2名称","追加項目2の値","参加予定","受付状況","初回受付日時","最終受付日時","受付方法"];}
 function detailRows(e,p){return e.sessions.map(s=>{const c=p.checkins[s.id],isChecked=checked(p,s.id);return [e.id,e.name,e.date,e.category,s.id,s.name,p.id,p.staffId,p.name,p.department,p.group||"",e.customLabels[0],p.customValues?.[0],e.customLabels[1],p.customValues?.[1],p.planned[s.id]?"1":"0",p.removed?"除外":isChecked?"受付済み":p.planned[s.id]?"未受付":"対象外",isChecked?localDate(c.at):"",isChecked?localDate(c.lastAt||c.at):"",isChecked?c.method:""];});}
 function eventDetailCSV(){const e=current();csvDownload([detailHeader(),...e.participants.flatMap(p=>detailRows(e,p))],"event_result_"+fileSafe(e.id)+".csv");}
+function exportCheckedInCSV(){
+ const e=current(),session=curSession();if(!e||!session)return;
+ const sessionIndex=e.sessions.findIndex(s=>s.id===session.id);
+ const people=e.participants.filter(p=>!p.removed&&checked(p,session.id));
+ if(!people.length)return announce("選択中の受付区分に受付済みの参加者はいません。","warn");
+ people.sort((a,b)=>String(a.checkins[session.id].lastAt||a.checkins[session.id].at||"").localeCompare(String(b.checkins[session.id].lastAt||b.checkins[session.id].at||""))||a.name.localeCompare(b.name,"ja"));
+ csvDownload([detailHeader(),...people.map(p=>detailRows(e,p)[sessionIndex])],
+  "checked_in_"+fileSafe(e.id)+"_"+fileSafe(session.id)+"_"+stamp()+".csv");
+ announce(session.name+"の受付済み "+people.length+"名をCSV出力しました。取り込まれていない他PCの受付結果は含まれません。","success");
+}
 function renderResults(){
  const e=current(),records=e.sessions.map(s=>{
   const eligible=e.participants.filter(p=>!p.removed&&p.planned[s.id]);
@@ -1104,7 +1114,7 @@ function renderResults(){
 }
 function filteredCross(){const type=$("crossPeriod").value,year=+$("crossYear").value,cat=$("crossCategory").value,status=$("crossStatus").value,q=$("crossQuery").value.trim().toLowerCase();const records=[];for(const e of db.values()){if(cat!=="all"&&e.category!==cat)continue;if(type!=="all"){if(!Number.isInteger(year)||year<2000||year>2100||!e.date)continue;const a=type==="fiscal"?year+"-04-01":year+"-01-01",b=type==="fiscal"?(year+1)+"-04-01":(year+1)+"-01-01";if(e.date<a||e.date>=b)continue;}for(const p of e.participants.filter(p=>!p.removed)){const st=statusFor(e,p);if(status==="checked"&&st!=="受付済み"&&st!=="一部受付")continue;if(status==="partial"&&st!=="一部受付")continue;if(status==="pending"&&st!=="未受付")continue;if(q&&![e.name,e.id,p.id,p.name,p.staffId,p.department,p.group,customSearchText(e,p)].join(" ").toLowerCase().includes(q))continue;records.push({e,p,status:st});}}return records.sort((a,b)=>b.e.date.localeCompare(a.e.date)||a.e.id.localeCompare(b.e.id)||a.p.id.localeCompare(b.p.id));}
 function renderCross(){const records=filteredCross(),tbody=$("crossRows");tbody.replaceChildren();for(const {e,p,status} of records){const tr=document.createElement("tr");for(const x of [e.id,e.date,e.name,p.id,p.staffId,p.name,p.department,p.group,status]){const td=document.createElement("td");td.textContent=x||"—";tr.append(td);}tr.lastChild.innerHTML='<span class="cross-status '+(status==="受付済み"?"done":status==="一部受付"?"partial":"pending")+'">'+esc(status||"—")+'</span>';tr.firstChild.className="code";const custom=customEntries(e,p);if(custom.length){const details=document.createElement("div");details.className="cross-custom";for(const x of custom){const line=document.createElement("small");line.textContent=x.label+"："+x.value;details.append(line);}tr.children[5].append(details);}tbody.append(tr);}$("crossCount").textContent=records.length+"件";const people=new Set(records.filter(({p})=>p.staffId).map(({p})=>p.staffId));$("crossSummary").innerHTML=summaryMetric("イベント",new Set(records.map(({e})=>e.id)).size)+summaryMetric("参加記録",records.length)+summaryMetric("職員番号あり・実人数",people.size);}
-function exportCross(detail){const found=filteredCross();if(detail){csvDownload([detailHeader(),...found.flatMap(({e,p})=>detailRows(e,p))],"cross_sessions_"+stamp()+".csv");}else{const head=["event_id","event_name","event_date","category","participant_id","staff_id","name","department","group","planned_sessions","checked_sessions","status"];const rows=found.map(({e,p,status})=>[e.id,e.name,e.date,e.category,p.id,p.staffId,p.name,p.department,p.group||"",e.sessions.filter(s=>p.planned[s.id]).length,e.sessions.filter(s=>checked(p,s.id)).length,status]);csvDownload([head,...rows],"cross_participants_"+stamp()+".csv");}}
+function exportCross(detail){const found=filteredCross();if(detail){csvDownload([detailHeader(),...found.flatMap(({e,p})=>detailRows(e,p))],"cross_sessions_"+stamp()+".csv");}else{const head=["イベントID","イベント名","開催日","イベント分類","参加者ID","職員番号","氏名","所属","グループ","参加予定区分数","受付済み区分数","受付状況"];const rows=found.map(({e,p,status})=>[e.id,e.name,e.date,e.category,p.id,p.staffId,p.name,p.department,p.group||"",e.sessions.filter(s=>p.planned[s.id]).length,e.sessions.filter(s=>checked(p,s.id)).length,status]);csvDownload([head,...rows],"cross_participants_"+stamp()+".csv");}}
 /* Manual, event-scoped attendance exchange. Source snapshots contain only records authored on this PC.
    Master imports are repeat-safe by source device + revision, and never silently overwrite
    a check-in or cancellation that was edited on another PC. */
@@ -1174,16 +1184,29 @@ function planAttendanceImport(e,data,localDeviceId=deviceId()){
  }
  return planned;
 }
-function applyAttendanceImport(e,data,plan,useIncomingConflicts=false){
+function attendanceConflictKey(item){return JSON.stringify([item.participant.id,item.sessionId]);}
+function attendanceConflictStatus(record){return record.active===false?"取消済み":"受付済み";}
+function attendanceConflictTimes(record){
+ const values=["初回受付 "+localDate(record.at)];
+ if(record.lastAt&&record.lastAt!==record.at)values.push("最終受付 "+localDate(record.lastAt));
+ if(record.canceledAt)values.push("取消 "+localDate(record.canceledAt));
+ return values.join(" ／ ");
+}
+function applyAttendanceImport(e,data,plan,selectedIncoming=new Set()){
  if(plan.stale)return {added:0,updated:0,conflicts:0};
  const next=clone(e),people=new Map(next.participants.map(p=>[p.id,p]));
  const install=item=>{people.get(item.participant.id).checkins[item.sessionId]=clone(item.checkin);};
  for(const item of [...plan.add,...plan.update])install(item);
- if(useIncomingConflicts)for(const item of plan.conflict)install(item);
- next.attendanceImports||={};if(useIncomingConflicts||!plan.conflict.length)next.attendanceImports[data.source_device_id]=data.revision;
+ let accepted=0;
+ for(const item of plan.conflict){
+  if(selectedIncoming.has(attendanceConflictKey(item))){install(item);accepted++;}
+ }
+ // Every confirmed import consumes the source revision, including when some conflicts
+ // are intentionally kept on the master. Old snapshots must never roll back accepted data.
+ next.attendanceImports||={};next.attendanceImports[data.source_device_id]=data.revision;
  validateEvent(next);
- return {event:next,added:plan.add.length,updated:plan.update.length+(useIncomingConflicts?plan.conflict.length:0),
-  conflicts:useIncomingConflicts?0:plan.conflict.length,unchanged:plan.same.length};
+ return {event:next,added:plan.add.length,updated:plan.update.length+accepted,
+  conflicts:plan.conflict.length-accepted,accepted,unchanged:plan.same.length};
 }
 async function importAttendanceFile(file){
  if(!checkMaster("受付実績の取り込み"))return;
@@ -1200,37 +1223,58 @@ async function importAttendanceFile(file){
   "件・変更なし："+plan.same.length+"件・要確認："+plan.conflict.length+"件";
  panel.append(summary);
  if(plan.stale){const note=document.createElement("p");note.className="hint";note.textContent="同じPCの同一版または古いファイルです。すでに取り込み済みのため変更しません。";panel.append(note);}
+ const selectedIncoming=new Set();
  if(plan.conflict.length){
   const warning=document.createElement("p");warning.className="rx-import-warning";
-  warning.textContent="異なるPCの操作が重なった記録があります。自動では上書きしません。";panel.append(warning);
+  warning.textContent="同じ参加者・受付区分に異なるPCの操作記録があります。各人の受付・取消日時を確認して、採用する記録を選んでください。初期選択はマスター側です。確定後は同じ版を再取り込みできません。";panel.append(warning);
   const list=document.createElement("div");list.className="rx-import-conflict-list";
-  for(const item of plan.conflict.slice(0,30)){
-   const el=document.createElement("div");const existing=item.participant.checkins[item.sessionId];
-   const ss=e.sessions.find(x=>x.id===item.sessionId);
-   el.textContent=item.participant.name+" ／ "+ss.name+"：マスター側 "+(existing.active===false?"取消済み":"受付済み")+"、ファイル側 "+(item.checkin.active===false?"取消済み":"受付済み");list.append(el);
+  const count=document.createElement("p");count.className="rx-import-decision-count";panel.append(count);
+  const updateCount=()=>{count.textContent="競合："+plan.conflict.length+"件（マスター側を維持 "+(plan.conflict.length-selectedIncoming.size)+"件 ／ 取り込み元を採用 "+selectedIncoming.size+"件）";};
+  for(let i=0;i<plan.conflict.length;i++){
+   const item=plan.conflict[i],key=attendanceConflictKey(item);
+   const existing=item.participant.checkins[item.sessionId],ss=e.sessions.find(x=>x.id===item.sessionId);
+   const row=document.createElement("div");row.className="rx-import-conflict-item";
+   const name=document.createElement("strong");name.textContent=item.participant.name+" ／ "+ss.name+" （職員番号："+(item.participant.staffId||"なし")+"）";row.append(name);
+   const comparison=document.createElement("div");comparison.className="rx-import-conflict-compare";
+   for(const [label,record,origin] of [
+    ["マスター側",existing,existing.syncOrigin||"不明（旧データ）"],
+    ["取り込み元",item.checkin,data.source_device_id]
+   ]){
+    const pane=document.createElement("div");pane.className="rx-import-conflict-side";
+    const heading=document.createElement("strong");heading.textContent=label+"： "+attendanceConflictStatus(record);pane.append(heading);
+    const info=document.createElement("small");info.textContent="操作元："+origin;pane.append(info);
+    const when=document.createElement("small");when.textContent=attendanceConflictTimes(record);pane.append(when);
+    comparison.append(pane);
+   }
+   row.append(comparison);
+   const choices=document.createElement("div");choices.className="rx-import-conflict-choices";
+   for(const [value,label] of [["master","マスター側を維持"],["incoming","取り込み元を採用"]]){
+    const option=document.createElement("label");option.className="rx-import-choice";
+    const radio=document.createElement("input");radio.type="radio";radio.name="rxImportDecision"+i;radio.value=value;radio.checked=value==="master";
+    radio.onchange=()=>{if(value==="incoming")selectedIncoming.add(key);else selectedIncoming.delete(key);updateCount();};
+    option.append(radio,document.createTextNode(label));choices.append(option);
+   }
+   row.append(choices);list.append(row);
   }
-  panel.append(list);
-  const choice=document.createElement("label");choice.className="check rx-import-override";
-  const ck=document.createElement("input");ck.type="checkbox";ck.id="importUseIncomingConflicts";
-  choice.append(ck,document.createTextNode("要確認の記録は、ファイル側の内容を優先して上書きする"));panel.append(choice);
+  updateCount();panel.append(list);
  }
  const actions=document.createElement("div");actions.className="delete-dialog-buttons";
  const cancel=document.createElement("button");cancel.type="button";cancel.className="btn";cancel.textContent="キャンセル";cancel.onclick=closeDialog;
- const accept=document.createElement("button");accept.type="button";accept.className="btn main";accept.textContent="この実績を取り込む";accept.disabled=plan.stale||(!plan.add.length&&!plan.update.length&&!plan.conflict.length);
+ const accept=document.createElement("button");accept.type="button";accept.className="btn main";accept.textContent="確認した内容で取り込む";
+ accept.disabled=plan.stale||(!plan.add.length&&!plan.update.length&&!plan.conflict.length);
  accept.onclick=()=>{
   if(!checkMaster("受付実績の取り込み"))return;
-  if(activeId!==e.id)return announce("イベントが変更されています。取り込みをやり直してください。","warn");
-  const useIncoming=!!panel.querySelector("#importUseIncomingConflicts")?.checked;
+  if(activeId!==e.id||current()!==e)return announce("確認中にイベントのデータが更新されました。取り込みをやり直してください。","warn");
   let fresh;
   try{
-    const currentEvent=current(),currentPlan=planAttendanceImport(currentEvent,data);
-    if(currentPlan.stale)throw Error("取り込み済みのファイルです。");
-    if(useIncoming&&currentPlan.conflict.length&&!confirm("要確認の記録 "+currentPlan.conflict.length+"件を、ファイル側の状態で上書きします。よろしいですか？"))return;
-    fresh=applyAttendanceImport(currentEvent,data,currentPlan,useIncoming);
+   const currentPlan=planAttendanceImport(e,data);
+   if(currentPlan.stale)throw Error("取り込み済みのファイルです。");
+   if(selectedIncoming.size&&!confirm("競合 "+selectedIncoming.size+"件について取り込み元の記録を採用し、マスター側を上書きします。よろしいですか？"))return;
+   fresh=applyAttendanceImport(e,data,currentPlan,selectedIncoming);
   }catch(err){return announce("取り込みに失敗しました："+err.message,"error");}
   if(!fresh.event||!writeEvent(fresh.event))return;
   closeDialog();render({keepScroll:true});
-  announce("受付実績を取り込みました：新規 "+fresh.added+"件、更新 "+fresh.updated+"件、競合保留 "+fresh.conflicts+"件。","success");
+  announce("受付実績を取り込みました：新規 "+fresh.added+"件、更新 "+fresh.updated+"件（うち競合採用 "+fresh.accepted+"件）、マスター側維持 "+fresh.conflicts+"件。","success");
  };
  actions.append(cancel,accept);panel.append(actions);
  openDialog("受付実績の取り込み確認",panel);
@@ -1658,7 +1702,7 @@ $("qrPerson").onchange=renderOneQR;
  $("qrPrevious").onclick=()=>changeQRPerson(-1);$("qrNext").onclick=()=>changeQRPerson(1);
  for(const tab of document.querySelectorAll("[data-qr-mode]"))tab.onclick=()=>switchQrMode(tab.dataset.qrMode);
  $("downloadQR").onclick=downloadOneQR;$("printSingleQR").onclick=printSingleQR;$("printQRs").onclick=printQR;$("exportQRZip").onclick=exportQRZip;
-$("exportResult").onclick=eventDetailCSV;$("exportAudit").onclick=exportAudit;$("printRosterPrep").onclick=()=>printReceptionRoster($("rosterSession").value);
+$("exportResult").onclick=eventDetailCSV;$("exportAudit").onclick=exportAudit;$("exportCheckedCSV").onclick=exportCheckedInCSV;$("printRosterPrep").onclick=()=>printReceptionRoster($("rosterSession").value);
 document.addEventListener("click",ev=>{
  for(const help of document.querySelectorAll("#resultsPanel .out-export-help.is-open")){
   if(help.contains(ev.target))continue;
