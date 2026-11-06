@@ -1191,13 +1191,13 @@ function buildAttendanceSnapshot(e,sourceId=deviceId(),revision=localSyncRevisio
   attendance_epoch:attendanceEpoch(e),source_device_id:sourceId,revision,
   exported_at:iso(),session_ids:e.sessions.map(x=>x.id),records};
 }
-function exportAttendanceSnapshot(){
+async function exportAttendanceSnapshot(){
  const e=current();if(!e)return;
  const payload=buildAttendanceSnapshot(e);
  if(!payload.records.length)return announce("このPCで記録した受付実績はまだありません。","warn");
- downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:"application/json;charset=utf-8"}),
- "QR_attendance_"+fileSafe(e.id)+"_"+fileSafe(deviceId())+"_"+stamp()+".json");
- announce("このPCの受付実績 "+payload.records.length+"件を書き出しました。共有フォルダ等に保存してください。","success");
+ const name=eventOutputFile(e,"受付実績_"+(meta.deviceLabel||deviceId())+"_"+deviceId().slice(-4)+"_第"+String(payload.revision).padStart(6,"0")+"版","json");
+ const result=await downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:"application/json;charset=utf-8"}),name,"受付実績");
+ if(result!=="failed")announce(result==="folder"?"このPCの受付実績 "+payload.records.length+"件を保存しました。":"受付実績JSONのダウンロードを開始しました。保存先を確認してください。","success");
 }
 function validateAttendanceSnapshot(e,data,localDeviceId=deviceId()){
  if(!data||data.format!==ATTENDANCE_FORMAT)throw Error("受付実績JSONの形式が正しくありません。");
