@@ -18,8 +18,11 @@
     try{
       return await new Promise((resolve,reject)=>{
         const tx=db.transaction(STORE,type),request=fn(tx.objectStore(STORE));
-        request.onsuccess=()=>resolve(request.result);
+        let value;
+        request.onsuccess=()=>{value=request.result;};
         request.onerror=()=>reject(request.error||Error("保存先設定を更新できません"));
+        tx.oncomplete=()=>resolve(value);
+        tx.onerror=()=>reject(tx.error||Error("保存先設定の処理に失敗しました"));
         tx.onabort=()=>reject(tx.error||Error("保存先設定を保存できません"));
       });
     }finally{db.close();}
