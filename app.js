@@ -254,7 +254,7 @@ function getCustomType(e,i){return e.customTypes?.[i]||"text";}
 function getCustomOptions(e,i){return e.customOptions?.[i]||[];}
 /* Consistent labels and readable values across participant views. */
 function customColumnIndices(e){return [0,1].filter(i=>String(e.customLabels?.[i]||"").trim());}
-function customDisplayValue(e,p,i){const v=String(p?.customValues?.[i]??"").trim();return getCustomType(e,i)==="bool"?(v==="有"?"はい":v==="無"?"いいえ":v):v;}
+function customDisplayValue(e,p,i){return String(p?.customValues?.[i]??"").trim();}
 function customEntries(e,p){return customColumnIndices(e).map(i=>({index:i,label:String(e.customLabels[i]).trim(),value:customDisplayValue(e,p,i)})).filter(x=>x.value);}
 function customSearchText(e,p){return customEntries(e,p).flatMap(x=>[x.label,x.value]).join(" ");}
 function appendCustomDetails(root,e,p,cssClass){
@@ -266,33 +266,33 @@ function normalizeCustom(e,i,value){
  const v=String(value??"").trim(),type=getCustomType(e,i);
  if(!v)return "";
  if(type==="bool"){
-  if(["有","あり","1","true","○","はい","yes"].includes(v.toLowerCase()))return "有";
-  if(["無","なし","0","false","×","いいえ","no"].includes(v.toLowerCase()))return "無";
-  throw Error((e.customLabels?.[i]||"追加項目"+(i+1))+" は「有」または「無」を選択してください");
+  if(v==="あり"||v==="なし")return v;
+  throw Error((e.customLabels?.[i]||"追加項目"+(i+1))+" は「あり」または「なし」を選択してください");
  }
  if(type==="select"&&!getCustomOptions(e,i).includes(v))throw Error((e.customLabels?.[i]||"追加項目"+(i+1))+" の選択肢に「"+v+"」はありません");
  return v;
 }
 function toggleCustomOptions(i){$("customOptionsWrap"+i).hidden=$("customType"+i).value!=="select";}
+function parseCustomOptionInput(value){return String(value??"").split(",").map(v=>v.trim()).filter(Boolean);}
 function renderCustomPreview(){
  const e=current();if(!e)return;
  const root=$("customPreview");root.replaceChildren();
  const labels=[1,2].map(i=>$("customLabel"+i).value.trim());
  const types=[1,2].map(i=>$("customType"+i).value);
- const opts=[1,2].map(i=>$("customOptions"+i).value.split("|").map(v=>v.trim()).filter(Boolean));
+ const opts=[1,2].map(i=>parseCustomOptionInput($("customOptions"+i).value));
  const saved=labels.every((v,i)=>v===(e.customLabels?.[i]||""))&&types.every((v,i)=>v===getCustomType(e,i))&&opts.every((v,i)=>JSON.stringify(v)===JSON.stringify(getCustomOptions(e,i)));
  const status=$("customSaveStatus");status.textContent=saved?"保存済み":"未保存";status.className="tag"+(saved?"":" unsaved");
  for(let i=0;i<2;i++){
   const el=document.createElement("div");el.className="custom-preview-field";
   const label=document.createElement("strong");label.textContent=labels[i]||"追加項目"+(i+1);
   const field=document.createElement("div");field.className="fake-input";
-  field.textContent=types[i]==="bool"?"○ はい　／　○ いいえ":types[i]==="select"?(opts[i].join("　／　")||"選択肢を入力してください"):"自由入力";
+  field.textContent=types[i]==="bool"?"○ あり　／　○ なし":types[i]==="select"?(opts[i].join("　／　")||"選択肢を入力してください"):"自由入力";
   el.append(label,field);root.append(el);
  }
 }
 
 const SESSION_PRESETS=["共通受付","午前","午後","第1部","第2部","交流会"];
-const CUSTOM_PRESETS=[{name:"参加形式",type:"select",options:["対面","オンライン"]},{name:"PC持参",type:"bool",options:[]},{name:"昼食希望",type:"bool",options:[]},{name:"希望分科会",type:"text",options:[]},{name:"備考",type:"text",options:[]}];
+const CUSTOM_PRESETS=[{name:"PC貸出",type:"bool",options:[]},{name:"昼食希望",type:"bool",options:[]},{name:"参加形式",type:"select",options:["対面","オンライン"]},{name:"備考",type:"text",options:[]}];
 function pastEvents(){return [...order].reverse().filter(id=>id!==activeId).map(id=>db.get(id)).filter(Boolean);}
 function recentSessions(){const seen=new Set(SESSION_PRESETS),out=[];for(const e of pastEvents())for(const s of e.sessions){const v=s.name.trim();if(v&&!seen.has(v)){seen.add(v);out.push(v);if(out.length===5)return out;}}return out;}
 function recentCustom(){const seen=new Set(CUSTOM_PRESETS.map(p=>p.name)),out=[];for(const e of pastEvents())for(let i=0;i<2;i++){const name=(e.customLabels?.[i]||"").trim();if(name&&!seen.has(name)){seen.add(name);out.push({name,type:getCustomType(e,i),options:[...getCustomOptions(e,i)]});if(out.length===5)return out;}}return out;}
@@ -303,12 +303,12 @@ function renderSessionPresets(){
 }
 function renderCustomPresets(){
  const used=new Set([1,2].map(i=>$("customLabel"+i).value.trim()).filter(Boolean)),full=[1,2].every(i=>$("customLabel"+i).value.trim());
- for(const [id,items] of [["customPresetButtons",CUSTOM_PRESETS],["customRecentButtons",recentCustom()]]){const root=$(id);root.replaceChildren();if(!items.length){emptyPreset(id);continue;}for(const p of items){const b=document.createElement("button");b.type="button";b.className="es-candidate";b.disabled=full||used.has(p.name);b.title=b.disabled?"設定済み、または空き枠がありません":"空欄に設定";const n=document.createElement("span");n.textContent="＋ "+p.name;const t=document.createElement("small");t.textContent=p.type==="bool"?"はい／いいえ":p.type==="select"?"選択式":"自由入力";b.append(n,t);b.onclick=()=>applyCustomPreset(p);root.append(b);}}
+ for(const [id,items] of [["customPresetButtons",CUSTOM_PRESETS],["customRecentButtons",recentCustom()]]){const root=$(id);root.replaceChildren();if(!items.length){emptyPreset(id);continue;}for(const p of items){const b=document.createElement("button");b.type="button";b.className="es-candidate";b.disabled=full||used.has(p.name);b.title=b.disabled?"設定済み、または空き枠がありません":"空欄に設定";const n=document.createElement("span");n.textContent="＋ "+p.name;const t=document.createElement("small");t.textContent=p.type==="bool"?"あり／なし":p.type==="select"?"選択式":"自由入力";b.append(n,t);b.onclick=()=>applyCustomPreset(p);root.append(b);}}
 }
 function applyCustomPreset(p){
  if([1,2].some(i=>$("customLabel"+i).value.trim()===p.name))return announce("同じ追加項目が設定されています。","warn");
  const i=[1,2].find(i=>!$("customLabel"+i).value.trim());if(!i)return announce("追加項目は最大2つです。クリアしてから選択してください。","warn");
- $("customLabel"+i).value=p.name;$("customType"+i).value=["bool","select"].includes(p.type)?p.type:"text";$("customOptions"+i).value=(p.options||[]).join("|");toggleCustomOptions(i);renderCustomPreview();renderCustomPresets();announce("「"+p.name+"」を設定しました。保存すると確定します。","success");
+ $("customLabel"+i).value=p.name;$("customType"+i).value=["bool","select"].includes(p.type)?p.type:"text";$("customOptions"+i).value=(p.options||[]).join(",");toggleCustomOptions(i);renderCustomPreview();renderCustomPresets();announce("「"+p.name+"」を設定しました。保存すると確定します。","success");
 }
 function clearCustomPreset(i){$("customLabel"+i).value="";$("customType"+i).value="text";$("customOptions"+i).value="";toggleCustomOptions(i);renderCustomPreview();renderCustomPresets();}
 function settingsSnapshot(){return {n:$("editEventName").value,d:$("editEventDate").value,c:$("editEventCategory").value,ns:Object.fromEntries([...document.querySelectorAll("[data-session-name]")].map(x=>[x.dataset.sessionName,x.value])),add:$("newSessionName").value,custom:[1,2].map(i=>[$("customLabel"+i).value,$("customType"+i).value,$("customOptions"+i).value])};}
@@ -321,7 +321,7 @@ function restoreSettingsSnapshot(s){
 function renderSettings(){
  $("sessionInlineStatus").hidden=true;
  const e=current();$("editEventName").value=e.name;$("editEventDate").value=e.date||"";$("editEventCategory").value=e.category;
- for(let i=0;i<2;i++){$("customLabel"+(i+1)).value=e.customLabels?.[i]||"";$("customType"+(i+1)).value=getCustomType(e,i);$("customOptions"+(i+1)).value=getCustomOptions(e,i).join("|");toggleCustomOptions(i+1);}
+ for(let i=0;i<2;i++){$("customLabel"+(i+1)).value=e.customLabels?.[i]||"";$("customType"+(i+1)).value=getCustomType(e,i);$("customOptions"+(i+1)).value=getCustomOptions(e,i).join(",");toggleCustomOptions(i+1);}
  renderCustomPreview();const root=$("sessionEditor");root.replaceChildren();
  e.sessions.forEach((s,i)=>{const line=document.createElement("div");line.className="session-row";line.innerHTML='<span class="tag">'+(i+1)+'</span><input aria-label="受付区分名" class="search" value="'+esc(s.name)+'" data-session-name="'+esc(s.id)+'"><button type="button" class="btn danger small" data-action="remove-session" data-session="'+esc(s.id)+'">削除</button>';root.append(line);});
  renderSessionPresets();renderCustomPresets();
@@ -331,8 +331,8 @@ function saveSettings(){if(!checkMaster("イベント設定"))return false;
  if(!name)return announce("イベント名は必須です。","warn");
  const names=[...document.querySelectorAll("[data-session-name]")].map(x=>x.value.trim());
  if(names.some(x=>!x)||new Set(names).size!==names.length)return announce("受付区分名を入力し、重複しないようにしてください。","warn");
- const types=[1,2].map(i=>$("customType"+i).value),options=[1,2].map(i=>$("customOptions"+i).value.split("|").map(x=>x.trim()).filter(Boolean));
- if(types.some((t,i)=>t==="select"&&(!options[i].length||new Set(options[i]).size!==options[i].length)))return announce("選択肢は「|」区切りで重複なく入力してください。","warn");
+ const types=[1,2].map(i=>$("customType"+i).value),options=[1,2].map(i=>parseCustomOptionInput($("customOptions"+i).value));
+ if(types.some((t,i)=>t==="select"&&(!options[i].length||new Set(options[i]).size!==options[i].length||options[i].some(v=>v.includes("|")))))return announce("選択肢は半角カンマ「,」区切りで、重複なく入力してください。","warn");
  if(mutate(e=>{
   e.name=name;e.date=date;e.category=$("editEventCategory").value;
   e.customLabels=[$("customLabel1").value.trim(),$("customLabel2").value.trim()];
@@ -429,10 +429,10 @@ function customFieldHTML(e,p,i){
  const label=esc(e.customLabels?.[i]||"追加項目"+(i+1)),value=p?.customValues?.[i]||"";
  const type=getCustomType(e,i),id="personCustom"+i;
  if(type==="text")return '<label class="field">'+label+'<input id="'+id+'" value="'+esc(value)+'"></label>';
- const choices=type==="bool"?["有","無"]:getCustomOptions(e,i);
+ const choices=type==="bool"?["あり","なし"]:getCustomOptions(e,i);
  const values=["",...choices];
  if(value&&!values.includes(value))values.push(value);
- return '<label class="field">'+label+'<select id="'+id+'">'+values.map(v=>'<option value="'+esc(v)+'"'+(v===value?" selected":"")+'>'+esc(type==="bool"?(v==="有"?"はい":v==="無"?"いいえ":"未選択"):(v||"選択してください"))+'</option>').join("")+'</select></label>';
+ return '<label class="field">'+label+'<select id="'+id+'">'+values.map(v=>'<option value="'+esc(v)+'"'+(v===value?" selected":"")+'>'+esc(v||(type==="bool"?"未選択":"選択してください"))+'</option>').join("")+'</select></label>';
 }
 function openPerson(id=null,dayMode=day){if(!checkMaster("参加者の登録・編集"))return;
  const e=current(),p=id?e.participants.find(x=>x.id===id):null;
@@ -1005,7 +1005,7 @@ function exportRoster(){const e=current();csvDownload([["イベントID","イベ
 const EXAMPLE_RE=/^[（(]\s*(記入)?例\s*[）)]/;
 function templateRows(e){
  const head=["氏名","職員番号","所属","グループ"],ex=["（例）山田 太郎","00123","総務課","Aグループ"];
- e.customLabels.forEach((label,i)=>{if(!label?.trim())return;head.push(label.trim());const t=getCustomType(e,i);ex.push(t==="bool"?"有":t==="select"?(getCustomOptions(e,i)[0]||""):"（記入例）");});
+ e.customLabels.forEach((label,i)=>{if(!label?.trim())return;head.push(label.trim());const t=getCustomType(e,i);ex.push(t==="bool"?"あり":t==="select"?(getCustomOptions(e,i)[0]||""):"（記入例）");});
  if(e.sessions.length>1)for(const s of e.sessions){head.push("受付区分："+s.name);ex.push("○");}
  return [head,ex];
 }
