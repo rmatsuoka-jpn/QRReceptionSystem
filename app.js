@@ -1110,14 +1110,14 @@ async function exportQRZip(){
    const qrImage=qrDataURL(qr);
    if(!qrImage)throw Error(p.name+" のQR画像を生成できません");
    const png=await qrCardDataURL(p,qrImage,e);
-   const filename="QR_"+fileSafe(e.id)+"_"+p.id+".png";
+   const filename="QR受付票_"+fileSafe(p.name)+"_"+fileSafe(p.staffId)+".png";
    if(!/^data:image\/png;base64,/.test(png))throw Error(p.name+" のQR画像を読み取れません");
    zip.file(filename,png.slice(png.indexOf(",")+1),{base64:true});
    csv.push([p.id,p.name,p.staffId,p.department||"",p.group||"",...customCols.map(i=>customDisplayValue(e,p,i)),filename]);
    if((i+1)%20===0){button.textContent="生成中 "+(i+1)+"/"+people.length;await new Promise(resolve=>setTimeout(resolve,0));}
   }
-  zip.file("qr_mapping.csv","\uFEFF"+csv.map(row=>row.map(csvCell).join(",")).join("\r\n")+"\r\n");
-  zip.file("README.txt","QR受付システム　QR配布用\nイベント: "+e.name+"\n開催日: "+e.date+"\n発行数: "+people.length+"\n\n画像はQR・氏名・職員番号・グループ・設定済みの追加項目が一体になった名刺型カードです。\n画像ファイル名と参加者の対応はqr_mapping.csvを確認してください。\nQRの内容は職員番号だけです。職員番号未登録者は発行対象外です。\n");
+  zip.file("QR画像対応表.csv","\uFEFF"+csv.map(row=>row.map(csvCell).join(",")).join("\r\n")+"\r\n");
+  zip.file("お読みください.txt","QR受付システム　QR配布用\nイベント: "+e.name+"\n開催日: "+e.date+"\n発行数: "+people.length+"\n\n画像はQR・氏名・職員番号・グループ・設定済みの追加項目が一体になった名刺型カードです。\n画像ファイル名と参加者の対応はQR画像対応表.csvを確認してください。\nQRの内容は職員番号だけです。職員番号未登録者は発行対象外です。\n");
   const archive=await zip.generateAsync({type:"blob",mimeType:"application/zip",compression:"STORE"});
   const result=await downloadBlob(archive,eventOutputFile(e,"QR受付票一括","zip"),"QR発行");
   if(result!=="failed")markStep(current().id,"qr");
