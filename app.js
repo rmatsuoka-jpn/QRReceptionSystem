@@ -55,6 +55,40 @@ function applyOperatingModeUI(){
  const state=$("operatingModeState");if(state)state.textContent=isMaster()?"マスターPC":"受付PC";
 }
 
+/* ファイル保存先はIndexedDBで保持し、イベントのバックアップには含めない。 */
+function folderStore(){return globalThis.QRFileStore;}
+function renderFileFolder(){
+ const store=folderStore(),state=store?.status()||{available:false,configured:false,name:""};
+ $("saveFolderName").textContent=!state.available?"直接保存を利用できない環境です":state.configured?"設定先："+state.name:"未設定（通常のダウンロードを使用）";
+ $("saveFolderPermission").textContent=state.configured?"再起動後などに権限の再許可が必要な場合があります。":"";
+ $("chooseSaveFolder").disabled=!state.available;
+ $("allowSaveFolder").disabled=!state.configured;
+ $("clearSaveFolder").disabled=!state.configured;
+ $("deviceDisplayName").value=meta.deviceLabel||"";
+}
+async function initFileFolder(){
+ try{await folderStore()?.init();}catch(err){announce("保存先設定の復元に失敗しました："+err.message,"warn");}
+ renderFileFolder();
+}
+async function chooseFileFolder(){
+ const store=folderStore();if(!store?.status().available)return announce("現在の環境ではフォルダ選択が利用できません。","warn");
+ try{const state=await store.choose();renderFileFolder();announce("保存先「"+state.name+"」を設定しました。","success");}
+ catch(err){if(err?.name!=="AbortError")announce("保存先を設定できません："+err.message,"error");}
+}
+async function allowFileFolder(){
+ try{const state=await folderStore().permission("readwrite",true);renderFileFolder();announce(state==="granted"?"保存先への読み書きを許可しました。":"保存先の権限が許可されていません。",state==="granted"?"success":"warn");}
+ catch(err){announce("保存先の権限を確認できません："+err.message,"error");}
+}
+async function clearFileFolder(){
+ if(!confirm("保存先設定を解除しますか？ 保存済みファイルは削除されません。"))return;
+ try{await folderStore().clear();renderFileFolder();announce("保存先設定を解除しました。","success");}
+ catch(err){announce("保存先設定を解除できません："+err.message,"error");}
+}
+function saveDeviceDisplayName(){
+ const name=$("deviceDisplayName").value.trim();
+ if(name.length>24||/[\\/:*?"<>|\x00-\x1f]/.test(name))return announce("PC名は24文字以内で、ファイル名に使えない記号を含めずに入力してください。","warn");
+ meta.deviceLabel=name;saveMeta();announce(name?"このPCの表示名を「"+name+"」に設定しました。":"このPCの表示名を初期値に戻しました。","success");
+}
 function markChanged(){meta.lastChangeAt=iso();saveMeta();renderBackupStatus();}
 function needsBackup(){return db.size>0&&(!meta.lastBackupAt||(!!meta.lastChangeAt&&meta.lastChangeAt>meta.lastBackupAt));}
 function storageInfo(){let n=0;try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i)||"";n+=k.length+(localStorage.getItem(k)||"").length;}}catch{}return {kb:Math.ceil(n*2/1024),pct:Math.min(100,Math.round(n/STORAGE_BUDGET*100))};}
@@ -207,7 +241,7 @@ function renderHome(){const ev=[...db.values()];
  }
  $("hmSearch").hidden=homeTab!=="events";
  for(const name of ["events","cross","data"]){$("home"+name[0].toUpperCase()+name.slice(1)).hidden=name!==homeTab;document.querySelector('[data-home="'+name+'"]')?.classList.toggle("active",name===homeTab);}
- if(homeTab==="events"){renderHero(ev);renderEventList();}if(homeTab==="cross")renderCross();}
+ if(homeTab==="events"){renderHero(ev);renderEventList();}if(homeTab==="cross")renderCross();if(homeTab==="data")renderFileFolder();}
 function eventRow(e,past){const x=evCounts(e),row=document.createElement("article");row.className="hm-item"+(past?" past":"");
  let date='<div class="hm-sdate none"><span class="d">未設定</span></div>';
  if(e.date){const d=parseDay(e.date),y=d.getFullYear()!==new Date().getFullYear()?'<span class="y">'+d.getFullYear()+'</span>':'';date='<div class="hm-sdate">'+y+'<span class="d">'+(d.getMonth()+1)+'/'+d.getDate()+'</span><span class="w">'+WEEK[d.getDay()]+'</span></div>';}
@@ -1658,6 +1692,10 @@ if(b.dataset.menu){openEventMenu(b);return;}
 if(b.dataset.listTab){listTab=b.dataset.listTab;renderEventList();return;}
 if(b.dataset.action){closeEventMenu();if(!isMaster()&&b.dataset.action!=="day")return checkMaster("このイベント操作");const id=b.dataset.id;switch(b.dataset.action){case "results":return openEvent(id,false,"results");case "prep":return openEvent(id,false);case "day":return openEvent(id,true);case "clone":return addEvent(id);case "delete":return deleteEvent(id);case "edit-person":return openPerson(b.dataset.person,false);case "remove-session":return removeSession(b.dataset.session);}return;}
 });
+$("chooseSaveFolder").onclick=chooseFileFolder;
+$("allowSaveFolder").onclick=allowFileFolder;
+$("clearSaveFolder").onclick=clearFileFolder;
+$("saveDeviceDisplayName").onclick=saveDeviceDisplayName;
 $("operatingMode").onchange=()=>{
  const next=$("operatingMode").value==="worker"?"worker":"master";
  if(next===operatingMode())return;
@@ -1717,5 +1755,5 @@ document.addEventListener("pointerdown",primeAudio,{passive:true});document.addE
 $("walkinBtn").onclick=()=>{if(checkMaster("飛び入り登録"))openPerson(null,true);};$("manualBtn").onclick=openManual;$("closeDialog").onclick=closeDialog;
 $("dialogBackdrop").addEventListener("click",e=>{if(e.target===$("dialogBackdrop"))closeDialog();});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("dialogBackdrop").hidden)closeDialog();});}
 window.addEventListener("afterprint",()=>{document.body.removeAttribute("data-print-mode");$("receptionPrint").hidden=true;});
-loadMeta();loadAll();delegate();render();
+loadMeta();loadAll();delegate();render();initFileFolder();
 })();
