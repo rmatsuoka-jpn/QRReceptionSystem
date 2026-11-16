@@ -1279,6 +1279,31 @@ function applyAttendanceImport(e,data,plan,selectedIncoming=new Set()){
  return {event:next,added:plan.add.length,updated:plan.update.length+accepted,
   conflicts:plan.conflict.length-accepted,accepted,unchanged:plan.same.length};
 }
+/* Cross-generation recovery records are never automatically imported.
+   Record-level revision tracking allows the operator to revisit unselected records. */
+function recoverySourceKey(data){return JSON.stringify([data.attendance_epoch,data.source_device_id]);}
+function recoveryItemKey(data,item){return JSON.stringify([data.attendance_epoch,data.source_device_id,item.participant.id,item.sessionId]);}
+function planAttendanceRecovery(e,data){
+ if(data.attendance_epoch===attendanceEpoch(e))throw Error("同じ世代の受付実績です。");
+ const records=validateAttendanceSnapshot(e,data,deviceId(),true);
+ const prior=e.attendanceRecoveryImports?.[recoverySourceKey(data)]||{};
+ const candidates=records.filter(x=>data.revision>Number(prior[attendanceConflictKey(x)]??-1));
+ return {candidates,alreadyAccepted:records.length-candidates.length};
+}
+function applyAttendanceRecovery(e,data,chosen){
+ if(!chosen.length)return e;
+ const next=clone(e),people=new Map(next.participants.map(p=>[p.id,p]));
+ next.attendanceRecoveryImports||={};
+ const history=next.attendanceRecoveryImports[recoverySourceKey(data)]||={};
+ for(const item of chosen){
+  const p=people.get(item.participant.id);
+  if(!p||!next.sessions.some(x=>x.id===item.sessionId))throw Error("参加者・受付区分が一致しません。");
+  p.checkins[item.sessionId]=clone(item.checkin);
+  history[attendanceConflictKey(item)]=data.revision;
+ }
+ validateEvent(next);return next;
+}
+
 async function importAttendanceFile(file){if(file)await importAttendanceFiles([file]);}
 
 /* 指定フォルダ/複数選択のJSONから、出力元PCと世代ごとに最新版を集約する。 */
