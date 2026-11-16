@@ -1413,7 +1413,7 @@ async function importAttendanceFiles(files){
   panel.append(note);
   const list=document.createElement("div");list.className="rx-import-conflict-list";
   for(const item of recoveryPlans){
-   const heading=document.createElement("div");heading.className="rx-import-file-row";
+   const heading=document.createElement("div");heading.className="rx-import-file-row rx-import-recovery-file";
    const name=document.createElement("strong");name.textContent=item.file.name;
    const info=document.createElement("small");info.textContent="世代 "+item.data.attendance_epoch+" ／ 出力元 "+item.data.source_device_id+" ／ 更新番号 "+item.data.revision;
    heading.append(name,info);list.append(heading);
@@ -1460,9 +1460,15 @@ async function importAttendanceFiles(files){
     const applied=applyAttendanceImport(next,item.data,actual,chosen);
     next=applied.event;added+=applied.added;updated+=applied.updated;retained+=applied.conflicts;
    }
+   const recoveredKeys=new Set();
    for(const item of recoveryPlans){
     const actual=planAttendanceRecovery(next,item.data);
     const chosen=actual.candidates.filter(x=>selectedRecovery.has(recoveryItemKey(item.data,x)));
+    for(const record of chosen){
+     const key=attendanceConflictKey(record);
+     if(recoveredKeys.has(key))throw Error("同じ参加者・受付区分の旧世代記録を複数選択しています。1件だけ選んでください。");
+     recoveredKeys.add(key);
+    }
     if(!chosen.length)continue;
     next=applyAttendanceRecovery(next,item.data,chosen);
     recovered+=chosen.length;
