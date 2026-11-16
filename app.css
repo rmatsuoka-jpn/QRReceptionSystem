@@ -1005,6 +1005,6 @@ body[data-operating-mode="worker"] .rx .rx-clear-footer{display:none}
 .rx-import-file-row:last-child{border-bottom:0}
 .rx-import-recovery-file{flex-wrap:wrap;align-items:flex-start}
 .rx-import-recovery-file strong{overflow-wrap:anywhere}
-.rx-import-recovery-file small{white-space:normal;overflow-wrap:anywhere}
+.rx-import-file-row.rx-import-recovery-file small{white-space:normal;overflow-wrap:anywhere}
 .rx-import-file-row span:first-child{overflow-wrap:anywhere}
 .rx-import-file-row small{color:#53717e;white-space:nowrap}
