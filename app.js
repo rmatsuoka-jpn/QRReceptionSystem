@@ -700,7 +700,7 @@ function openClearAttendanceDialog(){if(!checkMaster("受付記録の一括ク�
   const done=mutate(next=>{
    for(const p of next.participants){if(all)p.checkins={};else if(p.checkins)delete p.checkins[originSessionId];}
    // A cleared generation cannot accept an old attendance snapshot.
-   next.attendanceEpoch="A-"+randomHex(8);next.attendanceImports={};
+   next.attendanceEpoch="A-"+randomHex(8);next.attendanceImports={};next.attendanceRecoveryImports={};
   });
   if(!done)return;
   lastScan="";lastScanAt=0;
@@ -1211,10 +1211,11 @@ async function exportAttendanceSnapshot(){
  const result=await downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:"application/json;charset=utf-8"}),name,"受付実績");
  if(result==="folder"||result==="download")announce(result==="folder"?"このPCの受付実績 "+payload.records.length+"件を保存しました。":"受付実績JSONのダウンロードを開始しました。保存先を確認してください。","success");
 }
-function validateAttendanceSnapshot(e,data,localDeviceId=deviceId()){
+function validateAttendanceSnapshot(e,data,localDeviceId=deviceId(),allowDifferentEpoch=false){
  if(!data||data.format!==ATTENDANCE_FORMAT)throw Error("受付実績JSONの形式が正しくありません。");
  if(data.event_id!==e.id)throw Error("イベントIDが異なります。最初に同じ全イベントJSONを配布してください。");
- if(data.attendance_epoch!==attendanceEpoch(e))throw Error("受付データの世代が異なります。受付状況のクリア後などは、最新の全イベントJSONを各PCに再配布してください。");
+ if(typeof data.attendance_epoch!=="string"||!data.attendance_epoch||data.attendance_epoch.length>128)throw Error("受付世代IDが不正です。");
+ if(!allowDifferentEpoch&&data.attendance_epoch!==attendanceEpoch(e))throw Error("受付データの世代が異なります。手動マージで確認してください。");
  if(typeof data.source_device_id!=="string"||!/^PC-[A-F0-9]{16}$/.test(data.source_device_id))throw Error("出力元PCの識別子が不正です。");
  if(data.source_device_id===localDeviceId)throw Error("このPC自身の実績ファイルは取り込めません。");
  if(!Number.isSafeInteger(data.revision)||data.revision<0)throw Error("受付実績の更新番号が不正です。");
@@ -1278,79 +1279,9 @@ function applyAttendanceImport(e,data,plan,selectedIncoming=new Set()){
  return {event:next,added:plan.add.length,updated:plan.update.length+accepted,
   conflicts:plan.conflict.length-accepted,accepted,unchanged:plan.same.length};
 }
-async function importAttendanceFile(file){
- if(!checkMaster("受付実績の取り込み"))return;
- if(!file)return;
- if(file.size>20*1024*1024)return announce("受付実績ファイルが大きすぎます（20MB以内）。","error");
- const e=current();if(!e)return;
- let data,plan;
- try{data=JSON.parse(await file.text());plan=planAttendanceImport(e,data);}
- catch(err){return announce("実績ファイルを取り込めません："+err.message,"error");}
- const panel=document.createElement("div");panel.className="rx-import-preview";
- const title=document.createElement("p");title.className="rx-import-file";title.textContent=file.name;panel.append(title);
- const summary=document.createElement("p");summary.className="rx-import-summary";
- summary.textContent="出力元："+data.source_device_id+" ／ 新規："+plan.add.length+"件・更新："+plan.update.length+
-  "件・変更なし："+plan.same.length+"件・要確認："+plan.conflict.length+"件";
- panel.append(summary);
- if(plan.stale){const note=document.createElement("p");note.className="hint";note.textContent="同じPCの同一版または古いファイルです。すでに取り込み済みのため変更しません。";panel.append(note);}
- const selectedIncoming=new Set();
- if(plan.conflict.length){
-  const warning=document.createElement("p");warning.className="rx-import-warning";
-  warning.textContent="同じ参加者・受付区分に異なるPCの操作記録があります。各人の受付・取消日時を確認して、採用する記録を選んでください。初期選択はマスター側です。確定後は同じ版を再取り込みできません。";panel.append(warning);
-  const list=document.createElement("div");list.className="rx-import-conflict-list";
-  const count=document.createElement("p");count.className="rx-import-decision-count";panel.append(count);
-  const updateCount=()=>{count.textContent="競合："+plan.conflict.length+"件（マスター側を維持 "+(plan.conflict.length-selectedIncoming.size)+"件 ／ 取り込み元を採用 "+selectedIncoming.size+"件）";};
-  for(let i=0;i<plan.conflict.length;i++){
-   const item=plan.conflict[i],key=attendanceConflictKey(item);
-   const existing=item.participant.checkins[item.sessionId],ss=e.sessions.find(x=>x.id===item.sessionId);
-   const row=document.createElement("div");row.className="rx-import-conflict-item";
-   const name=document.createElement("strong");name.textContent=item.participant.name+" ／ "+ss.name+" （職員番号："+(item.participant.staffId||"なし")+"）";row.append(name);
-   const comparison=document.createElement("div");comparison.className="rx-import-conflict-compare";
-   for(const [label,record,origin] of [
-    ["マスター側",existing,existing.syncOrigin||"不明（旧データ）"],
-    ["取り込み元",item.checkin,data.source_device_id]
-   ]){
-    const pane=document.createElement("div");pane.className="rx-import-conflict-side";
-    const heading=document.createElement("strong");heading.textContent=label+"： "+attendanceConflictStatus(record);pane.append(heading);
-    const info=document.createElement("small");info.textContent="操作元："+origin;pane.append(info);
-    const when=document.createElement("small");when.textContent=attendanceConflictTimes(record);pane.append(when);
-    comparison.append(pane);
-   }
-   row.append(comparison);
-   const choices=document.createElement("div");choices.className="rx-import-conflict-choices";
-   for(const [value,label] of [["master","マスター側を維持"],["incoming","取り込み元を採用"]]){
-    const option=document.createElement("label");option.className="rx-import-choice";
-    const radio=document.createElement("input");radio.type="radio";radio.name="rxImportDecision"+i;radio.value=value;radio.checked=value==="master";
-    radio.onchange=()=>{if(value==="incoming")selectedIncoming.add(key);else selectedIncoming.delete(key);updateCount();};
-    option.append(radio,document.createTextNode(label));choices.append(option);
-   }
-   row.append(choices);list.append(row);
-  }
-  updateCount();panel.append(list);
- }
- const actions=document.createElement("div");actions.className="delete-dialog-buttons";
- const cancel=document.createElement("button");cancel.type="button";cancel.className="btn";cancel.textContent="キャンセル";cancel.onclick=closeDialog;
- const accept=document.createElement("button");accept.type="button";accept.className="btn main";accept.textContent="確認した内容で取り込む";
- accept.disabled=plan.stale||(!plan.add.length&&!plan.update.length&&!plan.conflict.length);
- accept.onclick=()=>{
-  if(!checkMaster("受付実績の取り込み"))return;
-  if(activeId!==e.id||current()!==e)return announce("確認中にイベントのデータが更新されました。取り込みをやり直してください。","warn");
-  let fresh;
-  try{
-   const currentPlan=planAttendanceImport(e,data);
-   if(currentPlan.stale)throw Error("取り込み済みのファイルです。");
-   if(selectedIncoming.size&&!confirm("競合 "+selectedIncoming.size+"件について取り込み元の記録を採用し、マスター側を上書きします。よろしいですか？"))return;
-   fresh=applyAttendanceImport(e,data,currentPlan,selectedIncoming);
-  }catch(err){return announce("取り込みに失敗しました："+err.message,"error");}
-  if(!fresh.event||!writeEvent(fresh.event))return;
-  closeDialog();render({keepScroll:true});
-  announce("受付実績を取り込みました：新規 "+fresh.added+"件、更新 "+fresh.updated+"件（うち競合採用 "+fresh.accepted+"件）、マスター側維持 "+fresh.conflicts+"件。","success");
- };
- actions.append(cancel,accept);panel.append(actions);
- openDialog("受付実績の取り込み確認",panel);
-}
+async function importAttendanceFile(file){if(file)await importAttendanceFiles([file]);}
 
-/* 指定フォルダ/複数選択のJSONから、出力元PCごとに最新版を集約する。 */
+/* 指定フォルダ/複数選択のJSONから、出力元PCと世代ごとに最新版を集約する。 */
 async function importAttendanceFiles(files){
  if(!checkMaster("受付実績の取り込み"))return;
  const e=current();if(!e)return;
@@ -1365,8 +1296,8 @@ async function importAttendanceFiles(files){
   try{data=JSON.parse(await file.text());}
   catch{errors.push(file.name+"：JSON解析失敗");continue;}
   if(data?.format!==ATTENDANCE_FORMAT||data.event_id!==e.id){ignored++;continue;}
-  try{validateAttendanceSnapshot(e,data);}catch(err){errors.push(file.name+"："+err.message);continue;}
-  const id=data.source_device_id,previous=latest.get(id);
+  try{validateAttendanceSnapshot(e,data,deviceId(),true);}catch(err){errors.push(file.name+"："+err.message);continue;}
+  const id=recoverySourceKey(data),previous=latest.get(id);
   if(previous){
    if(previous.data.revision===data.revision){
     if(JSON.stringify(previous.data.records)!==JSON.stringify(data.records))blocked.add(id);
@@ -1378,23 +1309,29 @@ async function importAttendanceFiles(files){
   latest.set(id,{data,file});
  }
  for(const id of blocked){latest.delete(id);errors.push(id+"：同じ更新番号で異なる内容のファイルがあります。");}
- let working=clone(e),plans=[],stale=0;
+ let working=clone(e),plans=[],recoveryPlans=[],stale=0,recoveryAccepted=0;
  try{
-  for(const item of [...latest.values()].sort((a,b)=>a.data.source_device_id.localeCompare(b.data.source_device_id))){
+  const entries=[...latest.values()].sort((a,b)=>a.data.source_device_id.localeCompare(b.data.source_device_id));
+  for(const item of entries.filter(x=>x.data.attendance_epoch===attendanceEpoch(e))){
    const plan=planAttendanceImport(working,item.data);
    if(plan.stale){stale++;continue;}
    plans.push({...item,plan});
    working=applyAttendanceImport(working,item.data,plan,new Set()).event;
   }
+  for(const item of entries.filter(x=>x.data.attendance_epoch!==attendanceEpoch(e))){
+   const plan=planAttendanceRecovery(working,item.data);
+   recoveryAccepted+=plan.alreadyAccepted;
+   if(plan.candidates.length)recoveryPlans.push({...item,plan});
+  }
  }catch(err){return announce("取り込み計画を作成できません："+err.message,"error");}
  if(current()!==e||activeId!==e.id)return announce("イベントが切り替わりました。取り込みをやり直してください。","warn");
  const panel=document.createElement("div");panel.className="rx-import-preview";
  const summary=document.createElement("p");summary.className="rx-import-summary";
- summary.textContent="選択 "+files.length+"件 ／ 取込候補 "+plans.length+"台 ／ 取込済 "+stale+"台 ／ 古い版 "+oldVersions+"件 ／ 対象外 "+ignored+"件 ／ 不正 "+errors.length+"件";
+ summary.textContent="選択 "+files.length+"件 ／ 通常取込 "+plans.length+"台 ／ 旧世代の要確認 "+recoveryPlans.length+"ファイル ／ 取込済 "+stale+"台 ／ 旧世代の採用済み記録 "+recoveryAccepted+"件 ／ 古い版 "+oldVersions+"件 ／ 対象外 "+ignored+"件 ／ 不正 "+errors.length+"件";
  panel.append(summary);
  const newCount=plans.reduce((n,x)=>n+x.plan.add.length,0),updCount=plans.reduce((n,x)=>n+x.plan.update.length,0),conflicts=plans.flatMap(x=>x.plan.conflict.map(r=>({data:x.data,record:r})));
  const counts=document.createElement("p");counts.className="rx-import-summary";
- counts.textContent="受付記録：新規 "+newCount+"件・更新 "+updCount+"件・競合 "+conflicts.length+"件";panel.append(counts);
+ counts.textContent="通常世代：新規 "+newCount+"件・更新 "+updCount+"件・競合 "+conflicts.length+"件 ／ 旧世代：手動確認 "+recoveryPlans.reduce((n,x)=>n+x.plan.candidates.length,0)+"件";panel.append(counts);
  if(plans.length){
   const list=document.createElement("div");list.className="rx-import-file-list";
   for(const item of plans){
@@ -1406,7 +1343,7 @@ async function importAttendanceFiles(files){
   panel.append(list);
  }
  if(errors.length){
-  const details=document.createElement("details");details.open=!plans.length;
+  const details=document.createElement("details");details.open=!plans.length&&!recoveryPlans.length;
   const label=document.createElement("summary");label.textContent="読み込めないファイル "+errors.length+"件を確認";details.append(label);
   const list=document.createElement("ul");
   for(const err of errors.slice(0,30)){const li=document.createElement("li");li.textContent=err;list.append(li);}
@@ -1437,14 +1374,57 @@ async function importAttendanceFiles(files){
    }row.append(choices);list.append(row);
   });panel.append(list);
  }
+
+ const selectedRecovery=new Set();
+ let refreshRecoveryButton=()=>{};
+ if(recoveryPlans.length){
+  const warning=document.createElement("p");warning.className="rx-import-warning";
+  warning.textContent="受付世代が異なります。クリア前のテスト記録が復活する可能性があるため自動では採用しません。対象者ごとに比較し、必要な記録だけチェックしてください。名簿とイベント設定、マスターの世代IDは変更しません。";
+  panel.append(warning);
+  const backupButton=document.createElement("button");backupButton.type="button";backupButton.className="btn small";
+  backupButton.textContent="⇩ 先に全イベントJSONをバックアップ";backupButton.onclick=backup;panel.append(backupButton);
+  const note=document.createElement("p");note.className="hint";
+  note.textContent="通常世代の結果と同じ参加者・区分にチェックすると、選択した旧世代の記録が最後に優先されます。チェックしなかった記録は後から同じファイルで再確認できます。";
+  panel.append(note);
+  const list=document.createElement("div");list.className="rx-import-conflict-list";
+  for(const item of recoveryPlans){
+   const heading=document.createElement("div");heading.className="rx-import-file-row";
+   const name=document.createElement("strong");name.textContent=item.file.name;
+   const info=document.createElement("small");info.textContent="世代 "+item.data.attendance_epoch+" ／ 出力元 "+item.data.source_device_id+" ／ 更新番号 "+item.data.revision;
+   heading.append(name,info);list.append(heading);
+   for(const record of item.plan.candidates){
+    const session=e.sessions.find(s=>s.id===record.sessionId),existing=record.participant.checkins?.[record.sessionId];
+    const row=document.createElement("div");row.className="rx-import-conflict-item";
+    const title=document.createElement("strong");title.textContent=record.participant.name+" ／ "+session.name+"（職員番号："+(record.participant.staffId||"なし")+"）";
+    row.append(title);
+    const compare=document.createElement("div");compare.className="rx-import-conflict-compare";
+    for(const [label,c] of [["マスター側",existing],["旧世代の受付PC",record.checkin]]){
+     const cell=document.createElement("div");cell.className="rx-import-conflict-side";
+     const status=document.createElement("strong");status.textContent=label+"： "+(c?attendanceConflictStatus(c):"記録なし");
+     const time=document.createElement("small");time.textContent=c?attendanceConflictTimes(c):"受付・取消履歴なし";
+     cell.append(status,time);compare.append(cell);
+    }row.append(compare);
+    const option=document.createElement("label");option.className="rx-import-choice";
+    const checkbox=document.createElement("input");checkbox.type="checkbox";checkbox.checked=false;
+    const key=recoveryItemKey(item.data,record);
+    checkbox.onchange=()=>{if(checkbox.checked)selectedRecovery.add(key);else selectedRecovery.delete(key);refreshRecoveryButton();};
+    option.append(checkbox,document.createTextNode(" この旧世代の記録を採用"));row.append(option);list.append(row);
+   }
+  }
+  panel.append(list);
+ }
  const actions=document.createElement("div");actions.className="delete-dialog-buttons";
  const cancel=document.createElement("button");cancel.type="button";cancel.className="btn";cancel.textContent="キャンセル";cancel.onclick=closeDialog;
- const accept=document.createElement("button");accept.type="button";accept.className="btn main";accept.textContent="確認した実績を一括取り込み";accept.disabled=!plans.length;
+ const accept=document.createElement("button");accept.type="button";accept.className="btn main";accept.textContent="確認した実績を一括取り込み";
+ refreshRecoveryButton=()=>{accept.disabled=!plans.length&&!selectedRecovery.size;accept.textContent=selectedRecovery.size?"旧世代 "+selectedRecovery.size+"件を含めて取り込む":"確認した実績を一括取り込み";};
+ refreshRecoveryButton();
  accept.onclick=()=>{
   if(!checkMaster("受付実績の取り込み"))return;
   if(current()!==e||activeId!==e.id)return announce("イベントのデータが更新されました。取り込みをやり直してください。","warn");
+  if(!plans.length&&!selectedRecovery.size)return;
   if(selected.size&&!confirm("競合 "+selected.size+"件は取り込み元の記録を採用します。よろしいですか？"))return;
-  let next=clone(e),added=0,updated=0,retained=0;
+  if(selectedRecovery.size&&!confirm("旧世代の受付記録 "+selectedRecovery.size+"件を手動採用します。クリア前のテスト受付や取消履歴が復活したり、現在の記録を上書きする可能性があります。実行しますか？"))return;
+  let next=clone(e),added=0,updated=0,retained=0,recovered=0;
   try{
    for(const item of plans){
     const actual=planAttendanceImport(next,item.data);
@@ -1455,9 +1435,16 @@ async function importAttendanceFiles(files){
     const applied=applyAttendanceImport(next,item.data,actual,chosen);
     next=applied.event;added+=applied.added;updated+=applied.updated;retained+=applied.conflicts;
    }
+   for(const item of recoveryPlans){
+    const actual=planAttendanceRecovery(next,item.data);
+    const chosen=actual.candidates.filter(x=>selectedRecovery.has(recoveryItemKey(item.data,x)));
+    if(!chosen.length)continue;
+    next=applyAttendanceRecovery(next,item.data,chosen);
+    recovered+=chosen.length;
+   }
   }catch(err){return announce("一括取り込みに失敗しました："+err.message,"error");}
   if(!writeEvent(next))return;
-  closeDialog();render({keepScroll:true});announce(plans.length+"台分を集約しました：新規 "+added+"件・更新 "+updated+"件・既存維持 "+retained+"件。","success");
+  closeDialog();render({keepScroll:true});announce(plans.length+"台分を集約しました：通常の新規 "+added+"件・更新 "+updated+"件・既存維持 "+retained+"件、旧世代から手動採用 "+recovered+"件。","success");
  };
  actions.append(cancel,accept);panel.append(actions);openDialog("受付実績の一括取り込み確認",panel);
 }
