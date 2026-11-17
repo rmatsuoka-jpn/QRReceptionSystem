@@ -19,6 +19,107 @@ function announce(msg,type=""){const n=$("notice");clearTimeout(noticeTimer);if(
  const close=document.createElement("button");close.type="button";close.className="notice-close";close.setAttribute("aria-label","通知を閉じる");close.textContent="✕";close.onclick=()=>announce("");
  n.replaceChildren(text,close);n.className="notice "+type;n.hidden=false;
  if(type!=="error"&&type!=="warn")noticeTimer=setTimeout(()=>{n.hidden=true;},type==="success"?4500:6000);}
+
+/* Guard every persistent write. Button disabling is only presentation; saving is
+   rejected at the data layer until this tab holds the exclusive browser lock. */
+function tabIsOwner(){return globalThis.QRTabGuard?.isOwner()===true;}
+function requireTabOwner(action="データの更新"){
+ if(tabIsOwner())return true;
+ announce(action+"はこのタブではできません。別のタブが受付中、または操作権限を確認できません。","warn");
+ return false;
+}
+const TAB_VIEW_BUTTONS=new Set(["tabGuardRetry","backHome","rxBack","closeDialog","toggleFilter","filterToday","filterUpcoming","resetEvents","tabPending","tabChecked","ptPagePrev","ptPageNext","qrPrevious","qrNext"]);
+const TAB_VIEW_INPUTS=new Set(["eventQuery","dateFrom","dateTo","sortKey","sortOrder","crossPeriod","crossYear","crossCategory","crossStatus","crossQuery","personQuery","personSessionFilter","ptPageSize","checkinSession","rosterSession","qrPerson","manualQuery","manualSort","manualSessionFilter"]);
+function isTabViewControl(el){
+ if(el.id==="tabGuardRetry")return true;
+ if(el.tagName==="INPUT"||el.tagName==="SELECT"||el.tagName==="TEXTAREA")return TAB_VIEW_INPUTS.has(el.id);
+ if(el.tagName!=="BUTTON")return false;
+ if(TAB_VIEW_BUTTONS.has(el.id))return true;
+ const d=el.dataset;
+ return d.home!==undefined||d.mode!==undefined||d.prep!==undefined||d.receptionTab!==undefined||
+  d.listTab!==undefined||d.menu!==undefined||d.ptPage!==undefined||d.outputHelp!==undefined||
+  d.manualSort!==undefined||["day","prep","results"].includes(d.action);
+}
+function applyTabGuardControls(){
+ const restricted=!tabIsOwner();
+ document.body.dataset.tabMode=restricted?"readonly":"owner";
+ for(const el of document.querySelectorAll("button,input,select,textarea")){
+  if(el.id==="tabGuardRetry")continue;
+  const shouldBlock=restricted&&!isTabViewControl(el);
+  if(shouldBlock){
+   if(el.dataset.tabGuardDisabled===undefined){
+    el.dataset.tabGuardDisabled=el.disabled?"was-disabled":"enabled";
+   }
+   el.disabled=true;
+   el.setAttribute("aria-disabled","true");
+  }else if(el.dataset.tabGuardDisabled!==undefined){
+   el.disabled=el.dataset.tabGuardDisabled==="was-disabled";
+   delete el.dataset.tabGuardDisabled;
+   el.removeAttribute("aria-disabled");
+  }
+ }
+}
+function updateTabGuardUI(status){
+ const banner=$("tabGuardBanner"),retry=$("tabGuardRetry");
+ banner.hidden=status==="owner";
+ retry.hidden=status==="checking";
+ if(status==="readonly"){
+  $("tabGuardTitle").textContent="閲覧専用：別のタブで受付中です";
+  $("tabGuardDetail").textContent="同じブラウザの別タブが編集権限を使用しています。このタブでは受付・取消・名簿編集・復元はできません。先行タブを閉じると自動的に再確認し、最新の保存データを読み直します。表示中の受付情報は最新でない場合があります。";
+ }else if(status==="unsupported"){
+  $("tabGuardTitle").textContent="閲覧専用：タブ間の安全確認ができません";
+  $("tabGuardDetail").textContent="この環境では編集権限を安全に管理できません。受付情報を保護するため保存操作を停止しています。Edge / Chromeでの動作環境を確認してください。";
+ }else{
+  $("tabGuardTitle").textContent="操作権限を確認しています";
+  $("tabGuardDetail").textContent="確認が完了するまで編集操作は利用できません。";
+ }
+ applyTabGuardControls();
+}
+function initTabGuard(){
+ const guard=globalThis.QRTabGuard;
+ if(!guard){
+  updateTabGuardUI("unsupported");return;
+ }
+ let pending=false;
+ guard.onChange(status=>{
+  if(status==="owner"){
+   // Do not trust a standby tab's cached event or device revision.
+   loadMeta();db.clear();order=[];loadAll();
+   if(activeId&&!db.has(activeId)){activeId=null;view="home";}
+   closeDialog();
+   render();
+  }
+  updateTabGuardUI(status);
+ });
+ $("tabGuardRetry").onclick=()=>guard.tryAcquire();
+ document.addEventListener("click",event=>{
+  if(tabIsOwner())return;
+  const button=event.target.closest("button");
+  if(button&&!isTabViewControl(button)){
+   event.preventDefault();event.stopImmediatePropagation();
+   requireTabOwner("この操作");
+  }
+ },true);
+ document.addEventListener("change",event=>{
+  if(tabIsOwner())return;
+  const control=event.target;
+  if(["INPUT","SELECT","TEXTAREA"].includes(control.tagName)&&!isTabViewControl(control)){
+   event.preventDefault();event.stopImmediatePropagation();
+  }
+ },true);
+ document.addEventListener("submit",event=>{
+  if(!tabIsOwner()){event.preventDefault();event.stopImmediatePropagation();requireTabOwner("フォームの送信");}
+ },true);
+ // Newly rendered rows/buttons must also follow the active read-only policy.
+ const observer=new MutationObserver(()=>{
+  if(pending)return;
+  pending=true;queueMicrotask(()=>{pending=false;applyTabGuardControls();});
+ });
+ observer.observe(document.body,{childList:true,subtree:true});
+ updateTabGuardUI(guard.status());
+ guard.start();
+}
+
 function key(id){return PREFIX+id;}
 function loadAll(){try{const index=JSON.parse(localStorage.getItem(IX)||'{"ids":[]}');if(!Array.isArray(index.ids))throw Error("イベント一覧の形式が正しくありません");order=[...new Set(index.ids.filter(x=>typeof x==="string"))];const missing=[];for(const id of order){try{const raw=localStorage.getItem(key(id));if(!raw){missing.push(id);continue;}const event=JSON.parse(raw);validateEvent(event);if(event.id!==id)throw Error("イベントIDが一致しません");db.set(id,event);}catch(err){missing.push(id);}}if(missing.length)announce("一部の保存データを読み込めませんでした："+missing.join("、")+"。既存データは自動削除していません。","error");}catch(err){announce("保存済みデータを読み込めません："+err.message+"。復元用JSONがある場合は保管してください。","error");}}
 /* Staff numbers: half-width letters/digits (no hyphen). Full-width input is converted; matching ignores case. */
@@ -27,13 +128,13 @@ function normStaff(v){return String(v??"").normalize("NFKC").trim();}
 function staffKey(v){return normStaff(v).toLowerCase();}
 function validStaff(v){return STAFF_RE.test(v||"");}
 function validateEvent(e){if(!e||typeof e!=="object"||typeof e.id!=="string"||!/^EVT-[A-Za-z0-9-]+$/.test(e.id)||typeof e.name!=="string"||!e.name||!Array.isArray(e.sessions)||!e.sessions.length||!Array.isArray(e.participants)||!Number.isInteger(e.nextParticipant)||e.nextParticipant<1)throw Error("イベントの構造が正しくありません");const ss=new Set();for(const s of e.sessions){if(!s||typeof s.id!=="string"||typeof s.name!=="string"||!s.name||ss.has(s.id))throw Error("受付区分が不正です");ss.add(s.id);}const ids=new Set(),staffIds=new Set();for(const p of e.participants){if(!p||typeof p.id!=="string"||typeof p.name!=="string"||!p.name||!p.planned||!p.checkins||ids.has(p.id))throw Error("参加者情報が不正です");ids.add(p.id);if(!p.removed&&p.staffId){if(typeof p.staffId!=="string"||!validStaff(p.staffId)||staffIds.has(staffKey(p.staffId)))throw Error("職員番号が不正または重複しています");staffIds.add(staffKey(p.staffId));}}}
-function writeEvent(e){validateEvent(e);try{localStorage.setItem(key(e.id),JSON.stringify(e));db.set(e.id,e);markChanged();return true;}catch(err){if(isQuota(err))return announce(QUOTA_MSG,"error"),false;announce("保存できませんでした。操作は確定していません："+err.message,"error");return false;}}
-function writeIndex(ids){try{localStorage.setItem(IX,JSON.stringify({version:SCHEMA,ids}));order=ids;markChanged();return true;}catch(err){if(isQuota(err))return announce(QUOTA_MSG,"error"),false;announce("イベント一覧を保存できません："+err.message,"error");return false;}}
+function writeEvent(e){if(!requireTabOwner("イベントの保存"))return false;validateEvent(e);try{localStorage.setItem(key(e.id),JSON.stringify(e));db.set(e.id,e);markChanged();return true;}catch(err){if(isQuota(err))return announce(QUOTA_MSG,"error"),false;announce("保存できませんでした。操作は確定していません："+err.message,"error");return false;}}
+function writeIndex(ids){if(!requireTabOwner("イベント一覧の保存"))return false;try{localStorage.setItem(IX,JSON.stringify({version:SCHEMA,ids}));order=ids;markChanged();return true;}catch(err){if(isQuota(err))return announce(QUOTA_MSG,"error"),false;announce("イベント一覧を保存できません："+err.message,"error");return false;}}
 /* Backup reminder, storage usage and reception feedback (sound/flash). Meta is app-owned UI state, never event data. */
 const QUOTA_MSG="ブラウザの保存容量が上限に達したため保存できませんでした（操作は確定していません）。全イベントJSONをバックアップし、終了したイベントを削除してから再度操作してください。";
 function isQuota(err){return err&&(err.name==="QuotaExceededError"||err.name==="NS_ERROR_DOM_QUOTA_REACHED"||err.code===22||err.code===1014);}
 function loadMeta(){try{const m=JSON.parse(localStorage.getItem(META)||"{}");meta=m&&typeof m==="object"&&!Array.isArray(m)?m:{};}catch{meta={};}}
-function saveMeta(){try{localStorage.setItem(META,JSON.stringify(meta));}catch{}}
+function saveMeta(){if(!tabIsOwner())return;try{localStorage.setItem(META,JSON.stringify(meta));}catch{}}
 function operatingMode(){return meta.operatingMode==="worker"?"worker":"master";}
 function isMaster(){return operatingMode()==="master";}
 function deviceId(){
@@ -70,21 +171,21 @@ async function initFileFolder(){
  try{await folderStore()?.init();}catch(err){announce("保存先設定の復元に失敗しました："+err.message,"warn");}
  renderFileFolder();
 }
-async function chooseFileFolder(){
+async function chooseFileFolder(){if(!requireTabOwner("保存先の変更"))return;
  const store=folderStore();if(!store?.status().available)return announce("現在の環境ではフォルダ選択が利用できません。","warn");
  try{const state=await store.choose();renderFileFolder();announce("保存先「"+state.name+"」を設定しました。","success");}
  catch(err){if(err?.name!=="AbortError")announce("保存先を設定できません："+err.message,"error");}
 }
-async function allowFileFolder(){
+async function allowFileFolder(){if(!requireTabOwner("保存先の権限変更"))return;
  try{const state=await folderStore().permission("readwrite",true);renderFileFolder();announce(state==="granted"?"保存先への読み書きを許可しました。":"保存先の権限が許可されていません。",state==="granted"?"success":"warn");}
  catch(err){announce("保存先の権限を確認できません："+err.message,"error");}
 }
-async function clearFileFolder(){
+async function clearFileFolder(){if(!requireTabOwner("保存先の解除"))return;
  if(!confirm("保存先設定を解除しますか？ 保存済みファイルは削除されません。"))return;
  try{await folderStore().clear();renderFileFolder();announce("保存先設定を解除しました。","success");}
  catch(err){announce("保存先設定を解除できません："+err.message,"error");}
 }
-function saveDeviceDisplayName(){
+function saveDeviceDisplayName(){if(!requireTabOwner("PC表示名の変更"))return;
  const name=$("deviceDisplayName").value.trim();
  if(name.length>24||/[\\/:*?"<>|\x00-\x1f]/.test(name))return announce("PC名は24文字以内で、ファイル名に使えない記号を含めずに入力してください。","warn");
  meta.deviceLabel=name;saveMeta();announce(name?"このPCの表示名を「"+name+"」に設定しました。":"このPCの表示名を初期値に戻しました。","success");
@@ -131,7 +232,7 @@ function renderSteps(){const e=current();if(!e)return;const st=stepStates(e),nx=
 function dayCheckState(){const e=current(),today=new Date().toLocaleDateString("ja-JP"),d=meta.dayCheck?.[e.id];return d&&d.date===today?d.items:[];}
 function renderDayCheck(){const items=dayCheckState(),all=["session","camera","sound","paper"],ok=all.every(x=>items.includes(x));for(const c of document.querySelectorAll("[data-day-check]"))c.checked=items.includes(c.dataset.dayCheck);$("dayCheckSession").textContent=curSession()?.name||"";const st=$("dayCheckStatus");st.textContent=ok?"✓ 準備OK":"未確認 "+items.length+"/4";st.className="tag"+(ok?"":" warn");if(ok&&!$("dayCheck").dataset.userOpened)$("dayCheck").open=false;}
 function saveDayCheck(){const e=current();meta.dayCheck||={};meta.dayCheck[e.id]={date:new Date().toLocaleDateString("ja-JP"),items:[...document.querySelectorAll("[data-day-check]:checked")].map(c=>c.dataset.dayCheck)};saveMeta();renderDayCheck();}
-function mutate(fn){const old=db.get(activeId);if(!old)return false;const next=clone(old);try{fn(next)}catch(err){announce(err.message,"error");return false;}if(!writeEvent(next))return false;bumpSyncRevision(next.id);render({keepScroll:true});return true;}
+function mutate(fn){if(!requireTabOwner("受付・登録情報の更新"))return false;const old=db.get(activeId);if(!old)return false;const next=clone(old);try{fn(next)}catch(err){announce(err.message,"error");return false;}if(!writeEvent(next))return false;bumpSyncRevision(next.id);render({keepScroll:true});return true;}
 function current(){return db.get(activeId);}
 function curSession(){const e=current();return e?.sessions.find(s=>s.id===$("checkinSession").value)||e?.sessions[0];}
 function checked(p,s){const c=p.checkins?.[s];return !!(c&&c.active!==false);}
@@ -205,8 +306,8 @@ function addEvent(fromId){if(!checkMaster("イベント作成"))return;
  };
  $("newEventCreate").onclick=create;$("newEventName").onkeydown=ev=>{if(ev.key==="Enter"){ev.preventDefault();create();}};
 }
-function commitNewEvent(e){try{validateEvent(e);localStorage.setItem(key(e.id),JSON.stringify(e));if(!writeIndex([...order,e.id])){localStorage.removeItem(key(e.id));return false;}db.set(e.id,e);openEvent(e.id,false,"settings");announce("イベントを作成しました。受付区分と参加者名簿を確認してください。","success");return true;}catch(err){try{localStorage.removeItem(key(e.id));}catch{}announce("イベントを保存できません："+err.message,"error");return false;}}
-function deleteEvent(id){if(!checkMaster("イベント削除"))return;const e=db.get(id);if(!e)return;if(!confirm("「"+e.name+"」を削除します。\n事前に全イベントJSONをバックアップしましたか？\n削除するとこのブラウザから名簿・受付履歴が消えます。"))return;if(!confirm("最終確認：イベント「"+e.name+"」を削除しますか？"))return;const next=order.filter(x=>x!==id);if(!writeIndex(next))return;try{localStorage.removeItem(key(id));db.delete(id);if(meta.steps?.[id]||meta.dayCheck?.[id]){delete meta.steps?.[id];delete meta.dayCheck?.[id];saveMeta();}if(activeId===id){activeId=null;view="home";}render();announce("イベントを削除しました。","warn");}catch(err){writeIndex([...next,id]);announce("削除に失敗しました："+err.message,"error");}}
+function commitNewEvent(e){if(!requireTabOwner("イベント作成"))return false;try{validateEvent(e);localStorage.setItem(key(e.id),JSON.stringify(e));if(!writeIndex([...order,e.id])){localStorage.removeItem(key(e.id));return false;}db.set(e.id,e);openEvent(e.id,false,"settings");announce("イベントを作成しました。受付区分と参加者名簿を確認してください。","success");return true;}catch(err){try{localStorage.removeItem(key(e.id));}catch{}announce("イベントを保存できません："+err.message,"error");return false;}}
+function deleteEvent(id){if(!requireTabOwner("イベント削除")||!checkMaster("イベント削除"))return;const e=db.get(id);if(!e)return;if(!confirm("「"+e.name+"」を削除します。\n事前に全イベントJSONをバックアップしましたか？\n削除するとこのブラウザから名簿・受付履歴が消えます。"))return;if(!confirm("最終確認：イベント「"+e.name+"」を削除しますか？"))return;const next=order.filter(x=>x!==id);if(!writeIndex(next))return;try{localStorage.removeItem(key(id));db.delete(id);if(meta.steps?.[id]||meta.dayCheck?.[id]){delete meta.steps?.[id];delete meta.dayCheck?.[id];saveMeta();}if(activeId===id){activeId=null;view="home";}render();announce("イベントを削除しました。","warn");}catch(err){writeIndex([...next,id]);announce("削除に失敗しました："+err.message,"error");}}
 function openEvent(id,goDay=false,tab){if(!db.has(id))return;if(!isMaster())goDay=true;if(!tab){const n=nextStep(db.get(id));tab=n?n.tab:"results";}activeId=id;view="event";day=goDay;prepTab=tab;receptionTab="pending";render();}
 function openHome(tab="events"){view="home";homeTab=tab;render();}
 function todayStr(){return new Date().toLocaleDateString("sv-SE");}
@@ -534,7 +635,7 @@ function renderPersonHistory(p){
  }
 }
 /* 受付取消は参加者詳細画面と右側の受付済み一覧で共通化。履歴と初回時刻を維持する。 */
-function cancelAttendance(personId,sessionId,closeOnSuccess=false){
+function cancelAttendance(personId,sessionId,closeOnSuccess=false){if(!requireTabOwner("受付取消"))return false;
  const e=current(),p=e?.participants.find(x=>x.id===personId),s=e?.sessions.find(x=>x.id===sessionId);
  if(!p||p.removed||!s||!checked(p,sessionId)){announce("この参加者の受付済み記録は見つかりません。","warn");return false;}
  if(!confirm(p.name+" さんの「"+s.name+"」の受付を取り消しますか？"))return false;
@@ -603,7 +704,7 @@ function checkInByToken(code){
  if(matched.length!==1){showResult(null,matched.length?"職員番号が重複しています":"名簿にない職員番号です","error");return;}
  checkIn(matched[0].id,"qr",false);
 }
-function checkIn(id,method,allowPlan){if(allowPlan&&!isMaster())return announce("参加予定の変更はマスターPCで行ってください。","warn"),false;const e=current(),s=curSession();let result=null;const person=e.participants.find(p=>p.id===id);if(!person||person.removed){showResult(person,"受付できません","error");return false;}if(checked(person,s.id)){const c=person.checkins[s.id];showResult(person,"受付済み（重複）","warn",s.name,c.lastAt||c.at);return false;}if(!person.planned[s.id]&&!allowPlan){showResult(person,"この区分は参加対象外です","warn",s.name);if(!isMaster())return false;const action=document.createElement("button");action.type="button";action.className="btn soft";action.style.marginTop="12px";action.textContent="この区分を参加対象に変更して受付";action.onclick=()=>{if(!confirm(person.name+" さんを「"+s.name+"」の参加対象に変更して受付しますか？"))return;checkIn(id,method,true);};$("checkinResult").append(action);return false;}
+function checkIn(id,method,allowPlan){if(!requireTabOwner("受付"))return false;if(allowPlan&&!isMaster())return announce("参加予定の変更はマスターPCで行ってください。","warn"),false;const e=current(),s=curSession();let result=null;const person=e.participants.find(p=>p.id===id);if(!person||person.removed){showResult(person,"受付できません","error");return false;}if(checked(person,s.id)){const c=person.checkins[s.id];showResult(person,"受付済み（重複）","warn",s.name,c.lastAt||c.at);return false;}if(!person.planned[s.id]&&!allowPlan){showResult(person,"この区分は参加対象外です","warn",s.name);if(!isMaster())return false;const action=document.createElement("button");action.type="button";action.className="btn soft";action.style.marginTop="12px";action.textContent="この区分を参加対象に変更して受付";action.onclick=()=>{if(!confirm(person.name+" さんを「"+s.name+"」の参加対象に変更して受付しますか？"))return;checkIn(id,method,true);};$("checkinResult").append(action);return false;}
 const ok=mutate(next=>{const p=next.participants.find(p=>p.id===id),at=iso();if(allowPlan)p.planned[s.id]=true;const c=p.checkins[s.id];if(c){c.active=true;c.lastAt=at;c.method=method;c.syncOrigin=deviceId();(c.history||(c.history=[])).push({type:"recheck",at,method});}else p.checkins[s.id]={at,lastAt:at,method,initialMethod:method,active:true,history:[],syncOrigin:deviceId()};result={person:p,at};});if(!ok){showResult(person,"保存に失敗しました","error");return false;}showResult(result.person,"受付完了","success",s.name,result.at);return true;}
 function showResult(person,txt,level="warn",session="",at=""){
  const d=$("checkinResult");d.className="result "+level;
@@ -1307,7 +1408,7 @@ function applyAttendanceRecovery(e,data,chosen){
 async function importAttendanceFile(file){if(file)await importAttendanceFiles([file]);}
 
 /* 指定フォルダ/複数選択のJSONから、出力元PCと世代ごとに最新版を集約する。 */
-async function importAttendanceFiles(files){
+async function importAttendanceFiles(files){if(!requireTabOwner("受付実績の取り込み"))return;
  if(!checkMaster("受付実績の取り込み"))return;
  const e=current();if(!e)return;
  if(files.length>1500)return announce("ファイルが多すぎます（上限1500件）。古い実績を整理してください。","warn");
@@ -1479,7 +1580,7 @@ async function importAttendanceFiles(files){
  };
  actions.append(cancel,accept);panel.append(actions);openDialog("受付実績の一括取り込み確認",panel);
 }
-async function importAttendanceFromSavedFolder(){
+async function importAttendanceFromSavedFolder(){if(!requireTabOwner("受付実績の取り込み"))return;
  if(!checkMaster("受付実績の取り込み"))return;
  const store=folderStore();if(!store?.status().configured)return announce("データ管理から保存先を指定するか、「JSONを複数選択」を利用してください。","warn");
  try{const files=await store.list("受付実績");if(!files.length)return announce("保存先の「受付実績」フォルダにJSONファイルがありません。","warn");await importAttendanceFiles(files);}
@@ -1495,7 +1596,7 @@ async function backup(){
 }
 
 // Removes only the current application namespace. Do not touch browser-wide or legacy prototype data.
-function deleteAllStoredData(){if(!checkMaster("全データ削除"))return;
+function deleteAllStoredData(){if(!requireTabOwner("全データ削除")||!checkMaster("全データ削除"))return;
  const entries=[];
  try{
   for(let i=0;i<localStorage.length;i++){
@@ -1536,7 +1637,7 @@ function openDeleteAllDialog(){
  $("deletePhrase").focus();
 }
 
-async function restore(){const f=$("restoreFile").files[0];if(!f)return announce("復元するJSONファイルを選択してください。","warn");let data;try{data=JSON.parse(await f.text());if(data.schema_version!==SCHEMA||!Array.isArray(data.events))throw Error("未対応のバックアップ形式です");const seen=new Set();for(const e of data.events){validateEvent(e);if(seen.has(e.id))throw Error("イベントIDが重複しています");seen.add(e.id);}}catch(err){return announce("JSONの検証に失敗しました："+err.message,"error");}
+async function restore(){if(!requireTabOwner("JSONからの復元"))return;const f=$("restoreFile").files[0];if(!f)return announce("復元するJSONファイルを選択してください。","warn");let data;try{data=JSON.parse(await f.text());if(data.schema_version!==SCHEMA||!Array.isArray(data.events))throw Error("未対応のバックアップ形式です");const seen=new Set();for(const e of data.events){validateEvent(e);if(seen.has(e.id))throw Error("イベントIDが重複しています");seen.add(e.id);}}catch(err){return announce("JSONの検証に失敗しました："+err.message,"error");}
 const mode=$("restoreMode").value,existing=data.events.filter(e=>db.has(e.id)).length,records=data.events.filter(e=>!db.has(e.id)||mode==="replace");if(!records.length)return announce("追加するイベントがありません（既存は保持）。","warn");if(!confirm(data.events.length+"件のバックアップを読み込みます。\n新規・更新："+records.length+"件／既存との重複："+existing+"件\n方式："+(mode==="skip"?"既存を保持":"重複するイベントを上書き")+"\n実行しますか？"))return;if(mode==="replace"&&existing&&!confirm("既存イベントをバックアップ側のデータで上書きします。現在の受付記録が失われる可能性があります。本当に実行しますか？"))return;
 const previous=records.map(e=>[e.id,localStorage.getItem(key(e.id))]),newIds=[...order,...records.map(e=>e.id).filter(id=>!order.includes(id))];try{for(const e of records)localStorage.setItem(key(e.id),JSON.stringify(e));localStorage.setItem(IX,JSON.stringify({version:SCHEMA,ids:newIds}));for(const e of records)db.set(e.id,e);order=newIds;markChanged();render();announce(records.length+"件を復元しました。","success");}catch(err){for(const [id,old] of previous){try{if(old===null)localStorage.removeItem(key(id));else localStorage.setItem(key(id),old);}catch{}}announce("復元に失敗しました。可能な限り元のデータに戻しました："+err.message,"error");}}
 function csvParse(text){let i=0,inQuotes=false,field="",row=[],out=[];text=text.replace(/^\uFEFF/,"");while(i<text.length){const ch=text[i++];if(inQuotes){if(ch==='"'){if(text[i]==='"'){field+='"';i++;}else inQuotes=false;}else field+=ch;}else if(ch==='"'){inQuotes=true;}else if(ch===","){row.push(field);field="";}else if(ch==="\r"||ch==="\n"){if(ch==="\r"&&text[i]==="\n")i++;row.push(field);if(row.some(x=>x.trim()))out.push(row);field="";row=[];}else field+=ch;}if(inQuotes)throw Error("CSVの引用符が閉じられていません");if(field||row.length){row.push(field);if(row.some(x=>x.trim()))out.push(row);}return out;}
@@ -1936,5 +2037,5 @@ document.addEventListener("pointerdown",primeAudio,{passive:true});document.addE
 $("walkinBtn").onclick=()=>{if(checkMaster("飛び入り登録"))openPerson(null,true);};$("manualBtn").onclick=openManual;$("closeDialog").onclick=closeDialog;
 $("dialogBackdrop").addEventListener("click",e=>{if(e.target===$("dialogBackdrop"))closeDialog();});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("dialogBackdrop").hidden)closeDialog();});}
 window.addEventListener("afterprint",()=>{document.body.removeAttribute("data-print-mode");$("receptionPrint").hidden=true;});
-loadMeta();loadAll();delegate();render();initFileFolder();
+loadMeta();loadAll();delegate();render();initFileFolder();initTabGuard();
 })();

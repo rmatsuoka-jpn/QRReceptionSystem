@@ -1008,3 +1008,12 @@ body[data-operating-mode="worker"] .rx .rx-clear-footer{display:none}
 .rx-import-file-row.rx-import-recovery-file small{white-space:normal;overflow-wrap:anywhere}
 .rx-import-file-row span:first-child{overflow-wrap:anywhere}
 .rx-import-file-row small{color:#53717e;white-space:nowrap}
+
+/* Second-tab safety: visible status and disabled editing controls. */
+.tab-guard-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #d7a652;border-left:5px solid #b78221;background:#fff7df;color:#533b10;border-radius:10px;padding:12px 15px;margin:12px 0 16px}
+.tab-guard-banner[hidden]{display:none}
+.tab-guard-banner strong{font-size:.96rem}
+.tab-guard-banner p{font-size:.83rem;line-height:1.55;margin:5px 0 0}
+.tab-guard-banner .btn{flex-shrink:0}
+body[data-tab-mode="readonly"] button:disabled,body[data-tab-mode="readonly"] input:disabled,body[data-tab-mode="readonly"] select:disabled,body[data-tab-mode="readonly"] textarea:disabled{cursor:not-allowed;opacity:.48}
+@media(max-width:650px){.tab-guard-banner{flex-direction:column;align-items:stretch}}
