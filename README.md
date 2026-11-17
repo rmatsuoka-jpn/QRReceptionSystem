@@ -148,6 +148,7 @@
 | `index.html` | アプリ入口（`app.html` へ遷移） |
 | `app.html`・`app.css`・`app.js` | 実際に保存・操作するアプリ |
 | `app-file-store.js` | File System Access APIとIndexedDBによる出力先の記憶・書き込み・受付実績の一覧取得 |
+| `app-tab-guard.js` | 同一ブラウザの複数タブ間で編集権限を排他管理（Web Locks API） |
 | `app-support.js` | 参加者取り込み用のCSV／TSV解析・文字コード判定・列対応の補助（ZIP生成は2026-11-02にJSZipへ移行） |
 | `help.html` | ヘルプ・操作説明 |
 | `wireframe.html` | 旧デザイン検証用（データ保存はしない） |
