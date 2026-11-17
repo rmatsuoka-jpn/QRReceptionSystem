@@ -16,18 +16,24 @@
    update("unsupported");return;
   }
   attempting=true;
-  navigator.locks.request(LOCK_NAME,{mode:"exclusive",ifAvailable:true},lock=>{
-   attempting=false;
-   if(stopped)return;
-   if(!lock){update("readonly");return;}
-   return new Promise(resolve=>{
-    releaseLock=resolve;
-    update("owner");
+  try{
+   Promise.resolve(navigator.locks.request(LOCK_NAME,{mode:"exclusive",ifAvailable:true},lock=>{
+    attempting=false;
+    if(stopped)return;
+    if(!lock){update("readonly");return;}
+    return new Promise(resolve=>{
+     releaseLock=resolve;
+     update("owner");
+    });
+   })).catch(err=>{
+    attempting=false;
+    if(!stopped){console.warn("QR tab guard: Web Locks unavailable",err);update("unsupported");}
    });
-  }).catch(err=>{
+  }catch(err){
    attempting=false;
-   if(!stopped){console.warn("QR tab guard: Web Locks unavailable",err);update("unsupported");}
-  });
+   console.warn("QR tab guard: Web Locks unavailable",err);
+   update("unsupported");
+  }
  }
  function onPageHide(){
   stopped=true;
